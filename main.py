@@ -47,7 +47,7 @@ import webbrowser
 
 
 
-VERSION = "1.4.006"
+VERSION = "1.4.007"
 RPC_UPDATE_INTERVAL = 15  # seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
@@ -650,7 +650,8 @@ SUBFACTION_ICONS = {
 DSS_ICONS = {
     "Eagle Storm": config['MiscIcon']['Eagle Storm'],
     "Orbital Blockade": config['MiscIcon']['Orbital Blockade'],
-    "Heavy Ordnance Distribution": config['MiscIcon']['Heavy Ordnance Distribution']
+    "Heavy Ordnance Distribution": config['MiscIcon']['Heavy Ordnance Distribution'],
+    "Eagle Blockade": config['MiscIcon']['Eagle Blockade']
 }
 
 # Title icons for Titles
