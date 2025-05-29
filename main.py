@@ -1211,7 +1211,7 @@ class MissionLogGUI:
         self.dss_frame = ttk.Frame(details_frame)
         self.dss_frame.grid(row=2, column=2, sticky=tk.W, pady=5)
         ttk.Label(self.dss_frame, text="DSS Modifier:").pack(side=tk.LEFT)
-        dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm"]
+        dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm", "Eagle Blockade"]
         self.DSSMod.set("Inactive")  # Set default value
         self.dss_combo = ttk.Combobox(self.dss_frame, textvariable=self.DSSMod, values=dss_mods, state='readonly', width=27)
         self.dss_combo.pack(side=tk.LEFT, padx=(40,0))
