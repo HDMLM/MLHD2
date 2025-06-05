@@ -9,5 +9,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "packageManager": "pnpm@10.11.1"
+  "packageManager": "pnpm@10.11.1",
+  "dependencies": {
+    "discord.js": "^14.19.3",
+    "electron": "^36.4.0",
+    "fs": "0.0.1-security"
+  }
 }
