@@ -1,7 +1,6 @@
 {
     "Automatons": {
 	    "Automaton Legion": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -258,7 +257,6 @@
             }
         },
         "Jet Brigade": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -515,7 +513,6 @@
             }
         },
         "Incineration Corps": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -772,7 +769,6 @@
             }
         },
         "Jet Brigade & Incineration Corps": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -1031,7 +1027,6 @@
     },
     "Terminids": {
         "Terminid Horde": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -1385,7 +1380,6 @@
             }
         },
         "Predator Strain": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -1739,7 +1733,6 @@
             }
         },
         "Spore Burst Strain": {
-            "Invasion": "Unknown",
             "Defense": {
                 "1 - TRIVIAL": [
                 "Terminate Illegal Broadcast",
@@ -2185,8 +2178,96 @@
                 "Free Colony"
                 ]
             },
-            "Defense": "Unknown",
-            "Liberation": "Unknown"
+            "Liberation": {
+                "1 - TRIVIAL": [
+                "Terminate Broadcast",
+                "Pump Fuel To ICBM",
+                "Upload Escape Pod Data",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "2 - EASY": [
+                "Terminate Broadcast",
+                "Pump Fuel To ICBM",
+                "Upload Escape Pod Data",
+                "Conduct Geological Survey",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "3 - MEDIUM": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Destroy Harvesters",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "4 - CHALLENGING": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "5 - HARD": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Defend Evacuation Site",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "6 - EXTREME": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Defend Evacuation Site",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "7 - SUICIDE MISSION": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Defend Evacuation Site",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "8 - IMPOSSIBLE": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Defend Evacuation Site",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "9 - HELLDIVE": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Defend Evacuation Site",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ],
+                "10 - SUPER HELLDIVE": [
+                "Conduct Geological Survey",
+                "Launch ICBM",
+                "Defend Evacuation Site",
+                "Blitz: Destroy Illuminate Warp Ships",
+                "Evacuate Colonists",
+                "Retrieve Recon Craft Intel",
+                "Free Colony"
+                ]
+            }
         },
         "The Great Host": {
             "Battle for Super Earth": {
@@ -2399,8 +2480,6 @@
                 "Free Colony"
                 ]
             },
-            "Defense": "Unknown",
-            "Liberation": "Unknown",
             "Attrition": {
                 "1 - TRIVIAL": [
                 "Terminate Broadcast",

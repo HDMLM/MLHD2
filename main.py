@@ -47,7 +47,7 @@ import webbrowser
 
 
 
-VERSION = "1.4.007"
+VERSION = "1.4.008"
 RPC_UPDATE_INTERVAL = 15  # seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
@@ -686,7 +686,8 @@ TITLE_ICONS = {
     "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO']
+    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL']
 }
 
 # Profile Pictures for Exports
@@ -1067,11 +1068,11 @@ class MissionLogGUI:
         SETime = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S")
 
         # Mission Information Section
-        mission_frame = ttk.LabelFrame(content, text="Mission Information  SEST: {}".format(SETime), padding=10)
+        mission_frame = ttk.LabelFrame(content, text="Mission Information: {}".format(SETime), padding=10)
 
         def update_time():
             SETime = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S")
-            mission_frame.config(text=f"Mission Information  SEST: {SETime}")
+            mission_frame.config(text=f"Mission Information: {SETime}")
 
         self.update_time = update_time
         mission_frame.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -1114,7 +1115,7 @@ class MissionLogGUI:
              'ADMIRABLE ADMIRAL', 'COMMANDER', 'GALACTIC COMMANDER', 'HELL COMMANDER', 'GENERAL',
              '5-STAR GENERAL', '10-STAR GENERAL', 'PRIVATE', 'SUPER PRIVATE', 'SUPER CITIZEN',
              'VIPER COMMANDO', 'FIRE SAFETY OFFICER', 'EXPERT EXTERMINATOR', 'FREE OF THOUGHT',
-             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO']
+             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO', 'EXTRA JUDICIAL']
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
         self.title_combo['values'] = self.titles
         self.title_combo.grid(row=3, column=2, sticky=tk.W, padx=(45,0), pady=5)
@@ -1775,7 +1776,7 @@ class MissionLogGUI:
 
             # Get UID from settings.json instead of config
             try:
-                with open('settings.json', 'r') as f:
+                with open('DCord.json', 'r') as f:
                     settings_data = json.load(f)
                     UID = settings_data.get('discord_uid', '0')
             except (FileNotFoundError, json.JSONDecodeError) as e:

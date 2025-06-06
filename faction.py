@@ -416,7 +416,8 @@ TITLE_ICONS = {
     "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO']
+    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL']
 }
 
 # Profile Pictures for Exports
@@ -642,6 +643,10 @@ with open('streak_data.json', 'r') as f:
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
 
+# Load DCord.json data
+with open('DCord.json', 'r') as f:
+    dcord_data = json.load(f)
+
 # Create embed data
 embed_data = {
     "content": None,
@@ -671,7 +676,7 @@ embed_data = {
                         f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n",
             "color": 7257043,
             "author": {"name": "SEAF Battle Record"},
-            "footer": {"text": config['Discord']['UID'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
+            "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode()[0], '')}"},
             "thumbnail": {"url": f"{profile_picture}"}
         },
