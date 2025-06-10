@@ -2,6 +2,9 @@
   "Super Earth": {
     "mega_cities": ["EAGLEOPOLIS", "ADMINISTRATIVE CENTER 02", "REMEMBERANCE", "YORK SUPREME", "PORT MERCY", "PROSPERITY CITY", "EQUALITY-ON-SEA"]
   },
+  "Crucible": {
+    "mega_cities": ["KSHIRA SAGARA", "ANNWN", "KURRI KURRI", "AGARTHA"]
+  },
   "New Cyberstan": {
     "mega_cities": ["WIP", "BLESTRAIL", "HILDOARA CENTRAL"]
   },

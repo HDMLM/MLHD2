@@ -1034,14 +1034,18 @@
                 "Upload Escape Pod Data",
                 "Spread Democracy",
                 "Retrieve Essential Personnel",
-                "Eliminate Brood Commanders"
+                "Eliminate Brood Commanders",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "2 - EASY": [
                 "Spread Democracy",
                 "Eliminate Brood Commanders",
                 "Activate E-710 Pumps",
                 "Purge Hatcheries",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "3 - MEDIUM": [
                 "Spread Democracy",
@@ -1053,7 +1057,9 @@
                 "Eliminate Chargers",
                 "Activate E-710 Pumps",
                 "Purge Hatcheries",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "4 - CHALLENGING": [
                 "Spread Democracy",
@@ -1066,7 +1072,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "5 - HARD": [
                 "Spread Democracy",
@@ -1081,7 +1089,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "6 - EXTREME": [
                 "Spread Democracy",
@@ -1094,7 +1104,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "7 - SUICIDE MISSION": [
                 "Spread Democracy",
@@ -1107,7 +1119,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "8 - IMPOSSIBLE": [
                 "Spread Democracy",
@@ -1120,7 +1134,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "9 - HELLDIVE": [
                 "Spread Democracy",
@@ -1133,7 +1149,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ],
                 "10 - SUPER HELLDIVE": [
                 "Spread Democracy",
@@ -1146,7 +1164,9 @@
                 "Purge Hatcheries",
                 "Enable E-710 Extraction",
                 "Nuke Nursery",
-                "Eradicate Terminid Swarm"
+                "Eradicate Terminid Swarm",
+                "Restore Air Quality",
+                "Cleanse Infested District"
                 ]
             },
             "Liberation": {

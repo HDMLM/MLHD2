@@ -47,7 +47,7 @@ import webbrowser
 
 
 
-VERSION = "1.4.008"
+VERSION = "1.4.009"
 RPC_UPDATE_INTERVAL = 15  # seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
@@ -304,7 +304,11 @@ PLANET_ICONS = {
     "Fori Prime": config['PlanetIcons']['Gloom'],
     "Aurora Bay": config['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": config['PlanetIcons']['Jet Brigade Factories'],
-    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat']
+    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat'],
+    "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Haldus": config['PlanetIcons']['Illuminate Rally Locus']
 }
 
 # Campaign Icons
@@ -365,7 +369,9 @@ MISSION_ICONS = {
     "Take Down Overship": config['MissionIcons']['Take Down Overship'],
     "Repel Invasion Fleet": config['MissionIcons']['Repel Invasion Fleet'],
     "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens'],
-    "Free The City": config['MissionIcons']['Free The City']
+    "Free The City": config['MissionIcons']['Free The City'],
+    "Restore Air Quality": config['MissionIcons']['Restore Air Quality'],
+    "Cleanse Infested District": config['MissionIcons']['Cleanse Infested District']
 }
 
 # Biome banners for Planets
