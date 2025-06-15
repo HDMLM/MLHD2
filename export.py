@@ -63,7 +63,13 @@ PLANET_ICONS = {
     "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
     "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
     "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
-    "Haldus": config['PlanetIcons']['Illuminate Rally Locus']
+    "Haldus": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Mastia": config['PlanetIcons']['Governmental'],
+    "Fenrir III": config['PlanetIcons']['Science'],
+    "Tarsh": config['PlanetIcons']['Governmental'],
+    "Claorell": config['PlanetIcons']['Hammer'],
+    "Achernar Secundus": config['PlanetIcons']['Hammer'],
+    "Turing": config['PlanetIcons']['Science']
 }
 
 # Campaign Icons

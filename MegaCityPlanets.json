@@ -1,12 +1,30 @@
 {
   "Super Earth": {
-    "mega_cities": ["EAGLEOPOLIS", "ADMINISTRATIVE CENTER 02", "REMEMBERANCE", "YORK SUPREME", "PORT MERCY", "PROSPERITY CITY", "EQUALITY-ON-SEA"]
+    "mega_cities": ["Eagleopolis", "Administrative Center 02", "Remembrance", "York Supreme", "Port Mercy", "Propserity City", "Equality-On-Sea"]
+  },
+  "Achird III": {
+    "mega_cities": ["Timely", "Approval City", "Old Branch"]
+  },
+  "Darius II": {
+    "mega_cities": ["Buju"]
+  },
+  "Veld": {
+    "mega_cities": ["Cle Elum Rediviva", "Laelia"]
   },
   "Crucible": {
-    "mega_cities": ["KSHIRA SAGARA", "ANNWN", "KURRI KURRI", "AGARTHA"]
+    "mega_cities": ["Kshira Sagara", "Annwn", "Kurri Kurri", "Agartha"]
+  },
+  "Volterra": {
+    "mega_cities": ["Scarlet Haven", "Edward's Grave", "Light-Of-Liberty"]
+  },
+  "Alta V": {
+    "mega_cities": ["Porte Liberté", "Undervatten"]
+  },
+  "Caramoor": {
+    "mega_cities": ["Base Camp 8", "Pioneer's Dream", "Lemuria Rising"]
   },
   "New Cyberstan": {
-    "mega_cities": ["WIP", "BLESTRAIL", "HILDOARA CENTRAL"]
+    "mega_cities": ["WIP", "Blestrail", "Hildoara Central"]
   },
   "Klen Dahth II": {
     "mega_cities": ["WIP"]

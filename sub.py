@@ -59,7 +59,13 @@ PLANET_ICONS = {
     "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
     "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
     "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
-    "Haldus": config['PlanetIcons']['Illuminate Rally Locus']
+    "Haldus": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Mastia": config['PlanetIcons']['Governmental'],
+    "Fenrir III": config['PlanetIcons']['Science'],
+    "Tarsh": config['PlanetIcons']['Governmental'],
+    "Claorell": config['PlanetIcons']['Hammer'],
+    "Achernar Secundus": config['PlanetIcons']['Hammer'],
+    "Turing": config['PlanetIcons']['Science']
 }
 
 # Campaign Icons
@@ -505,7 +511,10 @@ PROFILE_PICTURES = {
     "GS-66 Lawmaker": config['ProfilePictures']['GS-66 Lawmaker'],
     "RE-824 Bearer of the Standard": config['ProfilePictures']['RE-824 Bearer of the Standard'],
     "RE-2310 Honorary Guard": config['ProfilePictures']['RE-2310 Honorary Guard'],
-    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander']
+    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander'],
+    "BP-20 Corrections Officer": config['ProfilePictures']['BP-20 Corrections Officer'],
+    "BP-32 Jackboot": config['ProfilePictures']['BP-32 Jackboot'],
+    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror']
 }
 
 # Read the Excel file
