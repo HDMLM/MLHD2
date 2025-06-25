@@ -23,6 +23,12 @@
   "Caramoor": {
     "mega_cities": ["Base Camp 8", "Pioneer's Dream", "Lemuria Rising"]
   },
+  "Alamak VII": {
+    "mega_cities": ["Kesuma", "No Compound", "Filibuster", "Ungu"]
+  },
+  "Alairt III": {
+    "mega_cities": ["Shed", "Free Trade", "New Storouse", "Greater Storouse"]
+  },
   "New Cyberstan": {
     "mega_cities": ["WIP", "Blestrail", "Hildoara Central"]
   },
