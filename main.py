@@ -47,7 +47,7 @@ import webbrowser
 
 
 
-VERSION = "1.4.010"
+VERSION = "1.4.011"
 RPC_UPDATE_INTERVAL = 15  # seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
