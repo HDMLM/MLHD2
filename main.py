@@ -47,7 +47,7 @@ import webbrowser
 
 
 
-VERSION = "1.4.005"
+VERSION = "1.4.011"
 RPC_UPDATE_INTERVAL = 15  # seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
@@ -304,7 +304,17 @@ PLANET_ICONS = {
     "Fori Prime": config['PlanetIcons']['Gloom'],
     "Aurora Bay": config['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": config['PlanetIcons']['Jet Brigade Factories'],
-    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat']
+    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat'],
+    "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Haldus": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Mastia": config['PlanetIcons']['Governmental'],
+    "Fenrir III": config['PlanetIcons']['Science'],
+    "Tarsh": config['PlanetIcons']['Governmental'],
+    "Claorell": config['PlanetIcons']['Hammer'],
+    "Achernar Secundus": config['PlanetIcons']['Hammer'],
+    "Turing": config['PlanetIcons']['Science']
 }
 
 # Campaign Icons
@@ -319,7 +329,6 @@ CAMPAIGN_ICONS = {
 
 # Mission Icons
 MISSION_ICONS = {
-    "Placeholder Mission": config['MissionIcons']['Placeholder Mission'],
     "Terminate Illegal Broadcast": config['MissionIcons']['Terminate Illegal Broadcast'],
     "Pump Fuel To ICBM": config['MissionIcons']['Pump Fuel To ICBM'],
     "Upload Escape Pod Data": config['MissionIcons']['Upload Escape Pod Data'],
@@ -328,7 +337,6 @@ MISSION_ICONS = {
     "Launch ICBM": config['MissionIcons']['Launch ICBM'],
     "Retrieve Valuable Data": config['MissionIcons']['Retrieve Valuable Data'],
     "Blitz: Search and Destroy": config['MissionIcons']['Blitz Search and Destroy'],
-    "PLACEHOLDER": config['MissionIcons']['PLACEHOLDER'],
     "Emergency Evacuation": config['MissionIcons']['Emergency Evacuation'],
     "Retrieve Essential Personnel": config['MissionIcons']['Retrieve Essential Personnel'],
     "Evacuate High-Value Assets": config['MissionIcons']['Evacuate High-Value Assets'],
@@ -366,7 +374,10 @@ MISSION_ICONS = {
     "Chart Terminid Tunnels": config['MissionIcons']['Chart Terminid Tunnels'],
     "Take Down Overship": config['MissionIcons']['Take Down Overship'],
     "Repel Invasion Fleet": config['MissionIcons']['Repel Invasion Fleet'],
-    "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens']
+    "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens'],
+    "Free The City": config['MissionIcons']['Free The City'],
+    "Restore Air Quality": config['MissionIcons']['Restore Air Quality'],
+    "Cleanse Infested District": config['MissionIcons']['Cleanse Infested District']
 }
 
 # Biome banners for Planets
@@ -651,7 +662,8 @@ SUBFACTION_ICONS = {
 DSS_ICONS = {
     "Eagle Storm": config['MiscIcon']['Eagle Storm'],
     "Orbital Blockade": config['MiscIcon']['Orbital Blockade'],
-    "Heavy Ordnance Distribution": config['MiscIcon']['Heavy Ordnance Distribution']
+    "Heavy Ordnance Distribution": config['MiscIcon']['Heavy Ordnance Distribution'],
+    "Eagle Blockade": config['MiscIcon']['Eagle Blockade']
 }
 
 # Title icons for Titles
@@ -686,7 +698,8 @@ TITLE_ICONS = {
     "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO']
+    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL']
 }
 
 # Profile Pictures for Exports
@@ -768,7 +781,10 @@ PROFILE_PICTURES = {
     "GS-66 Lawmaker": config['ProfilePictures']['GS-66 Lawmaker'],
     "RE-824 Bearer of the Standard": config['ProfilePictures']['RE-824 Bearer of the Standard'],
     "RE-2310 Honorary Guard": config['ProfilePictures']['RE-2310 Honorary Guard'],
-    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander']
+    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander'],
+    "BP-20 Corrections Officer": config['ProfilePictures']['BP-20 Corrections Officer'],
+    "BP-32 Jackboot": config['ProfilePictures']['BP-32 Jackboot'],
+    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror']
 }
 
 def get_enemy_icon(enemy_type: str) -> str:
@@ -1067,11 +1083,11 @@ class MissionLogGUI:
         SETime = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S")
 
         # Mission Information Section
-        mission_frame = ttk.LabelFrame(content, text="Mission Information  SEST: {}".format(SETime), padding=10)
+        mission_frame = ttk.LabelFrame(content, text="Mission Information: {}".format(SETime), padding=10)
 
         def update_time():
             SETime = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S")
-            mission_frame.config(text=f"Mission Information  SEST: {SETime}")
+            mission_frame.config(text=f"Mission Information: {SETime}")
 
         self.update_time = update_time
         mission_frame.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -1114,7 +1130,7 @@ class MissionLogGUI:
              'ADMIRABLE ADMIRAL', 'COMMANDER', 'GALACTIC COMMANDER', 'HELL COMMANDER', 'GENERAL',
              '5-STAR GENERAL', '10-STAR GENERAL', 'PRIVATE', 'SUPER PRIVATE', 'SUPER CITIZEN',
              'VIPER COMMANDO', 'FIRE SAFETY OFFICER', 'EXPERT EXTERMINATOR', 'FREE OF THOUGHT',
-             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO']
+             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO', 'EXTRA JUDICIAL']
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
         self.title_combo['values'] = self.titles
         self.title_combo.grid(row=3, column=2, sticky=tk.W, padx=(45,0), pady=5)
@@ -1211,7 +1227,7 @@ class MissionLogGUI:
         self.dss_frame = ttk.Frame(details_frame)
         self.dss_frame.grid(row=2, column=2, sticky=tk.W, pady=5)
         ttk.Label(self.dss_frame, text="DSS Modifier:").pack(side=tk.LEFT)
-        dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm"]
+        dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm", "Eagle Blockade"]
         self.DSSMod.set("Inactive")  # Set default value
         self.dss_combo = ttk.Combobox(self.dss_frame, textvariable=self.DSSMod, values=dss_mods, state='readonly', width=27)
         self.dss_combo.pack(side=tk.LEFT, padx=(40,0))
@@ -1775,7 +1791,7 @@ class MissionLogGUI:
 
             # Get UID from settings.json instead of config
             try:
-                with open('settings.json', 'r') as f:
+                with open('DCord.json', 'r') as f:
                     settings_data = json.load(f)
                     UID = settings_data.get('discord_uid', '0')
             except (FileNotFoundError, json.JSONDecodeError) as e:

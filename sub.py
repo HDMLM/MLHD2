@@ -55,7 +55,17 @@ PLANET_ICONS = {
     "Fori Prime": config['PlanetIcons']['Gloom'],
     "Aurora Bay": config['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": config['PlanetIcons']['Jet Brigade Factories'],
-    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat']
+    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat'],
+    "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Haldus": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Mastia": config['PlanetIcons']['Governmental'],
+    "Fenrir III": config['PlanetIcons']['Science'],
+    "Tarsh": config['PlanetIcons']['Governmental'],
+    "Claorell": config['PlanetIcons']['Hammer'],
+    "Achernar Secundus": config['PlanetIcons']['Hammer'],
+    "Turing": config['PlanetIcons']['Science']
 }
 
 # Campaign Icons
@@ -70,7 +80,6 @@ CAMPAIGN_ICONS = {
 
 # Mission Icons
 MISSION_ICONS = {
-    "Placeholder Mission": config['MissionIcons']['Placeholder Mission'],
     "Terminate Illegal Broadcast": config['MissionIcons']['Terminate Illegal Broadcast'],
     "Pump Fuel To ICBM": config['MissionIcons']['Pump Fuel To ICBM'],
     "Upload Escape Pod Data": config['MissionIcons']['Upload Escape Pod Data'],
@@ -79,7 +88,6 @@ MISSION_ICONS = {
     "Launch ICBM": config['MissionIcons']['Launch ICBM'],
     "Retrieve Valuable Data": config['MissionIcons']['Retrieve Valuable Data'],
     "Blitz: Search and Destroy": config['MissionIcons']['Blitz Search and Destroy'],
-    "PLACEHOLDER": config['MissionIcons']['PLACEHOLDER'],
     "Emergency Evacuation": config['MissionIcons']['Emergency Evacuation'],
     "Retrieve Essential Personnel": config['MissionIcons']['Retrieve Essential Personnel'],
     "Evacuate High-Value Assets": config['MissionIcons']['Evacuate High-Value Assets'],
@@ -117,7 +125,10 @@ MISSION_ICONS = {
     "Chart Terminid Tunnels": config['MissionIcons']['Chart Terminid Tunnels'],
     "Take Down Overship": config['MissionIcons']['Take Down Overship'],
     "Repel Invasion Fleet": config['MissionIcons']['Repel Invasion Fleet'],
-    "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens']
+    "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens'],
+    "Free The City": config['MissionIcons']['Free The City'],
+    "Restore Air Quality": config['MissionIcons']['Restore Air Quality'],
+    "Cleanse Infested District": config['MissionIcons']['Cleanse Infested District']
 }
 
 # Biome banners for Planets
@@ -417,7 +428,8 @@ TITLE_ICONS = {
     "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO']
+    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL']
 }
 
 # Profile Pictures for Exports
@@ -499,7 +511,10 @@ PROFILE_PICTURES = {
     "GS-66 Lawmaker": config['ProfilePictures']['GS-66 Lawmaker'],
     "RE-824 Bearer of the Standard": config['ProfilePictures']['RE-824 Bearer of the Standard'],
     "RE-2310 Honorary Guard": config['ProfilePictures']['RE-2310 Honorary Guard'],
-    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander']
+    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander'],
+    "BP-20 Corrections Officer": config['ProfilePictures']['BP-20 Corrections Officer'],
+    "BP-32 Jackboot": config['ProfilePictures']['BP-32 Jackboot'],
+    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror']
 }
 
 # Read the Excel file
@@ -643,8 +658,11 @@ with open('streak_data.json', 'r') as f:
     # Use "Helldiver" as the key or fall back to helldiver_ses if the first one doesn't exist
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
-    
 
+# Load DCord.json data
+with open('DCord.json', 'r') as f:
+    dcord_data = json.load(f)
+    
 # Create embed data
 embed_data = {
     "content": None,
@@ -674,7 +692,7 @@ embed_data = {
                         f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n",
             "color": 7257043,
             "author": {"name": "SEAF Battle Record"},
-            "footer": {"text": config['Discord']['UID'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
+            "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode()[0], '')}"},
             "thumbnail": {"url": f"{profile_picture}"}
         }

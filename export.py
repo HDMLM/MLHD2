@@ -56,7 +56,20 @@ PLANET_ICONS = {
     "Hellmire": config['PlanetIcons']['Gloom'],
     "Omicron": config['PlanetIcons']['Gloom'],
     "Oshaune": config['PlanetIcons']['Gloom'],
-    "Fori Prime": config['PlanetIcons']['Gloom']
+    "Fori Prime": config['PlanetIcons']['Gloom'],
+    "Aurora Bay": config['PlanetIcons']['Jet Brigade Factories'],
+    "Chort Bay": config['PlanetIcons']['Jet Brigade Factories'],
+    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat'],
+    "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Haldus": config['PlanetIcons']['Illuminate Rally Locus'],
+    "Mastia": config['PlanetIcons']['Governmental'],
+    "Fenrir III": config['PlanetIcons']['Science'],
+    "Tarsh": config['PlanetIcons']['Governmental'],
+    "Claorell": config['PlanetIcons']['Hammer'],
+    "Achernar Secundus": config['PlanetIcons']['Hammer'],
+    "Turing": config['PlanetIcons']['Science']
 }
 
 # Campaign Icons
@@ -76,7 +89,6 @@ MISSION_ICONS = {
     "Launch ICBM": config['MissionIcons']['Launch ICBM'],
     "Retrieve Valuable Data": config['MissionIcons']['Retrieve Valuable Data'],
     "Blitz: Search and Destroy": config['MissionIcons']['Blitz Search and Destroy'],
-    "PLACEHOLDER": config['MissionIcons']['PLACEHOLDER'],
     "Emergency Evacuation": config['MissionIcons']['Emergency Evacuation'],
     "Retrieve Essential Personnel": config['MissionIcons']['Retrieve Essential Personnel'],
     "Evacuate High-Value Assets": config['MissionIcons']['Evacuate High-Value Assets'],
@@ -111,7 +123,13 @@ MISSION_ICONS = {
     "Collect Gloom-Infused Oil": config['MissionIcons']['Collect Gloom-Infused Oil'],
     "Blitz: Secure Research Site": config['MissionIcons']['Blitz Secure Research Site'],
     "Collect Gloom Spore Readings": config['MissionIcons']['Collect Gloom Spore Readings'],
-    "Chart Terminid Tunnels": config['MissionIcons']['Chart Terminid Tunnels']
+    "Chart Terminid Tunnels": config['MissionIcons']['Chart Terminid Tunnels'],
+    "Take Down Overship": config['MissionIcons']['Take Down Overship'],
+    "Repel Invasion Fleet": config['MissionIcons']['Repel Invasion Fleet'],
+    "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens'],
+    "Free The City": config['MissionIcons']['Free The City'],
+    "Restore Air Quality": config['MissionIcons']['Restore Air Quality'],
+    "Cleanse Infested District": config['MissionIcons']['Cleanse Infested District']
 }
 
 # Biome banners for Planets

@@ -125,6 +125,7 @@ class SettingsPage(tk.Tk):
             with open("DCord.json", "w") as f:
                 json.dump(settings_data, f, indent=4)
             messagebox.showinfo("Success", "Settings saved successfully!")
+            self.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Could not save settings: {str(e)}")
 
@@ -155,7 +156,7 @@ class SettingsPage(tk.Tk):
             self.webhooks_listbox.delete(0, tk.END)
 
     def cancel(self):
-        if messagebox.askyesno("Confirm", "Are you sure you want to discard changes?"):
+        if messagebox.askyesno("Confirm", "Are you sure you want to exit? Any unsaved changes will be lost."):
             self.destroy()
 
     def add_webhook(self):
