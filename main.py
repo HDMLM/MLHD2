@@ -1,31 +1,6 @@
 """
 CREDITS TO DEAN FOR THE STUPID AMOUNT OF DATA HE PROVIDED FOR THE JSON FILES
 CREDITS TO ADAM FOR THE SCRIPT AND THE GUI
-
-                                 ⣴⠂⣶⡄⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⠂⣿⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢰⣿⠀⣿⡁⣿⠇⢸⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢸⣿⠀⣿⡄⣿⠃⢸⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣠⣭⣤⣶⣶⡶⠶⠶⠦⢬⣄⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣶⣿⣿⣿⣿⡿⠿⠿⠟⠈⠶⣷⣶⣖⣛⠛⠲⢤⣀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⣿⣿⣿⣿⣿⣿⣃⠀⠀⠀⠀⠀⠀⠀⢿⣿⣿⣧⣀⠸⣿⣧⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⣴⣿⣿⡿⠛⢿⣿⢭⡟⠔⠃⠀⠀⠀⠀⠀⠀⠈⣙⣿⣿⣿⣿⣿⣿⣿⣦⡀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⣾⣿⣿⣋⣀⡀⣏⣥⠟⠈⣛⣳⠀⠀⠀⠀⠀⠀⢤⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡿⣿⣿⣿⣿⡯⠘⠙⢁⣤⣾⣿⣿⠧⠀⠀⠀⠀⠀⠘⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢠⡿⠀⠈⢏⣻⠟⠀⠀⣴⠿⠿⣿⠟⠁⠀⠀⠀⠀⠀⢢⣈⣫⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣆⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⠀⣼⠃⠀⠀⠀⠃⠀⠀⠀⠀⠀⠀⣦⡄⠀⠀⠀⣠⣦⣄⢠⣾⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⠀⢀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⣦⠀⠀⠀⠀⠀⠀⡿⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣼⠟⣽⣷⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡇⢸⡄⠀⠀⠀⠀⠀⣸⡄⠀⠀
-⠐⢶⣾⣿⣷⠶⠂⠀⡆⠀⡗⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⢀⣤⢖⠀⢘⣻⠃⣵⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⢹⡇⢸⡇⢀⡆⠀⠲⣶⣿⣿⡶⠒
-⠀⢠⡿⠛⢿⡄⠀⠀⣇⠀⣿⠀⣿⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠐⣿⣴⣾⣿⣿⣿⣿⣿⣿⣿⣿⠹⣿⣿⣿⣿⣿⣿⣿⣿⡇⣸⡇⢸⠃⢸⡇⠀⠀⡼⠟⠻⣇⠀
-⠀⠀⠀⠀⠀⠈⠀⠀⢿⠀⢹⡄⢻⣇⠀⠀⠀⠀⠀⠀⠀⢀⣶⣤⡿⠿⢿⡻⣿⣿⡿⠉⣃⣙⣿⣶⣀⣿⣿⣿⣿⡿⡿⣿⣇⣿⠀⣿⠀⣸⠀⠀⠀⠀⠀⠀⠈⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠸⣇⠈⣧⠈⣿⡄⠀⠀⠀⠀⠀⠀⣈⣟⣋⣀⣀⡇⠙⠚⠯⠹⠾⠟⣿⣿⣿⡿⢿⢟⣟⠁⠀⠀⠉⣿⠇⣸⠇⢠⡟⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⢻⡄⠸⣇⠘⣿⡄⠀⠀⠀⢠⣾⣿⣿⣿⣿⣿⣧⣄⣀⣤⣤⣤⡴⢿⣿⣿⣿⣶⣾⠏⠀⠀⢀⣼⠏⢠⡟⠀⣾⠁⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⢠⠀⠀⠈⢻⡄⠹⣧⡈⢿⣆⠀⠀⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⠞⠁⣠⣾⠟⢁⣴⠟⠁⢀⣾⠃⠀⠀⢠⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠠⣤⣤⣾⣧⣤⡤⠀⠻⣆⠈⢷⣄⠙⢷⣄⠈⠻⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣶⠞⠁⣠⣾⠟⢁⡾⠋⢀⣤⣤⣿⣦⣤⡄⠀⠀⠀
-⠀⠀⠀⠀⠈⣹⣿⣿⡏⠀⠀⠀⠙⢷⣄⠙⢷⣄⠙⠿⣦⣄⡉⠉⠉⠻⢿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣀⣸⣿⠟⢁⣴⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠐⠋⠀⠈⠓⠀⠀⠀⠀⠀⠙⢻⣶⡄⠙⢻⣷⣶⣤⡌⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠉⠁⣠⣾⠟⢁⣴⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⡄⠀⠉⠛⠷⡦⠄⣉⣥⣴⠶⠾⠿⠿⠿⠿⠿⠿⠿⠿⠿⠿⠛⠛⠉⢀⣠⣾⠟⢁⣴⠟⠁⠀⠀⠀⠀⠀⠀⠀⠀
-⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 """
 import tkinter as tk
 from tkinter import ttk, messagebox
@@ -64,170 +39,46 @@ DISCORD_CLIENT_ID = config['Discord']['DISCORD_CLIENT_ID']
 
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 
-# Theme settings
-light_theme = {
-    ".": { 
-        "configure": {
-            "background": "#f0f0f0",  # Light grey background
-            "foreground": "#000000",  # Black text
-        }
-    },
-    "TLabel": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-        }
-    },
-    "TButton": {
-        "configure": {
-            "background": "#e0e0e0",  # Light grey button
-            "foreground": "#000000",  # Black text
-        }
-    },
-    "TEntry": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-            "fieldbackground": "#ffffff",
-            "insertcolor": "#000000",
-            "bordercolor": "#c0c0c0",
-            "lightcolor": "#ffffff",
-            "darkcolor": "#c0c0c0",
-        }
-    },
-    "TCheckbutton": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-            "indicatorbackground": "#ffffff", 
-            "indicatorforeground": "#000000",
-        }
-    },
-    "TCombobox": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-            "fieldbackground": "#ffffff",
-            "insertcolor": "#000000",
-            "bordercolor": "#c0c0c0",
-            "lightcolor": "#ffffff",
-            "darkcolor": "#c0c0c0",
-            "arrowcolor": "#000000"
-        },
-    },
-    "TFrame": {
-        "configure": {
-            "background": "#ffffff",
-        }
-    },
-    "TLabelframe": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",
-        }
-    },
-    "TLabelframe.Label": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",
-        }
-    },
-    "TNotebook": {
-        "configure": {
-            "background": "#f0f0f0",
-        }
-    },
-    "TNotebook.Tab": {
-        "configure": {
-            "background": "#e0e0e0",
-            "foreground": "#000000",
-        }
-    }
-}
+# Theme settings now optimised to using a better structure
 
-dark_theme = {
-    ".": { 
-        "configure": {
-            "background": "#1e1e1e",  # Dark grey background
-            "foreground": "white",    # White text
-        }
-    },
-    "TLabel": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",    # White text
-        }
-    },
-    "TButton": {
-        "configure": {
-            "background": "#444444",  # Dark gray button
-            "foreground": "white",    # Gray text by default
-        },
-        "map": {
-            "foreground": [("hover", "white"), ("active", "white")],
-            "background": [("hover", "black"), ("active", "black")]
-        }
-    },
-    "TEntry": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",    # White text
-            "fieldbackground": "#3c3c3c",
-            "insertcolor": "#a3a3a3",
-            "bordercolor": "black",
-            "lightcolor": "#4d4d4d",
-            "darkcolor": "black",
-        }
-    },
-    "TCheckbutton": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",    # White text
-            "indicatorbackground": "white", 
-            "indicatorforeground": "black",
-        }
-    },
-    "TCombobox": {
-        "configure": {
-            "background": "#444444",
-            "foreground": "black",
-            "fieldbackground": "#444444",
-            "insertcolor": "white",
-            "bordercolor": "black",
-            "lightcolor": "#4d4d4d",
-            "darkcolor": "black",
-            "arrowcolor": "gray",
-        },
-    },
-    "TFrame": {
-        "configure": {
-            "background": "#252526",
-        }
-    },
-    "TLabelframe": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",
-        }
-    },
-    "TLabelframe.Label": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",
-        }
-    },
-    "TNotebook": {
-        "configure": {
-            "background": "#444444",
-        }
-    },
-    "TNotebook.Tab": {
-        "configure": {
-            "background": "#444444",
-            "foreground": "white",
-        }
+def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
+    return {
+        ".": {"configure": {"background": bg, "foreground": fg}},
+        "TLabel": {"configure": {"background": bg, "foreground": fg}},
+        "TButton": {"configure": {"background": button_bg or bg, "foreground": button_fg or fg}},
+        "TEntry": {"configure": {
+            "background": entry_bg or bg,
+            "foreground": entry_fg or fg,
+            "fieldbackground": entry_bg or bg,
+            "insertcolor": fg,
+        }},
+        "TCheckbutton": {"configure": {"background": bg, "foreground": fg}},
+        "TCombobox": {"configure": {
+            "background": entry_bg or bg,
+            "foreground": entry_fg or fg,
+            "fieldbackground": entry_bg or bg,
+            "insertcolor": fg,
+        }},
+        "TFrame": {"configure": {"background": frame_bg or bg}},
+        "TLabelframe": {"configure": {"background": frame_bg or bg, "foreground": fg}},
+        "TLabelframe.Label": {"configure": {"background": frame_bg or bg, "foreground": fg}},
+        "TNotebook": {"configure": {"background": bg}},
+        "TNotebook.Tab": {"configure": {"background": button_bg or bg, "foreground": fg}},
     }
-}
+
+light_theme = make_theme(
+    bg="#ffffff", fg="#000000",
+    entry_bg="#ffffff", entry_fg="#000000",
+    button_bg="#e0e0e0", button_fg="#000000",
+    frame_bg="#ffffff"
+)
+
+dark_theme = make_theme(
+    bg="#252526", fg="white",
+    entry_bg="#3c3c3c", entry_fg="white",
+    button_bg="#444444", button_fg="white",
+    frame_bg="#252526"
+)
 
 THEMES = {
     "light": light_theme,
@@ -869,7 +720,11 @@ class MissionLogGUI:
         self.root.resizable(False, False)
         # Initialize theme
         self.current_theme = "light"  # Default theme
-        
+
+        # Prepare Discord RPC attributes early to avoid attribute errors
+        self.RPC = None
+        self.last_rpc_update = 0
+
         # Load icon in a separate thread
         def load_icon():
             try:
@@ -877,18 +732,22 @@ class MissionLogGUI:
                 self.root.after(0, lambda: self.root.iconphoto(False, icon))
             except Exception as e:
                 logging.error(f"Failed to load icon: {e}")
-        
+
         threading.Thread(target=load_icon, daemon=True).start()
-        
+
+        # Initial setup sequence
         self.settings_file = SETTINGS_FILE
         self.persistence_file = PERSISTENCE_FILE
         self._setup_variables()
         self._setup_discord_rpc()
         self._create_main_frame()
         self._setup_ui()
-        
-        # Delay loading settings
+
+        # Delay loading settings (allows widgets to exist first)
         self.root.after(100, self.load_settings)
+
+        # Start periodic Discord RPC updates (after slight delay to allow connection)
+        self.root.after(2000, self._periodic_rpc_update)
 
     def toggle_theme(self):
         """Toggle between light and dark themes."""
