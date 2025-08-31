@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<meta name="color-scheme" content="dark light" />
+	<title>Helldiver Mission Export</title>
+	<style>
+		:root {
+			--bg: #0f1215;
+			--bg-alt: #161b21;
+			--bg-alt2: #1d242c;
+			--panel: #13181d;
+			--border: #262f38;
+			--border-soft: #1c242c;
+			--text: #e5e7eb;
+			--text-soft: #9ca3af;
+			--accent: #4f9bff;
+			--accent-accent: #67c3ff;
+			--accent-warn: #f59e0b;
+			--accent-bad: #ef4444;
+			--accent-good: #10b981;
+			--radius-sm: 4px;
+			--radius: 8px;
+			--shadow: 0 2px 4px -2px rgba(0,0,0,.6),0 4px 12px -4px rgba(0,0,0,.5);
+			--font-stack: 'FS Sinclair', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+			--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+		}
+		* { box-sizing: border-box; }
+		html,body { margin:0; padding:0; font-family: var(--font-stack); background: var(--bg); color: var(--text); }
+		body { line-height:1.35; -webkit-font-smoothing: antialiased; }
+		h1,h2,h3 { font-weight:600; line-height:1.2; letter-spacing:.5px; }
+		h1 { font-size: clamp(1.35rem, 1.15rem + 1vw, 1.9rem); margin:.2rem 0 .75rem; }
+		h2 { font-size:1.05rem; margin:0 0 .6rem; display:flex; align-items:center; gap:.5rem; }
+		h3 { font-size:.9rem; margin:.2rem 0 .35rem; }
+		p { margin:.35rem 0; }
+		a { color: var(--accent); text-decoration:none; }
+		a:hover { text-decoration:underline; }
+		code, pre { font-family: var(--mono); }
+		pre { background: var(--panel); padding:.75rem .9rem; border:1px solid var(--border); border-radius: var(--radius); overflow:auto; max-height:50vh; }
+		header { position:sticky; top:0; backdrop-filter: blur(10px); background: linear-gradient(140deg, rgba(25,31,38,.78), rgba(14,18,22,.78)); border-bottom:1px solid var(--border); z-index:50; padding:.75rem 1.1rem .6rem; }
+		.meta { font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; font-weight:500; color:var(--text-soft); display:flex; flex-wrap:wrap; gap:.75rem; }
+		.pill { display:inline-flex; align-items:center; gap:.3ch; background: linear-gradient(90deg,#203041,#1b2631); border:1px solid var(--border); padding:2px 10px 3px; font-size:.6rem; font-weight:600; letter-spacing:.5px; border-radius:999px; color: var(--text-soft); }
+		.layout { display:grid; grid-template-columns: 310px 1fr; gap:1.1rem; padding:1rem 1.15rem 2.5rem; }
+		@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .sidebar { position:static; top:auto; } }
+		.panel { background: linear-gradient(165deg,#12181e,#0f1418); border:1px solid var(--border-soft); border-radius: var(--radius); padding:.9rem 1rem 1rem; box-shadow: var(--shadow); }
+		.panel + .panel { margin-top:.9rem; }
+		.panel h2 { margin-top:0; }
+		.sidebar { display:flex; flex-direction:column; gap:.9rem; align-self:start; position:sticky; top:72px; max-height: calc(100vh - 82px); overflow:auto; scrollbar-width: thin; }
+		.sidebar::-webkit-scrollbar { width:8px; } .sidebar::-webkit-scrollbar-track { background:transparent; } .sidebar::-webkit-scrollbar-thumb { background:#1d252c; border-radius:4px; }
+		.badge-row { display:flex; flex-wrap:wrap; gap:6px; margin:.35rem 0 .2rem; }
+		.badge { background:#1e2831; color:var(--text-soft); padding:2px 8px 3px; border-radius:6px; font-size:.55rem; letter-spacing:.5px; border:1px solid #25313c; font-weight:500; }
+		.actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
+		button { cursor:pointer; background:#1d2933; color:var(--text); border:1px solid var(--border); border-radius:6px; font-size:.65rem; padding:.45rem .7rem; font-weight:500; letter-spacing:.5px; transition: background .15s, border-color .15s, transform .15s; display:inline-flex; gap:.4rem; align-items:center; }
+		button:hover { background:#24323d; border-color:#2d3b47; }
+		button:active { transform:translateY(1px); }
+		button.accent { background: linear-gradient(90deg,#2563eb,#1d4ed8); border-color:#1d4ed8; }
+		button.accent:hover { background: linear-gradient(90deg,#1d4ed8,#1e40af); }
+		.search-box { width:100%; display:flex; align-items:center; gap:.4rem; margin:.45rem 0 .2rem; }
+		.search-box input { background:#182026; border:1px solid var(--border); border-radius:6px; padding:.45rem .6rem; font-size:.65rem; color:var(--text); flex:1; }
+		.search-box input:focus { outline:2px solid #1d4ed8; outline-offset:1px; }
+		table { border-collapse: separate; border-spacing:0; width:100%; font-size:.63rem; line-height:1.15; background: var(--panel); border:1px solid var(--border); border-radius: var(--radius); overflow:hidden; }
+		thead th { background:#1b242b; font-weight:600; text-align:left; padding:6px 8px; position:sticky; top:0; z-index:2; border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap; }
+		thead th.sort-asc:after, thead th.sort-desc:after { content:""; margin-left:4px; border:4px solid transparent; display:inline-block; }
+		thead th.sort-asc:after { border-bottom-color: var(--accent); transform: translateY(-2px); }
+		thead th.sort-desc:after { border-top-color: var(--accent); transform: translateY(2px); }
+		tbody td { padding:5px 8px; border-bottom:1px solid #1b242c; border-right:1px solid #1b242c; }
+		tbody td:last-child { border-right:none; }
+		tbody tr:last-child td { border-bottom:none; }
+		tbody tr:nth-child(odd) { background:#141b1f; }
+		tbody tr:nth-child(even) { background:#10161c; }
+		tbody tr.highlight { background:#243041 !important; }
+		.table-wrapper { max-height:55vh; overflow:auto; border-radius: var(--radius); }
+		.scroll-fade { position:relative; }
+		.scroll-fade:after { content:""; position:absolute; left:0; right:0; bottom:0; height:25px; pointer-events:none; background:linear-gradient(to bottom, rgba(15,18,21,0), #0f1215 70%); }
+		details { background: var(--panel); border:1px solid var(--border); border-radius: var(--radius); padding:.7rem .85rem; }
+		details + details { margin-top:.7rem; }
+		summary { cursor:pointer; list-style:none; font-weight:600; letter-spacing:.5px; }
+		summary::-webkit-details-marker { display:none; }
+		footer { margin-top:2.5rem; font-size:.58rem; text-align:center; color:var(--text-soft); padding:1.5rem 0 3rem; opacity:.75; }
+		mark { background:#2e3d24; color:#b3ff93; padding:0 4px; border-radius:3px; }
+		.grid-cards { display:grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap:.65rem; }
+		.stat-card { background: linear-gradient(160deg,#192129,#12171d); border:1px solid var(--border); padding:.6rem .65rem .7rem; border-radius: var(--radius-sm); position:relative; overflow:hidden; }
+		.stat-card h4 { margin:.1rem 0 .35rem; font-size:.62rem; font-weight:600; letter-spacing:.7px; text-transform:uppercase; color: var(--text-soft); }
+		.stat-card .value { font-size:.95rem; font-weight:600; letter-spacing:.5px; color: var(--text); }
+		.stat-card small { display:block; margin-top:2px; font-size:.5rem; letter-spacing:.5px; color: var(--text-soft); }
+		.hidden { display:none !important; }
+		.fade-in { animation: fade .4s ease; }
+		@keyframes fade { from { opacity:0; transform: translateY(3px);} to { opacity:1; transform: translateY(0);} }
+		.muted { color: var(--text-soft); }
+		.mono { font-family: var(--mono); font-size:.58rem; }
+		.divider { margin:1.2rem 0; height:1px; background: linear-gradient(90deg, rgba(255,255,255,0), #25313d 35%, #25313d 65%, rgba(255,255,255,0)); border:none; }
+	</style>
+</head>
+<body>
+	<header>
+		<h1>Helldiver Mission Export <span class="pill">v{{VERSION}}</span></h1>
+		<div class="meta">
+			<span>Generated <strong>{{GENERATED_AT}}</strong></span>
+			<span>Rows <strong>{{ROW_COUNT}}</strong></span>
+		</div>
+	</header>
+	<main class="layout">
+		<!-- SIDEBAR -->
+		<aside class="sidebar">
+			<div class="panel" id="summary-panel">
+				<h2>Summary</h2>
+				<pre id="primary-description">{{PRIMARY_DESCRIPTION}}</pre>
+				<div class="actions">
+					<button id="copy-summary" title="Copy summary text">Copy Summary</button>
+					<button id="toggle-light">Theme</button>
+				</div>
+			</div>
+			<div class="panel">
+				<h2>Quick Tools</h2>
+				<div class="search-box">
+					<input type="search" id="row-filter" placeholder="Filter raw data (live)" />
+				</div>
+				<div class="actions">
+					<button id="clear-filter">Clear Filter</button>
+					<button id="expand-raw" class="accent">Toggle Raw Data</button>
+				</div>
+				<p class="muted" style="margin-top:.6rem;">Filtering hides rows (client-side only).</p>
+			</div>
+			<div class="panel">
+				<h2>Legend</h2>
+				<ul style="margin:.15rem 0 0; padding-left:1rem; font-size:.55rem; line-height:1.2;">
+					<li><strong>Sortable Tables:</strong> Click a column header to sort.</li>
+					<li><strong>Shift+Click:</strong> Multi-column sort (priority order).</li>
+					<li><strong>Raw Data:</strong> Limited to first 2000 rows for performance.</li>
+					<li><strong>Export:</strong> Use browser Print > Save as PDF.</li>
+				</ul>
+			</div>
+			<div class="panel">
+				<h2>Integrity</h2>
+				<p class="muted" id="integrity-info">Calculating...</p>
+				<div class="actions"><button id="recalc-hash">Recalculate</button></div>
+			</div>
+		</aside>
+
+		<!-- MAIN CONTENT -->
+		<section style="display:flex; flex-direction:column; gap:1.1rem;">
+			<div class="panel">
+				<h2>Planet Statistics</h2>
+				<div class="table-wrapper scroll-fade" id="planet-table-wrapper">{{PLANET_TABLE}}</div>
+			</div>
+
+			<div class="panel">
+				<h2>Enemy Fronts</h2>
+				<div id="enemy-fronts">{{ENEMY_SECTIONS}}</div>
+			</div>
+
+			<div class="panel" id="raw-data-panel">
+				<h2>Raw Data</h2>
+				<p class="muted" style="margin-top:-.3rem;">Only first 2000 rows shown. Columns sortable. Use filter in sidebar.</p>
+				<div class="table-wrapper" id="data-table-wrapper">{{DATA_TABLE}}</div>
+			</div>
+
+			<div class="panel" id="analytics-panel">
+				<h2>Lightweight Analytics</h2>
+				<div id="analytics-output" class="mono muted">Computing basic aggregates...</div>
+			</div>
+		</section>
+	</main>
+	<footer>
+		Generated by Helldiver Mission Log Manager — Customize this layout by editing <code>mission_export_template.html</code>. Unused placeholders remain literal.<br />
+		Theme + interactions are client-side only. &copy; Super Earth Command.
+	</footer>
+
+	<script>
+	(function(){
+		'use strict';
+		const qs = sel => document.querySelector(sel);
+		const qsa = sel => Array.from(document.querySelectorAll(sel));
+
+		// THEME
+		const themeBtn = qs('#toggle-light');
+		function applyTheme(mode){
+			if(mode === 'light') document.documentElement.setAttribute('data-theme','light');
+			else document.documentElement.setAttribute('data-theme','dark');
+		}
+		function toggleTheme(){
+			const current = document.documentElement.getAttribute('data-theme');
+			const next = current === 'dark' ? 'light' : 'dark';
+			applyTheme(next);
+			localStorage.setItem('hd_theme', next);
+		}
+		themeBtn && themeBtn.addEventListener('click', toggleTheme);
+		applyTheme(localStorage.getItem('hd_theme') || 'dark');
+
+		// SUMMARY COPY
+		const copyBtn = qs('#copy-summary');
+		copyBtn && copyBtn.addEventListener('click', () => {
+			const text = qs('#primary-description')?.innerText || '';
+			navigator.clipboard.writeText(text).then(()=>{
+				copyBtn.textContent = 'Copied ✔';
+				setTimeout(()=> copyBtn.textContent='Copy Summary', 1800);
+			});
+		});
+
+		// RAW DATA TOGGLE
+		const rawPanel = qs('#raw-data-panel');
+		const expandBtn = qs('#expand-raw');
+		expandBtn && expandBtn.addEventListener('click', () => {
+			rawPanel.classList.toggle('hidden');
+		});
+
+		// FILTER RAW TABLE
+		const filterInput = qs('#row-filter');
+		const clearFilterBtn = qs('#clear-filter');
+		let lastFilter = '';
+		function filterRows(){
+			const val = filterInput.value.trim().toLowerCase();
+			if(val === lastFilter) return; // cheap micro-opt
+			lastFilter = val;
+			const table = rawPanel.querySelector('table');
+			if(!table) return;
+			const rows = Array.from(table.tBodies[0].rows);
+			let shown = 0;
+			rows.forEach(r => {
+				if(!val){ r.classList.remove('hidden'); shown++; return; }
+				const match = r.innerText.toLowerCase().includes(val);
+				if(match){ r.classList.remove('hidden'); shown++; } else r.classList.add('hidden');
+			});
+			filterInput.dataset.count = shown;
+		}
+		filterInput && filterInput.addEventListener('input', () => { window.requestAnimationFrame(filterRows); });
+		clearFilterBtn && clearFilterBtn.addEventListener('click', () => { filterInput.value=''; filterRows(); });
+
+		// SORTABLE TABLES
+		function makeSortable(table){
+			if(!table || table.dataset.sortable) return; table.dataset.sortable = '1';
+			const headers = Array.from(table.tHead?.rows[0].cells || []);
+			const directions = new Map();
+			headers.forEach((th, i) => {
+				th.addEventListener('click', (evt) => {
+					const multi = evt.shiftKey; // multi-column chain sort
+					const dir = directions.get(i) === 'asc' ? 'desc' : 'asc';
+					if(!multi){
+						headers.forEach(h => h.classList.remove('sort-asc','sort-desc'));
+						directions.clear();
+					}
+						directions.set(i, dir);
+						th.classList.remove('sort-asc','sort-desc');
+						th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
+						const bodyRows = Array.from(table.tBodies[0].rows);
+						const chain = Array.from(directions.entries());
+						const collator = new Intl.Collator(undefined, {numeric:true, sensitivity:'base'});
+						bodyRows.sort((a,b)=>{
+							for(const [col, d] of chain){
+								let aa = a.cells[col]?.innerText.trim();
+								let bb = b.cells[col]?.innerText.trim();
+								const an = parseFloat(aa.replace(/,/g,''));
+								const bn = parseFloat(bb.replace(/,/g,''));
+								const num = !isNaN(an) && !isNaN(bn);
+								let cmp = 0;
+								if(num) cmp = an === bn ? 0 : (an < bn ? -1 : 1);
+								else cmp = collator.compare(aa, bb);
+								if(cmp !== 0) return d === 'asc' ? cmp : -cmp;
+							}
+							return 0;
+						});
+						const frag = document.createDocumentFragment();
+						bodyRows.forEach(r => frag.appendChild(r));
+						table.tBodies[0].appendChild(frag);
+				});
+			});
+		}
+		qsa('table').forEach(makeSortable);
+
+		// INTEGRITY HASH (very lightweight SHA-256 of body text)
+		async function calcHash(){
+			const txt = document.body.innerText.replace(/\s+/g,' ');
+			const enc = new TextEncoder().encode(txt);
+			const hash = await crypto.subtle.digest('SHA-256', enc);
+			return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,32);
+		}
+		const integrityInfo = qs('#integrity-info');
+		function setIntegrity(msg){ if(integrityInfo) integrityInfo.textContent = msg; }
+		calcHash().then(h => setIntegrity('Content hash: ' + h));
+		qs('#recalc-hash')?.addEventListener('click', async ()=>{
+			setIntegrity('Recalculating...');
+			const h = await calcHash();
+			setIntegrity('Content hash: ' + h + ' (refreshed)');
+		});
+
+		// BASIC ANALYTICS (derives quick summaries from Planet table)
+		const analyticsOut = qs('#analytics-output');
+		function runAnalytics(){
+			try {
+				const pTable = qs('#planet-table-wrapper table');
+				if(!pTable || !pTable.tBodies[0]) { analyticsOut.textContent = 'Planet table not available.'; return; }
+				const rows = Array.from(pTable.tBodies[0].rows);
+				const stats = rows.map(r=>({
+					planet: r.cells[0]?.innerText.trim(),
+					deployments: parseInt(r.cells[1]?.innerText.replace(/,/g,''))||0,
+					kills: parseInt(r.cells[2]?.innerText.replace(/,/g,''))||0,
+					deaths: parseInt(r.cells[3]?.innerText.replace(/,/g,''))||0,
+					orders: parseInt(r.cells[4]?.innerText.replace(/,/g,''))||0
+				}));
+				if(!stats.length){ analyticsOut.textContent='No data rows present.'; return; }
+				const totalDeploy = stats.reduce((a,b)=>a+b.deployments,0);
+				const totalKills = stats.reduce((a,b)=>a+b.kills,0);
+				const totalDeaths = stats.reduce((a,b)=>a+b.deaths,0);
+				const kd = totalDeaths ? (totalKills/totalDeaths).toFixed(2) : '∞';
+				const topDeploy = stats.slice().sort((a,b)=>b.deployments - a.deployments)[0];
+				const topKills = stats.slice().sort((a,b)=>b.kills - a.kills)[0];
+				analyticsOut.textContent = `Planets: ${stats.length} | Deployments: ${totalDeploy} | Kills: ${totalKills} | Deaths: ${totalDeaths} | K/D: ${kd} | Top Deployments: ${topDeploy.planet} (${topDeploy.deployments}) | Top Kills: ${topKills.planet} (${topKills.kills})`;
+			} catch (e) {
+				analyticsOut.textContent = 'Analytics error: ' + e.message;
+			}
+		}
+		runAnalytics();
+	})();
+	</script>
+</body>
+</html>

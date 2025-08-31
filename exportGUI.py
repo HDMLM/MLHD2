@@ -2,6 +2,8 @@ import tkinter as tk
 from tkinter import ttk
 import configparser
 import pandas as pd
+import logging
+from logging_config import setup_logging
 import threading
 from tkinter import messagebox
 import json
@@ -13,6 +15,7 @@ config.read('config.config')
 
 # Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+setup_logging(DEBUG)
 SETTINGS_FILE = 'persistance.json'
 
 # Dropdown values as constants
@@ -241,7 +244,7 @@ THEMES = {
 def apply_theme(root, theme_name):
     """Apply the selected theme to all widgets."""
     if theme_name not in THEMES:
-        print(f"Unknown theme: {theme_name}")
+        logging.error(f"Unknown theme: {theme_name}")
         return
         
     theme = THEMES[theme_name]
@@ -254,13 +257,13 @@ def apply_theme(root, theme_name):
             try:
                 style.configure(widget_type, **settings['configure'])
             except Exception as e:
-                print(f"Error applying theme to {widget_type}: {e}")
+                logging.error(f"Error applying theme to {widget_type}: {e}")
                 
         if 'map' in settings:
             try:
                 style.map(widget_type, **settings['map'])
             except Exception as e:
-                print(f"Error applying map for {widget_type}: {e}")
+                logging.error(f"Error applying map for {widget_type}: {e}")
     
     # Special handling for Combobox dropdown
     if theme_name == 'dark':
@@ -301,11 +304,19 @@ def create_filter_dropdown(parent, label_text, var, values, on_select, padx=0):
     dropdown.bind("<<ComboboxSelected>>", on_select)
     return dropdown
 
+
 def main():
     # Create the main window
     root = tk.Tk()
     root.title("Excel Data Viewer")
     root.geometry("1980x1000")
+    root.minsize(1050, 500)
+    try:
+        icon_path = os.path.join(os.path.dirname(__file__), "SuperEarth.png")
+        root._icon_image = tk.PhotoImage(file=icon_path)
+        root.iconphoto(True, root._icon_image)
+    except Exception as e:
+        logging.warning(f"Unable to load window icon: {e}")
     # Set current_theme from settings at the start
     current_theme = get_current_theme()
     apply_theme(root, current_theme)
@@ -415,7 +426,7 @@ def main():
         def show_error(message):
             status_label.grid_forget()
             messagebox.showerror("Error", message)
-            print(message)
+            logging.info(message)
             
         # Row counter label - now button_frame exists
         row_counter = ttk.Label(button_frame, text="Showing rows 0-0 of 0")
@@ -516,7 +527,7 @@ def main():
         threading.Thread(target=load_data, daemon=True).start()
             
     except Exception as e:
-        print(f"Error setting up table: {e}")
+        logging.error(f"Error setting up table: {e}")
     
     # Add scrollbars
     y_scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=table.yview)
@@ -634,11 +645,11 @@ def main():
         selected = table.selection()
         if selected:
             selected_items = [table.item(item, "values") for item in selected]
-            print(f"Selected {len(selected_items)} items:")
+            logging.info(f"Selected {len(selected_items)} items:")
             for item in selected_items:
-                print(item)
+                logging.info(item)
         else:
-            print("No item selected")
+            logging.info("No item selected")
     
     # Add a quit button
     quit_button = ttk.Button(button_frame, text="Quit", command=root.quit)

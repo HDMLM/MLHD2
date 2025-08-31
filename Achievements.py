@@ -2,6 +2,8 @@ import pandas as pd
 import configparser
 import requests
 import json
+import logging
+from logging_config import setup_logging
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
@@ -9,12 +11,13 @@ config.read('config.config')
 
 #Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+setup_logging(DEBUG)
 
 # Read the Excel file
 try:
     df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
 except FileNotFoundError:
-    print("Error: Excel file not found. Please ensure the file exists in the correct location.")
+    logging.error("Excel file not found. Please ensure the file exists in the correct location.")
     exit(1)
 
 
@@ -149,7 +152,11 @@ TITLE_ICONS = {
     "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO']
+    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL'],
+    "EXEMPLARY SUBJECT": config['TitleIcons']['EXEMPLARY SUBJECT'],
+    "ROOKIE": config['TitleIcons']['ROOKIE'],
+    "BURIER OF HEADS": config['TitleIcons']['BURIER OF HEADS']
 }
 
 # Define achievement metadata for messages and titles
@@ -334,13 +341,48 @@ embed_data = {
     "attachments": []
 }
 
-# Send the embed message to Discord
-for webhook_url in ACTIVE_WEBHOOK:
+# Logging already configured via setup_logging in import section.
+
+# Determine ACTIVE_WEBHOOK list based on DEBUG flag
+if DEBUG:
+    # Use TEST webhooks from config (support comma-separated list)
+    ACTIVE_WEBHOOK = [w.strip() for w in config['Webhooks']['TEST'].split(',') if w.strip()]
+    logging.info("DEBUG mode: using TEST webhook(s)")
+else:
+    # Load production webhooks from external JSON
     try:
-        response = requests.post(webhook_url, json=embed_data)
+        with open('DCord.json', 'r') as f:
+            dcord_data = json.load(f)
+            ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
+        if not ACTIVE_WEBHOOK:
+            logging.error("No production webhooks found in DCord.json (key: discord_webhooks).")
+    except FileNotFoundError:
+        logging.error("DCord.json not found. Cannot load production webhooks.")
+        ACTIVE_WEBHOOK = []
+    except json.JSONDecodeError as e:
+        logging.error(f"Failed to parse DCord.json: {e}")
+        ACTIVE_WEBHOOK = []
+
+# Send the embed payload to each webhook
+successes = []
+for url in ACTIVE_WEBHOOK:
+    try:
+        response = requests.post(url, json=embed_data, timeout=10)
         if response.status_code == 204:
-            print("Message sent successfully.")
+            logging.info(f"Successfully sent to Discord webhook: {url}")
+            successes.append(True)
         else:
-            print(f"Failed to send message. Status code: {response.status_code}")
-    except requests.exceptions.RequestException as e:
-        print(f"Error sending message: {e}")
+            logging.error(f"Failed to send to Discord webhook {url}. Status code: {response.status_code}")
+            successes.append(False)
+    except requests.RequestException as e:
+        logging.error(f"Network error sending to Discord webhook {url}: {e}")
+        successes.append(False)
+    except Exception as e:
+        logging.error(f"Unexpected error sending to Discord webhook {url}: {e}")
+        successes.append(False)
+
+# Optional summary output
+if successes:
+    logging.info(f"Sent {sum(successes)}/{len(successes)} webhook messages successfully.")
+else:
+    logging.warning("No webhooks were processed.")

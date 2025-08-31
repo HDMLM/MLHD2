@@ -1,4 +1,6 @@
 import pandas as pd
+import logging
+from logging_config import setup_logging
 import configparser
 import requests
 import json
@@ -474,10 +476,11 @@ enemy_icons = {
 }
 
 # Read the Excel file
+setup_logging(DEBUG)
 try:
     df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
 except FileNotFoundError:
-    print("Error: Excel file not found. Please ensure the file exists in the correct location.")
+    logging.error("Error: Excel file not found. Please ensure the file exists in the correct location.")
     exit(1)
 
 # Initialize a dictionary to store column totals
@@ -808,5 +811,8 @@ for webhook_url in webhook_urls:
         # If no files, just send the JSON payload
         response = requests.post(webhook_url, json=embed_data)
     
-    print("Data sent successfully." if response.status_code in [200, 204] else f"Failed to send data. Status: {response.status_code}")
+    if response.status_code in [200, 204]:
+        logging.info("Data sent successfully.")
+    else:
+        logging.error(f"Failed to send data. Status: {response.status_code}")
  

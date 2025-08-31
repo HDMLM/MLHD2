@@ -1,7 +1,12 @@
 import pandas as pd
+import logging
+from logging_config import setup_logging
 import configparser
 import requests
 import json
+import os
+import html as html_lib
+from datetime import datetime
 
 
 # Read configuration from config.config
@@ -11,6 +16,7 @@ config.read('config.config')
 
 #Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+setup_logging(DEBUG)
 
 DIFFICULTY_ICONS = {
     "1 - TRIVIAL": config['DifficultyIcons']['1 - TRIVIAL'],
@@ -65,7 +71,10 @@ PLANET_ICONS = {
     "Tarsh": config['PlanetIcons']['Governmental'],
     "Claorell": config['PlanetIcons']['Hammer'],
     "Achernar Secundus": config['PlanetIcons']['Hammer'],
-    "Turing": config['PlanetIcons']['Science']
+    "Turing": config['PlanetIcons']['Science'],
+    "Emeria": config['PlanetIcons']['Governmental'],
+    "Fort Union": config['PlanetIcons']['Governmental'],
+    "Fort Sanctuary": config['PlanetIcons']['Governmental'],
 }
 
 # Campaign Icons
@@ -429,10 +438,13 @@ TITLE_ICONS = {
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
     "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
-    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL']
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL'],
+    "EXEMPLARY SUBJECT": config['TitleIcons']['EXEMPLARY SUBJECT'],
+    "ROOKIE": config['TitleIcons']['ROOKIE'],
+    "BURIER OF HEADS": config['TitleIcons']['BURIER OF HEADS']
 }
 
-# Profile Pictures for Exports
+
 PROFILE_PICTURES = {
     "B-01 Tactical": config['ProfilePictures']['B-01 Tactical'],
     "TR-7 Ambassador of the Brand": config['ProfilePictures']['TR-7 Ambassador of the Brand'],
@@ -514,14 +526,21 @@ PROFILE_PICTURES = {
     "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander'],
     "BP-20 Corrections Officer": config['ProfilePictures']['BP-20 Corrections Officer'],
     "BP-32 Jackboot": config['ProfilePictures']['BP-32 Jackboot'],
-    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror']
+    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror'],
+    "AD-11 Livewire": config['ProfilePictures']['AD-11 Livewire'],
+    "AD-26 Bleeding Edge": config['ProfilePictures']['AD-26 Bleeding Edge'],
+    "AD-49 Apollonian": config['ProfilePictures']['AD-49 Apollonian'],
+    "A-9 Helljumper": config['ProfilePictures']['A-9 Helljumper'],
+    "A-35 Recon": config['ProfilePictures']['A-35 Recon'],
+    "DS-191 Scorpion": config['ProfilePictures']['DS-191 Scorpion'],
+    "DS-42 Federation's Blade": config['ProfilePictures']['DS-42 Federation\'s Blade']
 }
 
 # Read the Excel file
 try:
     df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
 except FileNotFoundError:
-    print("Error: Excel file not found. Please ensure the file exists in the correct location.")
+    logging.error("Error: Excel file not found. Please ensure the file exists in the correct location.")
     exit(1)
 
 # Initialize a dictionary to store column totals
@@ -663,33 +682,40 @@ with open('streak_data.json', 'r') as f:
 with open('DCord.json', 'r') as f:
     dcord_data = json.load(f)
     
-# Create embed data
+def _build_primary_embed_description() -> str:
+    """Compose the primary embed description (kept modular so we can reuse in HTML)."""
+    return (
+        f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}**\n\n"
+        f"\"{latest_note}\"\n\n"
+        f"<a:easyshine1:1349110651829747773>  <a:easyshine2:1349110649753698305> Combat Statistics <a:easyshine2:1349110649753698305> <a:easyshine3:1349110648528699422>\n"
+        f"> Kills - {df['Kills'].sum()}\n"
+        f"> Deaths - {df['Deaths'].sum()}\n"
+        f"> Highest Kills in Mission - {df['Kills'].max()}\n"
+        f"\n<a:easyshine1:1349110651829747773>  <a:easysuperearth:1343266082881802443> Mission Statistics <a:easysuperearth:1343266082881802443> <a:easyshine3:1349110648528699422>\n"
+        f"> Deployments - {len(df)}\n"
+        f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n"
+        f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n"
+        f"\n<a:easyshine1:1349110651829747773>  <a:easyskullgold:1232018045791375360> Performance Statistics <a:easyskullgold:1232018045791375360> <a:easyshine3:1349110648528699422>\n"
+        f"> Rating - {Rating} | {int(Rating_Percentage)}%\n"
+        f"> Highest Streak - {highest_streak} Missions\n"
+        f"\n<a:easyshine1:1349110651829747773>  <:goldstar:1337818552094163034> Favourites <:goldstar:1337818552094163034> <a:easyshine3:1349110648528699422>\n"
+        f"> Mission - {df['Mission Type'].mode()[0]} {MISSION_ICONS.get(df['Mission Type'].mode()[0], '')} (x{MissionCount})\n"
+        f"> Campaign - {df['Mission Category'].mode()[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode()[0], '')} (x{CampaignCount})\n"
+        f"> Faction - {df['Enemy Type'].mode()[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode()[0], '')} (x{FactionCount})\n"
+        f"> Difficulty - {df['Difficulty'].mode()[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode()[0], '')} (x{DifficultyCount})\n"
+        f"> Planet - {df['Planet'].mode()[0]} {PLANET_ICONS.get(df['Planet'].mode()[0], '')} (x{PlanetCount})\n"
+        f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n"
+    )
+
+primary_description = _build_primary_embed_description()
+
+# Create embed data (initial)
 embed_data = {
     "content": None,
     "embeds": [
         {
-            "title": "",  # Empty title, will be set below
-            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773>  <a:easyshine2:1349110649753698305> Combat Statistics <a:easyshine2:1349110649753698305> <a:easyshine3:1349110648528699422>\n" + 
-                        f"> Kills - {df['Kills'].sum()}\n" +
-                        f"> Deaths - {df['Deaths'].sum()}\n" +
-                        f"> Highest Kills in Mission - {df['Kills'].max()}\n" +
-
-                        f"\n<a:easyshine1:1349110651829747773>  <a:easysuperearth:1343266082881802443> Mission Statistics <a:easysuperearth:1343266082881802443> <a:easyshine3:1349110648528699422>\n" + 
-                        f"> Deployments - {len(df)}\n" +
-                        f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n" +
-                        f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n" +
-
-                        f"\n<a:easyshine1:1349110651829747773>  <a:easyskullgold:1232018045791375360> Performance Statistics <a:easyskullgold:1232018045791375360> <a:easyshine3:1349110648528699422>\n" +                      
-                        f"> Rating - {Rating} | {int(Rating_Percentage)}%\n" +
-                        f"> Highest Streak - {highest_streak} Missions\n" +
-
-                        f"\n<a:easyshine1:1349110651829747773>  <:goldstar:1337818552094163034> Favourites <:goldstar:1337818552094163034> <a:easyshine3:1349110648528699422>\n" +     
-                        f"> Mission - {df['Mission Type'].mode()[0]} {MISSION_ICONS.get(df['Mission Type'].mode()[0], '')} (x{MissionCount})\n" +
-                        f"> Campaign - {df['Mission Category'].mode()[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode()[0], '')} (x{CampaignCount})\n" +
-                        f"> Faction - {df['Enemy Type'].mode()[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode()[0], '')} (x{FactionCount})\n" +
-                        f"> Difficulty - {df['Difficulty'].mode()[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode()[0], '')} (x{DifficultyCount})\n" +
-                        f"> Planet - {df['Planet'].mode()[0]} {PLANET_ICONS.get(df['Planet'].mode()[0], '')} (x{PlanetCount})\n" +
-                        f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n",
+            "title": "",  # Will set below
+            "description": primary_description,
             "color": 7257043,
             "author": {"name": "SEAF Battle Record"},
             "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
@@ -792,15 +818,18 @@ for planet in planets:
 
 # Add enemy-specific embeds
 for enemy_type, planet_list in enemy_planets.items():
-    planets_description = ""
+    planets_description_parts = []
     for planet, planet_data in planet_list:
         last_date = planet_data["Time"].max() if "Time" in df.columns else "No date available"
-        planets_description += f"{enemy_icons.get(enemy_type, {'emoji': ''})['emoji']} **{planet}** {planet_icons.get(planet, {'emoji': ''})['emoji']}\n" + \
-               f"> Deployments - {len(planet_data)}\n" + \
-               f"> Major Order Deployments - {planet_data['Major Order'].astype(int).sum()}\n" + \
-               f"> Kills - {planet_data['Kills'].sum()}\n" + \
-               f"> Deaths - {planet_data['Deaths'].sum()}\n" + \
-               f"> Last Deployment - {last_date}\n\n"
+        planets_description_parts.append(
+            f"{enemy_icons.get(enemy_type, {'emoji': ''})['emoji']} **{planet}** {planet_icons.get(planet, {'emoji': ''})['emoji']}\n"
+            f"> Deployments - {len(planet_data)}\n"
+            f"> Major Order Deployments - {planet_data['Major Order'].astype(int).sum()}\n"
+            f"> Kills - {planet_data['Kills'].sum()}\n"
+            f"> Deaths - {planet_data['Deaths'].sum()}\n"
+            f"> Last Deployment - {last_date}\n"
+        )
+    planets_description = "\n".join(planets_description_parts)
 
     embed_data["embeds"].append({
         "title": f"{enemy_type} Front",
@@ -816,6 +845,247 @@ else:
     with open('DCord.json', 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
-for webhook_url in webhook_urls:
-    response = requests.post(webhook_url, json=embed_data)
-    print("Data sent successfully." if response.status_code == 204 else f"Failed to send data. Status: {response.status_code}")
+def _embeds_exceed_limits(e_data: dict) -> bool:
+    """Heuristically determine if embed payload is likely to hit Discord limits.
+    Discord limits (simplified):
+      - 10 embeds per message
+      - 4096 chars per embed description
+      - ~6000 chars combined embed data (safe lower heuristic)  
+    """
+    embeds = e_data.get("embeds", [])
+    if len(embeds) > 10:
+        return True
+    total_desc = 0
+    for e in embeds:
+        desc = e.get("description", "") or ""
+        if len(desc) > 3900:  # safety margin below 4096
+            return True
+        total_desc += len(desc)
+    if total_desc > 15000:  # arbitrary global safety threshold
+        return True
+    # Additional heuristic: if total json size gets large
+    try:
+        if len(json.dumps(e_data)) > 18000:
+            return True
+    except Exception:
+        pass
+    return False
+
+def _generate_html_export(df: pd.DataFrame) -> str:
+    """Generate an HTML export using optional user template or fallback."""
+    template_path = "mission_export_template.html"
+    if os.path.exists(template_path):
+        try:
+            with open(template_path, "r", encoding="utf-8") as f:
+                template = f.read()
+        except Exception:
+            template = ""
+    else:
+        template = ""
+
+    if not template:
+        template = """<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'>
+<title>Helldiver Mission Export</title>
+<meta name='viewport' content='width=device-width,initial-scale=1'>
+<style>body{font-family:Segoe UI,Arial,sans-serif;background:#0f1215;color:#e5e7eb;margin:0;padding:1.25rem;}h1{margin:.2rem 0 .5rem;font-size:1.4rem;}table{border-collapse:collapse;width:100%;font-size:.72rem;margin-top:1rem;}th,td{border:1px solid #222;padding:4px 6px;text-align:left;}th{background:#1e2630;position:sticky;top:0;}tbody tr:nth-child(odd){background:#141b1f;}tbody tr:nth-child(even){background:#10161c;}code{background:#1e2630;padding:2px 4px;border-radius:4px;}footer{margin-top:2rem;font-size:.6rem;color:#6b7280;text-align:center;}section{margin-top:1.2rem;}h2{font-size:1rem;margin:.2rem 0 .4rem;border-bottom:1px solid #1e2630;padding-bottom:2px;}ul{margin:.3rem 0 .6rem;padding-left:1.1rem;font-size:.65rem;}li{margin:0 0 .25rem;} .pill{display:inline-block;background:#243b55;border-radius:12px;padding:2px 10px;font-size:.6rem;margin-left:8px;}</style>
+</head><body>
+<h1>Helldiver Mission Export <span class='pill'>v{{VERSION}}</span></h1>
+<div style='font-size:.7rem;'>Generated {{GENERATED_AT}} | Rows: {{ROW_COUNT}}</div>
+<section><h2>Summary</h2><pre style='white-space:pre-wrap;font-size:.65rem;background:#12171d;padding:.5rem;border:1px solid #1e2630;border-radius:4px;'>{{PRIMARY_DESCRIPTION}}</pre></section>
+<section><h2>Planet Statistics</h2>{{PLANET_TABLE}}</section>
+<section><h2>Enemy Fronts</h2>{{ENEMY_SECTIONS}}</section>
+<section><h2>Raw Data</h2>{{DATA_TABLE}}</section>
+<footer>Generated by Helldiver Mission Log Manager HTML fallback. Customize: mission_export_template.html</footer>
+</body></html>"""
+
+    # Planet stats table
+    planet_rows = []
+    for planet in planets:
+        planet_rows.append(
+            f"<tr><td>{html_lib.escape(str(planet))}</td>"
+            f"<td>{planet_deployments_dict.get(planet, 0)}</td>"
+            f"<td>{planet_kills_dict.get(planet, 0)}</td>"
+            f"<td>{planet_deaths_dict.get(planet, 0)}</td>"
+            f"<td>{planet_orders_dict.get(planet, 0)}</td>"
+            f"<td>{html_lib.escape(str(planet_last_date_dict.get(planet, '')))}</td></tr>"
+        )
+    planet_table = (
+        "<table><thead><tr><th>Planet</th><th>Deployments</th><th>Kills</th><th>Deaths</th><th>Major Orders</th><th>Last Date</th></tr></thead><tbody>"
+        + "".join(planet_rows) + "</tbody></table>"
+    )
+
+    # Enemy sections
+    enemy_sections_parts = []
+    for enemy_type, plist in enemy_planets.items():
+        lines = []
+        for planet, p_df in plist:
+            last_date = p_df["Time"].max() if "Time" in p_df.columns else "No date available"
+            lines.append(
+                f"<li><strong>{html_lib.escape(str(planet))}</strong> - Deployments: {len(p_df)} | Kills: {p_df['Kills'].sum()} | Deaths: {p_df['Deaths'].sum()} | Major Orders: {p_df['Major Order'].astype(int).sum()} | Last: {html_lib.escape(str(last_date))}</li>"
+            )
+        enemy_sections_parts.append(
+            f"<div style='margin-bottom:0.8rem;'><h3 style='margin:0 0 .3rem;font-size:.85rem;'>{html_lib.escape(str(enemy_type))}</h3><ul>{''.join(lines)}</ul></div>"
+        )
+    enemy_sections_html = "".join(enemy_sections_parts)
+
+    # Raw data table (limit 2000 rows for size safety)
+    max_rows = 2000
+    trimmed_df = df.head(max_rows)
+    header_html = "".join(f"<th>{html_lib.escape(str(c))}</th>" for c in trimmed_df.columns)
+    data_rows = []
+    for _, r in trimmed_df.iterrows():
+        data_rows.append(
+            "<tr>" + "".join(
+                f"<td>{html_lib.escape('' if pd.isna(r[c]) else str(r[c]))}</td>" for c in trimmed_df.columns
+            ) + "</tr>"
+        )
+    data_table_html = f"<table><thead><tr>{header_html}</tr></thead><tbody>{''.join(data_rows)}</tbody></table>"
+
+    rendered = (template
+        .replace("{{VERSION}}", "1.0")
+        .replace("{{GENERATED_AT}}", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+        .replace("{{ROW_COUNT}}", str(len(df)))
+        .replace("{{PRIMARY_DESCRIPTION}}", html_lib.escape(primary_description))
+        .replace("{{PLANET_TABLE}}", planet_table)
+        .replace("{{ENEMY_SECTIONS}}", enemy_sections_html)
+        .replace("{{DATA_TABLE}}", data_table_html)
+    )
+    return rendered
+
+embed_data_contingency = {
+    "embeds": [
+        {
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}",
+            "color": 7257043,
+            "fields": [
+                {
+                    "name": f"Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}",
+                    "value": "\n\nINITIAL TRANSMISSION FAILURE - CONTINGENCY PROTOCOL ACTIVATED\n\nAttention Helldiver,\n\nYour SEAF Battle Record failed to reach your terminal via our Super Earth Command database through the standard uplink procedure, whether due to xeno interference, bureaucratic lag, the amount of data attempting to upload or simple operator inadequacy is irrelevant.\n\nAs per Protocol MLHD2-E2 \"Compliance is Victory\", a SHTML fallback file has been auto-generated to ensure your mission data is preserved and viewable.\n\nReview the document locally and stand by for reclassification procedures.\n\nFor Super Earth. For Democracy. Upload Again.\n\n- Ministry of Intelligence | Automated Systems Division\nSuper Earth Uplink Command"
+                }
+            ],
+            "author": {"name": "SEAF Contingency Report"},
+            "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
+            "image": {"url": "https://cdn.discordapp.com/attachments/1340508329977446484/1374329173081985054/Super_Earth_landscape.png?ex=682da748&is=682c55c8&hm=15bd1b8a0ae0ecf08d7159a0602368dc7f27e040000e5c7d6afc391dfab5eb00&"},
+            "thumbnail": {"url": f"{profile_picture}"}
+        }
+    ]
+}
+
+def _send_html_fallback(webhook_urls, df: pd.DataFrame):
+    html_text = _generate_html_export(df)
+    data_bytes = html_text.encode('utf-8')
+
+    size_mb = len(data_bytes) / (1024 * 1024)
+    if len(data_bytes) > 24 * 1024 * 1024:
+        logging.error(f"HTML export ({size_mb:.2f} MB) exceeds ~25MB Discord limit.")
+        return
+
+    # for some stupid reason (discord), the payload can't be in the actual embed, so it has to be split, embed first, html file after.
+    try:
+        payload = json.loads(json.dumps(embed_data_contingency))
+    except Exception:
+        payload = {"embeds": embed_data_contingency.get("embeds", [])}
+
+    if not payload.get("embeds"):
+        payload["embeds"] = [{
+            "title": "Mission Export",
+            "description": "Contingency export attached.",
+            "color": 5832548
+        }]
+
+    try:
+        first_embed = payload["embeds"][0]
+        note_text = f"SHTML fallback file attached: {helldiver_name}_Cont_Report.html"
+        added_note = False
+
+        if "fields" in first_embed:
+            for f in first_embed["fields"]:
+                if "mission_export.html" in f.get("value", ""):
+                    added_note = True
+                    break
+            if not added_note:
+                first_embed["fields"].append({
+                    "name": "Attachment",
+                    "value": note_text,
+                    "inline": False
+                })
+        else:
+            first_embed["fields"] = [{
+                "name": "Attachment",
+                "value": note_text,
+                "inline": False
+            }]
+    except Exception as e:
+        logging.warning(f"Could not annotate embed with attachment note: {e}")
+
+    for webhook_url in webhook_urls:
+        try:
+            embed_only_payload = json.loads(json.dumps(payload))
+            embed_only_payload.pop("attachments", None)
+            try:
+                fe = embed_only_payload["embeds"][0]
+                if "fields" in fe:
+                    found = False
+                    for f in fe["fields"]:
+                        if "mission_export.html" in f.get("value", ""):
+                            f["value"] = f["value"].replace("attached:", ":")
+                            found = True
+                            break
+                    if not found:
+                        fe["fields"].append({
+                            "name": "Attachment",
+                            "value": "SHTML fallback file will follow in next message",
+                            "inline": False
+                        })
+                else:
+                    fe["fields"] = [{
+                        "name": "Attachment",
+                        "value": "SHTML fallback file will follow in next message",
+                        "inline": False
+                    }]
+            except Exception as e:
+                logging.warning(f"Could not adjust attachment notice in embed-only payload: {e}")
+
+            resp1 = requests.post(webhook_url, json=embed_only_payload, timeout=30)
+            if resp1.status_code in (200, 204):
+                logging.info(f"Fallback embed sent (step 1/2) to {webhook_url}.")
+            else:
+                logging.error(f"Failed to send fallback embed (step 1/2) status {resp1.status_code} body: {resp1.text[:180]}")
+                # If embed fails, still attempt file so user gets data, though if the embed fails to send it's likley so will the data... worth a shot tho
+        except Exception as e:
+            logging.error(f"Exception sending fallback embed (step 1/2): {e}")
+
+        try:
+            export_filename = f"{helldiver_name}_Cont_Report.html" if helldiver_name else "mission_export.html"
+
+            file_payload = {
+                "content": "",
+                "attachments": [{"id": 0, "filename": export_filename}]
+            }
+            files = {"files[0]": (export_filename, data_bytes, "text/html")}
+            resp2 = requests.post(
+                webhook_url,
+                data={"payload_json": json.dumps(file_payload)},
+                files=files,
+                timeout=30
+            )
+            if resp2.status_code in (200, 204):
+                logging.info(f"Fallback HTML file sent (step 2/2) to {webhook_url}. Size: {size_mb:.2f} MB")
+            else:
+                logging.error(f"Failed sending fallback file (step 2/2) status {resp2.status_code} body: {resp2.text[:180]}")
+        except Exception as e:
+            logging.error(f"Exception sending fallback file (step 2/2): {e}")
+
+# Decide whether to fallback to HTML, based on embed expectations, row count is also a factor though i'd rather not use that in case
+needs_html = _embeds_exceed_limits(embed_data) or len(df) > 120
+
+if needs_html:
+    logging.info("Embed size/row count too large -> using HTML export fallback.")
+    _send_html_fallback(webhook_urls, df)
+else:
+    for webhook_url in webhook_urls:
+        response = requests.post(webhook_url, json=embed_data)
+        if response.status_code == 204:
+            logging.info("Data sent successfully.")
+        else:
+            logging.error(f"Failed to send data. Status: {response.status_code} Body: {response.text[:180]}")

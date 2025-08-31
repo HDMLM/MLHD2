@@ -1,7 +1,16 @@
-"""
-CREDITS TO DEAN FOR THE STUPID AMOUNT OF DATA HE PROVIDED FOR THE JSON FILES
-CREDITS TO ADAM FOR THE SCRIPT AND THE GUI
-"""
+# Helldiver Mission Log Manager (GUI)
+#
+# Tracks Helldivers 2 mission data, persists user settings, exports to Excel, and
+# pushes Discord webhook reports with rich embeds + presence (RPC).
+#
+# Credits:
+# - Dean: Primary JSON data contributions, testing, debugging, cosmetic improvements
+# - Adam: Original script + GUI foundations
+# - Honourble mention, Copilot for handling that mundane shit like changing lists to data structs
+
+# Times i've wished we didn't use Excel - 22
+# Times we should move away from discord - 1
+
 import tkinter as tk
 from tkinter import ttk, messagebox
 import requests
@@ -9,6 +18,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import pandas as pd
 import logging
+from logging_config import setup_logging
 from typing import Dict, List, Optional
 from pypresence import Presence
 import time
@@ -20,10 +30,12 @@ import random
 import re
 import webbrowser
 
-
-
-VERSION = "1.4.011"
-RPC_UPDATE_INTERVAL = 15  # seconds
+# Manual Configuration
+GWDay = "Day: 570"
+GWDate = "Date: 31/08/2025"
+VERSION = "1.5.001"
+DEV_RELEASE = "-dev"
+RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # File paths
@@ -38,9 +50,9 @@ config.read('config.config')
 DISCORD_CLIENT_ID = config['Discord']['DISCORD_CLIENT_ID']
 
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+setup_logging(DEBUG)
 
-# Theme settings now optimised to using a better structure
-
+# Theme System
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
     return {
         ".": {"configure": {"background": bg, "foreground": fg}},
@@ -86,28 +98,29 @@ THEMES = {
 }
 
 def get_current_theme():
-    if os.path.exists(PERSISTENT_FILE):
+    # Return the last saved theme name (light/dark) or fallback to light.
+    if os.path.exists(PERSISTENCE_FILE):
         try:
-            with open(PERSISTENT_FILE, 'r') as f:
+            with open(PERSISTENCE_FILE, 'r') as f:
                 settings = json.load(f)
                 return settings.get('theme', 'light')
         except Exception:
-            return 'light'
+            pass
     return 'light'
 
 def set_current_theme(theme_name):
+    # Persist the chosen theme to the persistence file.
     settings = {}
-    if os.path.exists(PERSISTENT_FILE):
+    if os.path.exists(PERSISTENCE_FILE):
         try:
-            with open(PERSISTENT_FILE, 'r') as f:
+            with open(PERSISTENCE_FILE, 'r') as f:
                 settings = json.load(f)
         except Exception:
             settings = {}
     settings['theme'] = theme_name
-    with open(PERSISTENT_FILE, 'w') as f:
+    with open(PERSISTENCE_FILE, 'w') as f:
         json.dump(settings, f, indent=4)
 
-# Enemy icons and colors from config
 ENEMY_ICONS = {
     "Automatons": config['EnemyIcons']['Automatons'],
     "Terminids": config['EnemyIcons']['Terminids'],
@@ -133,7 +146,7 @@ SYSTEM_COLORS = {
     "Illuminate": config['SystemColors']['Illuminate']
 }
 
-# Planet Icons
+
 PLANET_ICONS = {
     "Super Earth": config['PlanetIcons']['Human Homeworld'],
     "Cyberstan": config['PlanetIcons']['Automaton Homeworld'],
@@ -165,10 +178,13 @@ PLANET_ICONS = {
     "Tarsh": config['PlanetIcons']['Governmental'],
     "Claorell": config['PlanetIcons']['Hammer'],
     "Achernar Secundus": config['PlanetIcons']['Hammer'],
-    "Turing": config['PlanetIcons']['Science']
+    "Turing": config['PlanetIcons']['Science'],
+    "Emeria": config['PlanetIcons']['Governmental'],
+    "Fort Union": config['PlanetIcons']['Governmental'],
+    "Fort Sanctuary": config['PlanetIcons']['Governmental'],
 }
 
-# Campaign Icons
+
 CAMPAIGN_ICONS = {
     "Defense": config['CampaignIcons']['Defense'],
     "Liberation": config['CampaignIcons']['Liberation'],
@@ -178,7 +194,7 @@ CAMPAIGN_ICONS = {
     "Battle for Super Earth": config['CampaignIcons']['Battle for Super Earth'],
 }
 
-# Mission Icons
+
 MISSION_ICONS = {
     "Terminate Illegal Broadcast": config['MissionIcons']['Terminate Illegal Broadcast'],
     "Pump Fuel To ICBM": config['MissionIcons']['Pump Fuel To ICBM'],
@@ -231,7 +247,7 @@ MISSION_ICONS = {
     "Cleanse Infested District": config['MissionIcons']['Cleanse Infested District']
 }
 
-# Biome banners for Planets
+# Biome Banners per Planet (used as embed image backgrounds)
 BIOME_BANNERS = {
     "Propus": config['BiomeBanners']['Desert Dunes'],
     "Klen Dahth II": config['BiomeBanners']['Desert Dunes'],
@@ -496,7 +512,7 @@ BIOME_BANNERS = {
     "Super Earth": config['BiomeBanners']['Super Earth']
 }
 
-# Enemy icons for Subfactions
+
 SUBFACTION_ICONS = {
     "Automaton Legion": config['SubfactionIcons']['AutomatonLegion'],
     "Terminid Horde": config['SubfactionIcons']['TerminidHorde'],
@@ -509,7 +525,7 @@ SUBFACTION_ICONS = {
     "The Great Host": config['SubfactionIcons']['TheGreatHost']
 }
 
-# DSS icons for Modifiers
+
 DSS_ICONS = {
     "Eagle Storm": config['MiscIcon']['Eagle Storm'],
     "Orbital Blockade": config['MiscIcon']['Orbital Blockade'],
@@ -517,7 +533,7 @@ DSS_ICONS = {
     "Eagle Blockade": config['MiscIcon']['Eagle Blockade']
 }
 
-# Title icons for Titles
+
 TITLE_ICONS = {
     "CADET": config['TitleIcons']['CADET'],
     "SPACE CADET": config['TitleIcons']['SPACE CADET'], 
@@ -550,10 +566,13 @@ TITLE_ICONS = {
     "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
     "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
     "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
-    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL']
+    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL'],
+    "EXEMPLARY SUBJECT": config['TitleIcons']['EXEMPLARY SUBJECT'],
+    "ROOKIE": config['TitleIcons']['ROOKIE'],
+    "BURIER OF HEADS": config['TitleIcons']['BURIER OF HEADS']
 }
 
-# Profile Pictures for Exports
+
 PROFILE_PICTURES = {
     "B-01 Tactical": config['ProfilePictures']['B-01 Tactical'],
     "TR-7 Ambassador of the Brand": config['ProfilePictures']['TR-7 Ambassador of the Brand'],
@@ -635,54 +654,59 @@ PROFILE_PICTURES = {
     "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander'],
     "BP-20 Corrections Officer": config['ProfilePictures']['BP-20 Corrections Officer'],
     "BP-32 Jackboot": config['ProfilePictures']['BP-32 Jackboot'],
-    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror']
+    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror'],
+    "AD-11 Livewire": config['ProfilePictures']['AD-11 Livewire'],
+    "AD-26 Bleeding Edge": config['ProfilePictures']['AD-26 Bleeding Edge'],
+    "AD-49 Apollonian": config['ProfilePictures']['AD-49 Apollonian'],
+    "A-9 Helljumper": config['ProfilePictures']['A-9 Helljumper'],
+    "A-35 Recon": config['ProfilePictures']['A-35 Recon'],
+    "DS-191 Scorpion": config['ProfilePictures']['DS-191 Scorpion'],
+    "DS-42 Federation's Blade": config['ProfilePictures']['DS-42 Federation\'s Blade']
 }
 
 def get_enemy_icon(enemy_type: str) -> str:
-    """Get the Discord emoji icon for an enemy type."""
+    # Return enemy icon emoji (empty string fallback).
     return ENEMY_ICONS.get(enemy_type, "NaN")
 
 def get_difficulty_icon(difficulty: str) -> str:
-    """Get Difficulty Icons"""
+    # Return difficulty icon.
     return DIFFICULTY_ICONS.get(difficulty, "NaN")
 
 def get_planet_icon(planet: str) -> str:
-    """Get Planet Icons"""
+    # Return planet icon or empty string.
     return PLANET_ICONS.get(planet, "")
 
 def get_system_color(enemy_type: str) -> int:
-    """Get the Discord color code for an enemy type."""
+    # Return embed color integer for enemy type.
     return int(SYSTEM_COLORS.get(enemy_type, "0"))
 
 def get_campaign_icon(mission_category: str) -> str:
-    """Get Campaign Icons"""
+    # Return campaign icon.
     return CAMPAIGN_ICONS.get(mission_category, "")
 
 def get_mission_icon(mission_type: str) -> str:
-    """Get Mission Icons"""
+    # Return mission type icon.
     return MISSION_ICONS.get(mission_type, "")
 
 def get_biome_banner(planet: str) -> str:
-    """Get Biome Banners"""
+    # Return biome banner URL for planet.
     return BIOME_BANNERS.get(planet, "")
 
 def get_dss_icon(dss_modifier: str) -> str:
-    """Get DSS Icons"""
+    # Return DSS modifier icon.
     return DSS_ICONS.get(dss_modifier, "")
 
 def get_title_icon(title: str) -> str:
-    """Get Title Icons"""
+    # Return title decoration icon.
     return TITLE_ICONS.get(title, "")
 
 def get_profile_picture(profile_picture: str) -> str:
-    """Get Profile Pictures"""
+    # Return profile picture URL.
     return PROFILE_PICTURES.get(profile_picture, "")
 
 def normalize_subfaction_name(subfaction: str) -> str:
-    """Normalize subfaction name to match config keys."""
-    # Remove extra spaces and convert to title case
+    # Normalize subfaction name. - A: is this even used rn?
     normalized = " ".join(subfaction.split()).title()
-    # Add any specific replacements
     replacements = {
         "Jet Brigade": "JetBrigade",
         "Predator Strain": "PredatorStrain",
@@ -690,13 +714,11 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Jet Brigade & Incineration Corps": "JetBrigadeIncinerationCorps",
         "Spore Burst Strain": "SporeBurstStrain",
         "The Great Host": "TheGreatHost"
-        # Add more mappings as needed
     }
     return replacements.get(normalized, normalized)
 
 def get_subfaction_icon(subfaction_type: str) -> str:
-    """Get the Discord emoji icon for subfaction type."""
-    # Direct lookup without normalization
+    # Return subfaction icon (empty if missing).
     icon = SUBFACTION_ICONS.get(subfaction_type, "NaN")
     logging.info(f"Getting subfaction icon for '{subfaction_type}', found: {icon}")
     if icon == "NaN":
@@ -709,23 +731,17 @@ def total_missions():
     return total_rows
 
 class MissionLogGUI:
-    """GUI application for logging Helldiver 2 mission data."""
     def __init__(self, root: tk.Tk) -> None:
-        """Initialize the GUI application."""
+        # Initialize the GUI application.
         self.root = root
         if DEBUG:
-            self.root.title("Helldiver Mission Log Manager V-{} DEBUG:{}".format(VERSION, DEBUG))
+            self.root.title("Helldiver Mission Log Manager v-{} DEBUG:{}".format(VERSION, DEBUG))
         else:
-            self.root.title("Helldiver Mission Log Manager V-{}".format(VERSION))
+            self.root.title("Helldiver Mission Log Manager v-{}".format(VERSION))
         self.root.resizable(False, False)
-        # Initialize theme
         self.current_theme = "light"  # Default theme
-
-        # Prepare Discord RPC attributes early to avoid attribute errors
         self.RPC = None
         self.last_rpc_update = 0
-
-        # Load icon in a separate thread
         def load_icon():
             try:
                 icon = tk.PhotoImage(file='SuperEarth.png')
@@ -735,36 +751,30 @@ class MissionLogGUI:
 
         threading.Thread(target=load_icon, daemon=True).start()
 
-        # Initial setup sequence
+    # Core state 
         self.settings_file = SETTINGS_FILE
         self.persistence_file = PERSISTENCE_FILE
         self._setup_variables()
         self._setup_discord_rpc()
         self._create_main_frame()
         self._setup_ui()
-
-        # Delay loading settings (allows widgets to exist first)
         self.root.after(100, self.load_settings)
-
-        # Start periodic Discord RPC updates (after slight delay to allow connection)
         self.root.after(2000, self._periodic_rpc_update)
 
     def toggle_theme(self):
-        """Toggle between light and dark themes."""
         new_theme = "dark" if self.current_theme == "light" else "light"
         self.apply_theme(new_theme)
 
     def apply_theme(self, theme_name):
-        """Apply the selected theme to all widgets."""
         if theme_name not in THEMES:
             logging.error(f"Unknown theme: {theme_name}")
             return
             
         theme = THEMES[theme_name]
         style = ttk.Style()
-        style.theme_use('clam')  # Use 'clam' as a base theme
+        style.theme_use('clam')
         
-        # Apply theme styles to all widget types
+    # Apply theme styles
         for widget_type, settings in theme.items():
             if 'configure' in settings:
                 try:
@@ -778,7 +788,7 @@ class MissionLogGUI:
                             logging.error(f"Error applying map for {widget_type}: {e}")
                 
         
-        # Special handling for Combobox dropdown and entry field
+    # theme related tweaks
         if theme_name == 'dark':
             self.root.option_add("*TCombobox*Listbox*Background", '#2d2d2d')
             self.root.option_add("*TCombobox*Listbox*Foreground", 'white')
@@ -788,23 +798,19 @@ class MissionLogGUI:
             self.root.option_add("*TCombobox*Listbox*Foreground", 'black')
             style.configure('TCombobox', foreground='black', fieldbackground='#ffffff')
         
-        # Configure the root background
         if '.' in theme and 'configure' in theme['.']:
             root_bg = theme['.']['configure'].get('background')
             if root_bg:
                 self.root.configure(background=root_bg)
         
-        # Update frame style
         if 'TFrame' in theme and 'configure' in theme['TFrame']:
             frame_bg = theme['TFrame']['configure'].get('background')
             if frame_bg:
                 style.configure('Custom.TFrame', background=frame_bg)
                 self.frame.configure(style='Custom.TFrame')
         
-        # Store current theme
         self.current_theme = theme_name
         
-        # Save theme preference
         settings = {}
         try:
             with open(self.settings_file, 'r') as f:
@@ -850,7 +856,6 @@ class MissionLogGUI:
             self._update_widget_styles(child, theme_name)
 
     def _periodic_rpc_update(self) -> None:
-        """Periodically update Discord Rich Presence."""
         try:
             self._update_discord_presence()
         except Exception as e:
@@ -859,7 +864,7 @@ class MissionLogGUI:
             self.root.after(RPC_UPDATE_INTERVAL * 1000, self._periodic_rpc_update)
 
     def _setup_variables(self) -> None:
-        """Initialize tkinter variables with validation."""
+    # Initialize tkinter variables with validation.
         self.sector = tk.StringVar()
         self.planet = tk.StringVar()
         self.mega_cities = tk.StringVar()
@@ -884,13 +889,11 @@ class MissionLogGUI:
         self.FullShipName = tk.StringVar()
         self.profile_picture = tk.StringVar()
 
-        # Add validation for numeric fields
         validate_cmd = self.root.register(self._validate_numeric_input)
         self.kills.trace_add("write", lambda *args: self._validate_field(self.kills))
         self.deaths.trace_add("write", lambda *args: self._validate_field(self.deaths))
 
     def _validate_numeric_input(self, value: str) -> bool:
-        """Validate that input is numeric and within acceptable range."""
         if not value:
             return True
         try:
@@ -899,14 +902,11 @@ class MissionLogGUI:
             return False
 
     def _validate_field(self, var: tk.StringVar) -> None:
-        """Clear invalid numeric fields."""
         if not self._validate_numeric_input(var.get()):
             var.set("")
 
     def _create_main_frame(self) -> None:
-        """Create the main application frame."""
         style = ttk.Style()
-        # Make sure to use a default theme in case current_theme is not set yet
         theme_name = getattr(self, 'current_theme', 'light')
         style.configure('Custom.TFrame', background=THEMES[theme_name]['TFrame']['configure']['background'])
 
@@ -919,7 +919,7 @@ class MissionLogGUI:
 
 
     def _setup_discord_rpc(self) -> None:
-        """Initialize Discord Rich Presence."""
+    # Initialize Discord Rich Presence.
         def init_rpc():
             try:
                 self.RPC = Presence(DISCORD_CLIENT_ID)
@@ -931,32 +931,62 @@ class MissionLogGUI:
                 self.RPC = None
                 self.last_rpc_update = 0  # Set default value even if connection fails
 
-        # Run Discord RPC initialization in a separate thread
+        # Run Discord RPC initialization in a separate thread so it doesn't block main
         threading.Thread(target=init_rpc, daemon=True).start()
 
     def _setup_ui(self) -> None:
-        """Set up the complete UI layout."""
-        # Create main content frame with padding
+        # Create main content frame
         content = ttk.Frame(self.frame, padding=(20, 10))
         content.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
         SETime = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S")
 
-        # Mission Information Section
-        mission_frame = ttk.LabelFrame(content, text="Mission Information: {}".format(SETime), padding=10)
+    # Mission Time + GW Date Toggle
+        mission_time_var = tk.StringVar(value=SETime)
+        gw_date_var = tk.StringVar(value=GWDate)
+
+        def toggle_gw_date(event=None):
+            # Toggle between GWDate and GWDay
+            if gw_date_var.get() == GWDate:
+                gw_date_var.set(GWDay)
+            else:
+                gw_date_var.set(GWDate)
+
+        header_frame = ttk.Frame(content)
+        ttk.Label(header_frame, text="Mission Information:").pack(side=tk.LEFT)
+
+        time_label = ttk.Label(header_frame, textvariable=mission_time_var)
+        time_label.pack(side=tk.LEFT, padx=(3,0))
+
+        ttk.Label(header_frame, text="Galactic War").pack(side=tk.LEFT, padx=(4,0))
+
+        gw_label = ttk.Label(header_frame, textvariable=gw_date_var, cursor="hand2")
+        gw_label.pack(side=tk.LEFT, padx=(2,0))
+        gw_label.bind("<Button-1>", toggle_gw_date)
+
+        try:
+            self.gw_icon_img = tk.PhotoImage(file="gw_icon.png")  #this shit is the TF2 coconut img ngl XD
+            self.gw_icon_img = self.gw_icon_img.subsample(55, 55) #     nvm im better than valve lmaoooo
+            self.gw_icon_label = ttk.Label(header_frame, image=self.gw_icon_img, cursor="hand2")
+            self.gw_icon_label.pack(side=tk.LEFT, padx=(6,0))
+            self.gw_icon_label.bind("<Button-1>", toggle_gw_date)
+        except Exception as e:
+            logging.error(f"Failed to load GW icon: {e}")
+
+        mission_frame = ttk.LabelFrame(content, padding=10, labelwidget=header_frame)
 
         def update_time():
-            SETime = (datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S")
-            mission_frame.config(text=f"Mission Information: {SETime}")
+            mission_time_var.set((datetime.now(timezone.utc) + timedelta(hours=1)).strftime("%H:%M:%S"))
 
         self.update_time = update_time
         mission_frame.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # Load sectors from config
+        # Load sectors from config (and store for later)
         with open('PlanetSectors.json', 'r') as f:
             sectors_data = json.load(f)
+            self.sectors_data = sectors_data
             sector_list = list(sectors_data.keys())
 
-        # Mission Info Grid
+    # --- Mission Info Grid ---
         ttk.Label(mission_frame, text="Destroyer Name:").grid(row=0, column=0, sticky=tk.W, pady=5)
 
         self.shipName1s = ["SES Adjudicator", "SES Advocate", "SES Aegis", "SES Agent", "SES Arbiter", "SES Banner", "SES Beacon", "SES Blade", "SES Bringer", "SES Champion", "SES Citizen", "SES Claw", "SES Colossus", "SES Comptroller", "SES Courier", "SES Custodian", "SES Dawn", "SES Defender", "SES Diamond", "SES Distributor", "SES Dream", "SES Elected Representative", "SES Emperor", "SES Executor", "SES Eye", "SES Father", "SES Fist", "SES Flame", "SES Force", "SES Forerunner", "SES Founding Father", "SES Gauntlet", "SES Giant", "SES Guardian", "SES Halo", "SES Hammer", "SES Harbinger", "SES Herald", "SES Judge", "SES Keeper", "SES King", "SES Knight", "SES Lady", "SES Legislator", "SES Leviathan", "SES Light", "SES Lord", "SES Magistrate", "SES Marshall", "SES Martyr", "SES Mirror", "SES Mother", "SES Octagon", "SES Ombudsman", "SES Panther", "SES Paragon", "SES Patriot", "SES Pledge", "SES Power", "SES Precursor", "SES Pride", "SES Prince", "SES Princess", "SES Progenitor", "SES Prophet", "SES Protector", "SES Purveyor", "SES Queen", "SES Ranger", "SES Reign", "SES Representative", "SES Senator", "SES Sentinel", "SES Shield", "SES Soldier", "SES Song", "SES Soul", "SES Sovereign", "SES Spear", "SES Stallion", "SES Star", "SES Steward", "SES Superintendent", "SES Sword", "SES Titan", "SES Triumph", "SES Warrior", "SES Whisper", "SES Will", "SES Wings"]
@@ -996,25 +1026,26 @@ class MissionLogGUI:
         self.title_combo.set(self.titles[0])
 
         ttk.Label(mission_frame, text="Profile:").grid(row=4, column=2, sticky=tk.W, pady=5)
-        self.profile_pictures = ['B-01 Tactical', 'TR-7 Ambassador of the Brand', 'TR-9 Cavalier of Democracy', 'TR-62 Knight', 
-               'DP-53 Savior of the Free', 'TR-117 Alpha Commander', 'SC-37 Legionnaire', 'SC-15 Drone Master',
-               'SC-34 Infiltrator', 'FS-05 Marksman', 'CD-35 Trench Engineer', 'CM-09 Bonesnapper',
-               'DP-40 Hero of the Federation', 'FS-23 Battle Master', 'SC-30 Trailblazer Scout',
-               'SA-04 Combat Technician', 'CM-14 Physician', 'DP-11 Champion of the People', 'SA-25 Steel Trooper',
-               'SA-12 Servo Assisted', 'SA-32 Dynamo', 'B-24 Enforcer', 'CE-74 Breaker', 'B-27 Fortified Commando',
-               'FS-38 Eradicator', 'B-08 Light Gunner', 'FS-61 Dreadnought', 'FS-11 Executioner', 
-               'CM-21 Trench Paramedic', 'CE-81 Juggernaut', 'FS-34 Exterminator', 'CE-67 Titan', 'CM-17 Butcher',
-               'EX-03 Prototype 3', 'EX-16 Prototype 16', 'EX-00 Prototype X', 'CE-27 Ground Breaker',
-               'CE-07 Demolition Specialist', 'FS-55 Devastator', 'CM-10 Clinician', 'FS-37 Ravager', 
-               'CW-9 White Wolf', 'CE-64 Grenadier', 'CW-36 Winter Warrior', 'CW-22 Kodiak', 'CW-4 Arctic Ranger',
-               'PH-56 Jaguar', 'CE-101 Guerilla Gorilla', 'PH-9 Predator', 'PH-202 Twigsnapper', 'TR-40 Gold Eagle',
-               'I-44 Salamander', 'I-92 Fire Fighter', 'I-09 Heatseeker', 'I-102 Draconaught', 'AF-52 Lockdown',
-               'AF-91 Field Chemist', 'AF-50 Noxious Ranger', 'AF-02 Haz-Master', 'DP-00 Tactical', 
-               'UF-84 Doubt Killer', 'UF-50 Bloodhound', 'UF-16 Inspector', 'SR-64 Cinderblock',
-               'SR-24 Street Scout', 'SR-18 Roadblock', 'AC-1 Dutiful', 'AC-2 Obedient', 'IE-57 Hell-Bent',
-               'IE-3 Martyr', 'IE-12 Righteous', 'B-22 Model Citizen', 'GS-11 Democracy\'s Deputy', 
-               'GS-17 Frontier Marshal', 'GS-66 Lawmaker', 'RE-824 Bearer of the Standard', 
-               'RE-2310 Honorary Guard', 'RE-1861 Parade Commander']
+        self.profile_pictures = ['AC-1 Dutiful', 'AC-2 Obedient', 'AF-02 Haz-Master', 'AF-50 Noxious Ranger',
+               'AF-52 Lockdown', 'AF-91 Field Chemist', 'B-01 Tactical', 'B-08 Light Gunner', 'B-22 Model Citizen',
+               'B-24 Enforcer', 'B-27 Fortified Commando', 'CD-35 Trench Engineer', 'CE-07 Demolition Specialist',
+               'CE-27 Ground Breaker', 'CE-64 Grenadier', 'CE-67 Titan', 'CE-74 Breaker', 'CE-81 Juggernaut',
+               'CE-101 Guerilla Gorilla', 'CM-09 Bonesnapper', 'CM-10 Clinician', 'CM-14 Physician',
+               'CM-17 Butcher', 'CM-21 Trench Paramedic', 'CW-4 Arctic Ranger', 'CW-9 White Wolf',
+               'CW-22 Kodiak', 'CW-36 Winter Warrior', 'DP-00 Tactical', 'DP-11 Champion of the People',
+               'DP-40 Hero of the Federation', 'DP-53 Savior of the Free', 'EX-00 Prototype X',
+               'EX-03 Prototype 3', 'EX-16 Prototype 16', 'FS-05 Marksman', 'FS-11 Executioner',
+               'FS-23 Battle Master', 'FS-34 Exterminator', 'FS-37 Ravager', 'FS-38 Eradicator',
+               'FS-55 Devastator', 'FS-61 Dreadnought', 'GS-11 Democracy\'s Deputy', 'GS-17 Frontier Marshal',
+               'GS-66 Lawmaker', 'I-09 Heatseeker', 'I-44 Salamander', 'I-92 Fire Fighter',
+               'I-102 Draconaught', 'IE-3 Martyr', 'IE-12 Righteous', 'IE-57 Hell-Bent',
+               'PH-9 Predator', 'PH-56 Jaguar', 'PH-202 Twigsnapper', 'RE-824 Bearer of the Standard',
+               'RE-1861 Parade Commander', 'RE-2310 Honorary Guard', 'SA-04 Combat Technician',
+               'SA-12 Servo Assisted', 'SA-25 Steel Trooper', 'SA-32 Dynamo', 'SC-15 Drone Master',
+               'SC-30 Trailblazer Scout', 'SC-34 Infiltrator', 'SC-37 Legionnaire', 'SR-18 Roadblock',
+               'SR-24 Street Scout', 'SR-64 Cinderblock', 'TR-7 Ambassador of the Brand',
+               'TR-9 Cavalier of Democracy', 'TR-40 Gold Eagle', 'TR-62 Knight', 'TR-117 Alpha Commander',
+               'UF-16 Inspector', 'UF-50 Bloodhound', 'UF-84 Doubt Killer']
         self.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=self.profile_picture, state='readonly', width=32)
         self.profile_picture_combo['values'] = self.profile_pictures
         self.profile_picture_combo.grid(row=4, column=2, sticky=tk.W, padx=(45,0), pady=5)
@@ -1036,35 +1067,50 @@ class MissionLogGUI:
         mega_cities_combo.grid(row=5, column=1, sticky=tk.E, padx=5, pady=5)
         self.mega_cities_combo = mega_cities_combo
 
-        def update_planets(*args):
-            selected_sector = self.sector.get()
-            planet_list = sectors_data[selected_sector]["planets"]
-            planet_combo['values'] = planet_list
-            planet_combo.set(planet_list[0])
-
-        sector_combo.bind('<<ComboboxSelected>>', update_planets)
-        update_planets()
-
+    # Dynamic planet / mega city lists
         def update_mega_cities(*args):
+            # Populate mega cities based on currently selected planet.
             selected_planet = self.planet.get()
-            with open("MegaCityPlanets.json", "r") as f:
-                planetary_data = json.load(f)
-            if selected_planet not in planetary_data:
+            try:
+                with open("MegaCityPlanets.json", "r") as f:
+                    planetary_data = json.load(f)
+            except Exception:
+                planetary_data = {}
+            if not selected_planet or selected_planet not in planetary_data:
                 mega_cities_combo['values'] = ["NONE"]
                 mega_cities_combo.set("NONE")
             else:
-                mega_cities_list = planetary_data[selected_planet]["mega_cities"]
-                mega_cities_combo['values'] = mega_cities_list
+                mega_cities_list = planetary_data[selected_planet].get("mega_cities", [])
+                mega_cities_combo['values'] = mega_cities_list if mega_cities_list else ["NONE"]
                 mega_cities_combo.set(mega_cities_list[0] if mega_cities_list else "NONE")
 
+        def update_planets(*args):
+            # Populate planets based on selected sector and immediately refresh mega cities.
+            selected_sector = self.sector.get()
+            if not selected_sector or selected_sector not in sectors_data:
+                return
+            planet_list = sectors_data[selected_sector]["planets"]
+            planet_combo['values'] = planet_list
+            # Preserve existing planet if still valid, else select first
+            current_planet = self.planet.get()
+            if current_planet in planet_list:
+                planet_combo.set(current_planet)
+            else:
+                planet_combo.set(planet_list[0])
+            # Immediately update mega cities for the (possibly new) planet
+            update_mega_cities()
+
+        sector_combo.bind('<<ComboboxSelected>>', update_planets)
         planet_combo.bind('<<ComboboxSelected>>', update_mega_cities)
+        # Initial population
+        update_planets()
         update_mega_cities()
 
-        # Mission Details Section
+    # --- Mission Details Section ---
         details_frame = ttk.LabelFrame(content, text="Mission Details", padding=10)
         details_frame.grid(row=1, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        # Enemy Type Selection
+    # Enemy selection
         ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
 
         with open('Missions.json', 'r') as f:
@@ -1075,11 +1121,11 @@ class MissionLogGUI:
         enemy_combo.grid(row=0, column=1, padx=5, pady=5)
         enemy_combo.set(enemy_types[0])
 
-        # Major Order checkbox
+    # Major Order + DSS toggles
         ttk.Label(details_frame, text="Major Order:").grid(row=3, column=2, sticky=tk.W, pady=5)
         ttk.Checkbutton(details_frame, variable=self.MO).grid(row=3, column=2, sticky=tk.W, padx=(100,0), pady=5)
 
-        # DSS Modifier dropdown
+    # DSS modifier dropdown (shown only if active)
         ttk.Label(details_frame, text="DSS Active:").grid(row=1, column=2, sticky=tk.W, pady=5)
         ttk.Checkbutton(details_frame, variable=self.DSS).grid(row=1, column=2, sticky=tk.W, padx=(100,0), pady=5)
 
@@ -1091,10 +1137,8 @@ class MissionLogGUI:
         self.dss_combo = ttk.Combobox(self.dss_frame, textvariable=self.DSSMod, values=dss_mods, state='readonly', width=27)
         self.dss_combo.pack(side=tk.LEFT, padx=(40,0))
         
-        # Initially hide the dropdown
         self.dss_frame.grid_remove()
         
-        # Function to toggle DSS modifier visibility
         def toggle_dss_mod(*args):
             if self.DSS.get():
                 self.dss_frame.grid()
@@ -1104,22 +1148,22 @@ class MissionLogGUI:
             
         self.DSS.trace_add("write", toggle_dss_mod)
 
-        # Subfaction Selection
+    # Subfaction
         ttk.Label(details_frame, text="Enemy Subfaction:").grid(row=0, column=2, sticky=tk.W, pady=5)
         subfaction_combo = ttk.Combobox(details_frame, textvariable=self.subfaction_type, state='readonly', width=27)
         subfaction_combo.grid(row=0, column=2, sticky=tk.E, padx=(125,0), pady=5)
 
-        # Mission Campaign Selection
+    # Campaign
         ttk.Label(details_frame, text="Mission Campaign:").grid(row=1, column=0, sticky=tk.W, pady=5)
         mission_cat_combo = ttk.Combobox(details_frame, textvariable=self.mission_category, state='readonly', width=27)
         mission_cat_combo.grid(row=1, column=1, padx=5, pady=5)
 
-        # Difficulty Selection
+    # Difficulty
         ttk.Label(details_frame, text="Mission Difficulty:").grid(row=2, column=0, sticky=tk.W, pady=5)
         difficulty_combo = ttk.Combobox(details_frame, textvariable=self.difficulty, state='readonly', width=27)
         difficulty_combo.grid(row=2, column=1, padx=5, pady=5)
 
-        # Mission Type Selection
+    # Mission type
         ttk.Label(details_frame, text="Mission Type:").grid(row=3, column=0, sticky=tk.W, pady=5)
         mission_type_combo = ttk.Combobox(details_frame, textvariable=self.mission_type, state='readonly', width=27)
         mission_type_combo.grid(row=3, column=1, padx=5, pady=5)
@@ -1191,29 +1235,57 @@ class MissionLogGUI:
         mission_cat_combo.bind('<<ComboboxSelected>>', update_mission_types)
         difficulty_combo.bind('<<ComboboxSelected>>', update_available_missions)
 
-        # Initial setup
+    # Populate chained dropdowns
         update_subfactions()
 
-        # Statistics and Note Section Container
+    # --- Stats + Note ---
         stats_note_container = ttk.Frame(content)
         stats_note_container.grid(row=2, column=0, padx=5, pady=5, sticky=(tk.W, tk.E))
 
-        # Statistics Section (Left)
+    # Stats
         stats_frame = ttk.LabelFrame(stats_note_container, text="Mission Statistics", padding=10)
         stats_frame.pack(side=tk.LEFT, padx=5, fill=tk.BOTH, expand=True)
 
-        # Note Section (Right)
+    # Note
         note_frame = ttk.LabelFrame(stats_note_container, text="Note", padding=10)
         note_frame.pack(side=tk.RIGHT, padx=5, fill=tk.BOTH, expand=True)
 
-        note_entry = tk.Text(note_frame, height=3, width=30)
-        note_entry.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
-        # Add a trace to update self.note when text changes
-        def update_note(*args):
-            self.note.set(note_entry.get("1.0", "end-1c"))
-        note_entry.bind('<KeyRelease>', lambda e: update_note())
-        note_frame.columnconfigure(0, weight=1)  # Make the column expand horizontally
-        note_frame.rowconfigure(0, weight=1)  # Make the row expand vertically
+        MAX_NOTE_CHARS = 512
+
+        note_entry = tk.Text(note_frame, height=3, width=30, wrap="word")
+        note_entry.grid(row=0, column=0, padx=5, pady=(5,0), sticky=(tk.W, tk.E, tk.N, tk.S))
+
+    # Character counter
+        counter_label = ttk.Label(note_frame, text=f"0/{MAX_NOTE_CHARS}")
+        counter_label.grid(row=1, column=0, padx=5, pady=(2,5), sticky=tk.E)
+
+        def update_note_limit(event=None):
+            text = note_entry.get("1.0", "end-1c")
+            if len(text) > MAX_NOTE_CHARS:
+                # Delete only the excess instead of resetting whole text - Don't even ask me how i learned this is even a thing
+                note_entry.delete(f"1.0+{MAX_NOTE_CHARS}c", tk.END)
+                text = note_entry.get("1.0", "end-1c")
+            counter_label.config(text=f"{len(text)}/{MAX_NOTE_CHARS}")
+            self.note.set(text)
+
+        def block_excess(event):
+            # Prevent further typing when at limit (allow navigation & deletion)
+            text = note_entry.get("1.0", "end-1c")
+            if (len(text) >= MAX_NOTE_CHARS and 
+                event.keysym not in ("BackSpace", "Delete", "Left", "Right", "Up", "Down", "Home", "End")):
+                return "break"
+
+    # Bind note editor constraints
+        note_entry.bind("<KeyPress>", block_excess)
+        note_entry.bind("<KeyRelease>", update_note_limit)
+        note_entry.bind("<<Paste>>", lambda e: self.root.after(1, update_note_limit))
+        note_entry.bind("<FocusOut>", update_note_limit)
+
+    # Initialize note state
+        update_note_limit()
+
+        note_frame.columnconfigure(0, weight=1)
+        note_frame.rowconfigure(0, weight=1)
 
         ttk.Label(stats_frame, text="Kills:").grid(row=1, column=0, sticky=tk.W, pady=5)
         ttk.Entry(stats_frame, textvariable=self.kills, width=30).grid(row=1, column=1, padx=5, pady=5)
@@ -1223,93 +1295,82 @@ class MissionLogGUI:
 
         ttk.Label(stats_frame, text="Performance:").grid(row=3, column=0, sticky=tk.W, pady=5)
         ratings = ["Outstanding Patriotism", "Superior Valour", "Costly Failure", "Honourable Duty", "Unremarkable Performance", "Disappointing Service", "Disgraceful Conduct"]
-        # self.rating.set(ratings[0])  # Already set in _setup_variables
         rating_combo = ttk.Combobox(stats_frame, textvariable=self.rating, values=ratings, state='readonly', width=27)
         rating_combo.grid(row=3, column=1, padx=5, pady=5)
 
-        # Submit Button
+    # Submit
         submit_button = ttk.Button(content, text="Submit Mission Report", command=self.submit_data)
         submit_button.grid(row=3, column=0, pady=15)
 
-        # Create a frame for the report style and export section
+    # Export + Style sections
         bottom_frame = ttk.LabelFrame(content, text="Report Style and Export", padding=10)
         bottom_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
-        # Report Style section (left side)
-        style_frame = ttk.Frame(bottom_frame)
-        style_frame.pack(side=tk.LEFT, padx=5)
-        ttk.Label(style_frame, text="Report Style:").pack(side=tk.LEFT)
-
-        # Export section (right side)
+    # Export buttons / integrations
         export_frame = ttk.LabelFrame(content, text="Exporting", padding=10)
         export_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
-        #open export GUI
+    # Export GUI launcher
         GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=lambda: subprocess.run(['python', 'exportGUI.py'], shell=False), padding=(6,5), width=14)
         GUIbutton.grid(row=4, column=0, pady=15, padx=(20,0))
 
-        #export button by planet
+    # Planet aggregation export
         export_button = ttk.Button(export_frame, text="Export Excel\n    Data to\n  Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
         export_button.grid(row=4, column=1, padx=(40,0), pady=15)
 
-        #export button by faction
+    # Faction aggregation export
         export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
         export_button.grid(row=4, column=2, padx=(40,0), pady=15)
 
-        # Create a frame for the image button (example placement in the mission_frame)
+    # Achievements + Invite + Theme + Settings buttons
         image_button_frame = ttk.Frame(mission_frame)
         image_button_frame.grid(row=5, column=4, padx=5, pady=5)
 
-        # Load the image for the button
+    # Achievement button image
         try:
             # Store the image as an instance attribute to prevent garbage collection
             self.button_image = tk.PhotoImage(file="achievement.png")
-            # You may need to resize the image if it's too large
-            self.button_image = self.button_image.subsample(2, 2)  # Reduce size by half
+            self.button_image = self.button_image.subsample(2, 2)
             
             # Create the button with the image in the export frame
             image_button = ttk.Button(export_frame, image=self.button_image, command=lambda: subprocess.run(['python', 'Achievements.py']), width=7)
-            # Set compound to prevent text from showing if you decide to add text later
             image_button.configure(compound=tk.CENTER)
-            image_button.grid(row=4, column=3, padx=(125,0), pady=15)  # Match the grid layout of other buttons
+            image_button.grid(row=4, column=3, padx=(125,0), pady=15) 
             
         except Exception as e:
             logging.error(f"Failed to load button image: {e}")
             # Fallback to text button if image loading fails
             fallback_button = ttk.Button(export_frame, text="Image Button", command=lambda: subprocess.run(['python', 'Achievements.py']))
-            fallback_button.grid(row=4, column=3, padx=(125,0), pady=15)  # Match the grid layout of other buttons
+            fallback_button.grid(row=4, column=3, padx=(125,0), pady=15)
 
-        # Load the image for the button
+    # Discord invite button image
         try:
             # Store the image as an instance attribute to prevent garbage collection
             self.invite_image = tk.PhotoImage(file="invite.png")
-            # You may need to resize the image if it's too large
-            self.invite_image = self.invite_image.subsample(60, 60)  # Reduce size by half
+            self.invite_image = self.invite_image.subsample(60, 60)
             
             # Create the button with the image in the export frame
             invite_button = ttk.Button(export_frame, image=self.invite_image, command=lambda: webbrowser.open("https://discord.gg/U6ydgwFKZG"), width=7)
-            # Set compound to prevent text from showing if you decide to add text later
             invite_button.configure(compound=tk.CENTER)
-            invite_button.grid(row=4, column=3, padx=(0,20), pady=15)  # Match the grid layout of other buttons
+            invite_button.grid(row=4, column=3, padx=(0,20), pady=15)
             
         except Exception as e:
             logging.error(f"Failed to load invite button image: {e}")
             # Fallback to text button if image loading fails
-            # Import webbrowser at the top of your file if not already there
             invite_fallback = ttk.Button(export_frame, text="Invite Button", command=lambda: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
-            invite_fallback.grid(row=4, column=3, padx=(0,20), pady=15)  # Match the grid layout of other buttons
+            invite_fallback.grid(row=4, column=3, padx=(0,20), pady=15)
 
-        # Add this to the export frame section where you set up the buttons
+    # Theme toggle
         theme_button = ttk.Button(export_frame, text="Toggle\nTheme", command=self.toggle_theme, padding=(6,5), width=14)
         theme_button.grid(row=4, column=4, padx=(40,0), pady=15)
 
-        #add a settings button
+    # Settings editor
         settings_button = ttk.Button(export_frame, text="Settings", command=lambda: subprocess.run(['python', 'settings.py']), padding=(6,5), width=14)
         settings_button.grid(row=4, column=5, padx=(40,0), pady=15)
 
 
     def _update_discord_presence(self) -> None:
-        """Update Discord Rich Presence with current mission information."""
+    # Update Discord Rich Presence with current mission information.
         if not hasattr(self, 'RPC') or self.RPC is None:
             return
 
@@ -1325,7 +1386,7 @@ class MissionLogGUI:
             level = self.level.get() or 0
             title = self.title.get() or "No Title"
 
-            # Map enemy types to Discord asset names
+            # Small image asset mapping
             enemy_assets = {
                 "Automatons": "bots",
                 "Terminids": "bugs",
@@ -1354,16 +1415,15 @@ class MissionLogGUI:
             logging.error(f"Failed to update Discord Rich Presence: {e}")
 
     def load_settings(self) -> None:
-        """Load user settings from file."""
+    # Load user settings from file.
         def load():
             try:
-                # Load theme from settings.json
                 theme = 'light'
                 if os.path.exists(SETTINGS_FILE):
                     with open(SETTINGS_FILE, 'r') as f:
                         settings = json.load(f)
                         theme = settings.get('theme', 'light')
-                # Load all other settings from persistent.json
+                # Load all values from persistent.json
                 persistent_settings = {}
                 if os.path.exists(PERSISTENCE_FILE):
                     with open(PERSISTENCE_FILE, 'r') as f:
@@ -1376,7 +1436,7 @@ class MissionLogGUI:
         threading.Thread(target=load, daemon=True).start()
 
     def save_settings(self) -> None:
-        """Save current settings to file."""
+    # Save current settings to file.
         # Save theme to settings.json
         theme_data = {'theme': self.current_theme}
         try:
@@ -1384,7 +1444,7 @@ class MissionLogGUI:
                 json.dump(theme_data, f, indent=4)
         except Exception as e:
             self._show_error(f"Error saving theme: {e}")
-        # Save all other settings to persistent.json
+        # Save all values to persistent.json
         settings = {
             'helldiver': self.Helldivers.get(),
             'level': self.level.get(),
@@ -1408,7 +1468,7 @@ class MissionLogGUI:
             self._show_error(f"Error saving persistent settings: {e}")
 
     def submit_data(self) -> None:
-        """Handle mission report submission."""
+    # Handle mission report submission.
         if not self._validate_submission():
             return
             
@@ -1435,16 +1495,16 @@ class MissionLogGUI:
 
         if self._save_to_excel(data):
             if self._send_to_discord(data):
-                print("Sent To Discord")
+                logging.info("Sent To Discord")
             
     def _validate_submission(self) -> bool:
-        """Validate all required fields before submission."""
+    # Validate all required fields before submission.
         try:
             # Validate numeric fields
             level = int(self.level.get())
             kills = int(self.kills.get())
             deaths = int(self.deaths.get())
-            #create a randint between 1 and 0
+            #create a randint between 1 and 0 - to randomise for lil easter egg
             rndint = random.randint(0, 1)
 
             if level < 1 or level > 150:  # Add reasonable level range
@@ -1492,7 +1552,7 @@ class MissionLogGUI:
         messagebox.showerror("Error", message)
 
     def _collect_mission_data(self) -> Dict:
-        """Collect all mission data into a dictionary."""
+    # Collect all mission data into a dictionary.
         return {
             'Super Destroyer': self.FullShipName.get(),
             'Helldivers': self.Helldivers.get(),
@@ -1517,21 +1577,19 @@ class MissionLogGUI:
         }
 
     def _save_to_excel(self, data: Dict) -> bool:
-        """Save mission data to Excel file by appending new rows."""
+    # Save mission data to Excel file by appending new rows.
         excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
         
         try:
-            # Create new DataFrame with single row of data
+            # Create new DataFrame with single row of data - because excel is weeeird... why are we even using excel again?
             new_data = pd.DataFrame([data])
             
-            # If file exists, read and append. Otherwise create new file
             if os.path.exists(excel_file):
                 existing_df = pd.read_excel(excel_file)
                 updated_df = pd.concat([existing_df, new_data], ignore_index=True)
             else:
                 updated_df = new_data
                 
-            # Save the updated DataFrame back to Excel
             with pd.ExcelWriter(excel_file) as writer:
                 updated_df.to_excel(writer, index=False)
                 
@@ -1544,13 +1602,12 @@ class MissionLogGUI:
             return False
 
     def _send_to_discord(self, data: Dict) -> bool:
-        """Send mission report to Discord with improved error handling."""
+    # Send mission report to Discord.
         try:
             Stars = ""
             GoldStar = config['Stars']['GoldStar']
             GreyStar = config['Stars']['GreyStar']
             
-            # Map ratings to number of gold stars
             rating_stars = {
                 "Outstanding Patriotism": 5,
                 "Superior Valour": 4,
@@ -1582,7 +1639,7 @@ class MissionLogGUI:
             profile_picture = get_profile_picture(self.profile_picture.get())
 
 
-            # Logic to track streaks (submissions within an hour)
+            # Streak tracking (missions within 1h chain)
             helldiver_name = "Helldiver"
             streak_file = 'streak_data.json'
             streak = 1  # Default streak value
@@ -1591,7 +1648,6 @@ class MissionLogGUI:
             profile_picture_name = profile_picture
 
             try:
-                # Load streak data for all users
                 streak_data = {}
                 if os.path.exists(streak_file):
                     with open(streak_file, 'r') as f:
@@ -1648,7 +1704,7 @@ class MissionLogGUI:
 
             total_missions_main = total_missions()
 
-            # Get UID from settings.json instead of config
+            # UID from local DCord.json (user settings)
             try:
                 with open('DCord.json', 'r') as f:
                     settings_data = json.load(f)
@@ -1674,7 +1730,7 @@ class MissionLogGUI:
                         "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&"
                     },
                     "footer": {
-                    "text": f"{UID}  {streak_emoji}",
+                    "text": f"{UID}  {streak_emoji} v{VERSION}{DEV_RELEASE}",
                     "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"
                     },
                     "image": {"url": f"{biome_banner}"},
@@ -1684,7 +1740,7 @@ class MissionLogGUI:
                 
             }
 
-            # FIX: Send message_content directly, not wrapped in another dict
+            # Send embeds to active webhooks
             if DEBUG:
                 # Use TEST webhook from config if in debug mode
                 ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
@@ -1722,7 +1778,7 @@ class MissionLogGUI:
             return False
 
     def export_data(self) -> None:
-        """Export Excel data to webhook."""
+    # Export Excel data to webhook.
         excel_file = "mission_log_test.xlsx" if DEBUG else "mission_log.xlsx"
         try:
             if not os.path.exists(excel_file):
@@ -1740,7 +1796,7 @@ class MissionLogGUI:
             logging.error(f"Error during Excel export: {e}")
 
     def __del__(self) -> None:
-        """Clean up resources on deletion."""
+    # Clean up resources on deletion.
         if hasattr(self, 'RPC') and self.RPC is not None:
             try:
                 self.RPC.close()
@@ -1757,7 +1813,7 @@ class MissionLogGUI:
             self._show_error(f"Export failed: {e}")
 
     def _apply_settings(self, settings: dict) -> None:
-        """Apply loaded settings to the GUI variables."""
+    # Apply loaded settings to the GUI variables.
         # Only set if key exists to avoid KeyError
         self.Helldivers.set(settings.get('helldiver', ''))
         self.level.set(settings.get('level', 1))
@@ -1776,18 +1832,31 @@ class MissionLogGUI:
         # Apply theme if present
         theme = settings.get('theme', 'light')
         self.apply_theme(theme)
+        # After loading saved sector/planet ensure dependent dropdowns refresh
+        try:
+            # Re-run planet population with current sector.
+            if hasattr(self, 'sectors_data') and self.sector.get() in self.sectors_data:
+                planets = self.sectors_data[self.sector.get()]['planets']
+                self.planet_combo['values'] = planets
+                if self.planet.get() not in planets and planets:
+                    self.planet.set(planets[0])
+            # Trigger mega city refresh by generating a virtual event - is this hacky? this feels hacky...
+            if hasattr(self, 'planet_combo'):
+                self.planet_combo.event_generate('<<ComboboxSelected>>')
+        except Exception as e:
+            logging.error(f"Failed to refresh planet / mega city lists after settings load: {e}")
 
 if __name__ == "__main__":
     try:
-        with open('Dcord.json', 'r') as f:
+        with open('DCord.json', 'r') as f:
             settings_data = json.load(f)
             discord_uid = settings_data.get('discord_uid', '0')
             if not (re.match(r'^\d{17,19}$', discord_uid) or (DEBUG and discord_uid == '0')):
-                print("Please set a valid Discord ID in the settings.json file")
+                logging.error("Please set a valid Discord ID in the settings.json file")
                 messagebox.showerror("Error", "Please set a valid Discord ID in the settings.json file")
                 os._exit(1)
     except (FileNotFoundError, json.JSONDecodeError) as e:
-        print(f"Error loading settings.json: {e}")
+        logging.error(f"Error loading settings.json: {e}")
         messagebox.showerror("Error", f"Error loading settings.json: {e}")
         os._exit(1)
 

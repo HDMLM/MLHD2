@@ -1,6 +1,7 @@
 {
   "Super Earth": {
     "mega_cities": [
+      "Planet Surface",
       "Eagleopolis",
       "Administrative Center 02",
       "Remembrance",
@@ -12,6 +13,7 @@
   },
   "Choepessa IV": {
     "mega_cities": [
+      "Planet Surface",
       "Hiljaisuus",
       "Kalasatama",
       "Ydinkeskusta"
@@ -19,6 +21,7 @@
   },
   "Fort Union": {
     "mega_cities": [
+      "Planet Surface",
       "Otaru's Pledge",
       "Xiamen Anew",
       "Munition City",
@@ -27,6 +30,7 @@
   },
   "Volterra": {
     "mega_cities": [
+      "Planet Surface",
       "Scarlet Haven",
       "Edward's Grave",
       "Light Of Liberty"
@@ -34,11 +38,13 @@
   },
   "Fort Sanctuary": {
     "mega_cities": [
+      "Planet Surface",
       "New Yearning City"
     ]
   },
   "Myrium": {
     "mega_cities": [
+      "Planet Surface",
       "Pilot's Berth",
       "Plethora",
       "Antboot"
@@ -46,12 +52,14 @@
   },
   "Veld": {
     "mega_cities": [
+      "Planet Surface",
       "Cle Elum Rediviva",
       "Laelia"
     ]
   },
   "Vernen Wells": {
     "mega_cities": [
+      "Planet Surface",
       "Blackvein Mines",
       "Benevolence",
       "Anne's Vigil"
@@ -59,86 +67,110 @@
   },
   "Darius II": {
     "mega_cities": [
-      "Buju"
+      "Planet Surface",
+      "Buju",
+      "Non-City Zone"
     ]
   },
   "Acamar IV": {
     "mega_cities": [
+      "Planet Surface",
       "Democracy Always",
-      "Eridani"
+      "Eridani",
+      "Non-City Zone"
     ]
   },
   "Claorell": {
     "mega_cities": [
+      "Planet Surface",
       "Majosyri",
       "Quasar",
-      "Zenith"
+      "Zenith",
+      "Non-City Zone"
     ]
   },
   "Alta V": {
     "mega_cities": [
+      "Planet Surface",
       "Porte Libert",
-      "Undervatten"
+      "Undervatten",
+      "Non-City Zone"
     ]
   },
   "Achernar Secundus": {
     "mega_cities": [
+      "Planet Surface",
       "Currency",
       "New Newtonville",
-      "Ol' Oldham"
+      "Ol' Oldham",
+      "Non-City Zone"
     ]
   },
   "Clasa": {
     "mega_cities": [
+      "Planet Surface",
       "Sycamore Gardens",
       "Kodiak Falls",
-      "Voting District F-012357"
+      "Voting District F-012357",
+      "Non-City Zone"
     ]
   },
   "Lesath": {
     "mega_cities": [
+      "Planet Surface",
       "Serenity Summit",
       "Morskie Oko",
       "Crystal Slopes",
-      "Bucu's Rest"
+      "Bucu's Rest",
+      "Non-City Zone"
     ]
   },
   "Achird III": {
     "mega_cities": [
+      "Planet Surface",
       "Timely",
       "Approval City",
-      "Old Branch"
+      "Old Branch",
+      "Non-City Zone"
     ]
   },
   "Seyshel Beach": {
     "mega_cities": [
+      "Planet Surface",
       "Accountant Graeber",
       "Beachview",
       "The Villas",
-      "New Alexandria"
+      "New Alexandria",
+      "Non-City Zone"
     ]
   },
   "Kerth Secundus": {
     "mega_cities": [
+      "Planet Surface",
       "Scholar's Moor",
       "Blestrail",
-      "Hildoara Central"
+      "Hildoara Central",
+      "Non-City Zone"
     ]
   },
   "Ursica XI": {
     "mega_cities": [
+      "Planet Surface",
       "New Kathmandu",
-      "Po's Ravenna"
+      "Po's Ravenna",
+      "Non-City Zone"
     ]
   },
   "Aurora Bay": {
     "mega_cities": [
+      "Planet Surface",
       "Batu Belig",
       "Eaglemount"
     ]
   },
   "Malevelon Creek": {
     "mega_cities": [
+      "Planet Surface",
       "Lifeblood",
       "Requiem",
       "Diver's Rest"
@@ -146,6 +178,7 @@
   },
   "Tarsh": {
     "mega_cities": [
+      "Planet Surface",
       "Fortitude",
       "Freedom's Torch",
       "Fearless Hollow"
@@ -153,18 +186,21 @@
   },
   "Adhara": {
     "mega_cities": [
+      "Planet Surface",
       "Traitor's End",
       "Strength"
     ]
   },
   "Martale": {
     "mega_cities": [
+      "Planet Surface",
       "Songguo Cun",
       "Xin Fuzhou"
     ]
   },
   "Crucible": {
     "mega_cities": [
+      "Planet Surface",
       "Kurri Kurri",
       "Annwn",
       "Agartha",
@@ -173,17 +209,20 @@
   },
   "Emeria": {
     "mega_cities": [
+      "Planet Surface",
       "New Aspiration City"
     ]
   },
   "Parsh": {
     "mega_cities": [
+      "Planet Surface",
       "Porugu",
       "Padosan"
     ]
   },
   "Trandor": {
     "mega_cities": [
+      "Planet Surface",
       "Nya Skelleftea",
       "Ödeshögre",
       "Gothenburg Iii"
@@ -191,12 +230,14 @@
   },
   "Gaellivare": {
     "mega_cities": [
+      "Planet Surface",
       "Váhtjer",
       "Malmberget"
     ]
   },
   "Erata Prime": {
     "mega_cities": [
+      "Planet Surface",
       "New Da Nang",
       "Pham's Site",
       "Old Chemland"
@@ -204,17 +245,20 @@
   },
   "Matar Bay": {
     "mega_cities": [
+      "Planet Surface",
       "Parrhesia",
       "Isegoria"
     ]
   },
   "Vog-Sojoth": {
     "mega_cities": [
+      "Planet Surface",
       "Haerstvik"
     ]
   },
   "Alairt III": {
     "mega_cities": [
+      "Planet Surface",
       "Greater Storouse",
       "New Storouse",
       "Shed",
@@ -223,6 +267,7 @@
   },
   "Alamak VII": {
     "mega_cities": [
+      "Planet Surface",
       "Kesuma",
       "Ungu",
       "No Compound",
@@ -231,23 +276,27 @@
   },
   "Liberty Ridge": {
     "mega_cities": [
+      "Planet Surface",
       "Vanquishment",
       "Freecrest"
     ]
   },
   "Gatria": {
     "mega_cities": [
+      "Planet Surface",
       "Altonburg",
       "Ersatz"
     ]
   },
   "Andar": {
     "mega_cities": [
+      "Planet Surface",
       "New Tokyo"
     ]
   },
   "Fenmire": {
     "mega_cities": [
+      "Planet Surface",
       "Brawfermland",
       "New Aberdeen",
       "Saorsa Glen"
@@ -255,6 +304,7 @@
   },
   "Irulta": {
     "mega_cities": [
+      "Planet Surface",
       "Recon Heights",
       "Silo A",
       "Voter's Fallow"
@@ -262,11 +312,13 @@
   },
   "Julheim": {
     "mega_cities": [
+      "Planet Surface",
       "Frostown"
     ]
   },
   "Regnus": {
     "mega_cities": [
+      "Planet Surface",
       "People's Hand",
       "Topsoil",
       "Human Will"
@@ -274,12 +326,14 @@
   },
   "Ubanea": {
     "mega_cities": [
+      "Planet Surface",
       "Freedom Eternal",
       "Nuova Roma"
     ]
   },
   "Caramoor": {
     "mega_cities": [
+      "Planet Surface",
       "Lemuria Rising",
       "Pioneer's Dream",
       "Base Camp 8"
@@ -287,6 +341,7 @@
   },
   "Emorath": {
     "mega_cities": [
+      "Planet Surface",
       "Farmhandstown",
       "Fort Bounty",
       "Futuria"
@@ -294,6 +349,7 @@
   },
   "Valmox": {
     "mega_cities": [
+      "Planet Surface",
       "Rebelsgrave",
       "Reformed By Truth",
       "Obedience"
@@ -301,23 +357,27 @@
   },
   "Varylia 5": {
     "mega_cities": [
+      "Planet Surface",
       "Sequim"
     ]
   },
   "Wasat": {
     "mega_cities": [
+      "Planet Surface",
       "Mirage",
       "Drywell"
     ]
   },
   "Pöpli IX": {
     "mega_cities": [
+      "Planet Surface",
       "Resilience",
       "Hot Gates"
     ]
   },
   "Caph": {
     "mega_cities": [
+      "Planet Surface",
       "Eastcleft",
       "Kinabatangan",
       "Downpour"
@@ -325,6 +385,7 @@
   },
   "Vega Bay": {
     "mega_cities": [
+      "Planet Surface",
       "Onsen",
       "Giri",
       "Sapporo"
@@ -332,6 +393,7 @@
   },
   "Grafmere": {
     "mega_cities": [
+      "Planet Surface",
       "Grafsart",
       "Grafswallit",
       "Grafsead"
@@ -339,18 +401,21 @@
   },
   "Peacock": {
     "mega_cities": [
+      "Planet Surface",
       "Quasar",
       "Syzygy"
     ]
   },
   "Draupnir": {
     "mega_cities": [
+      "Planet Surface",
       "Eightrings",
       "Broker's Wealth"
     ]
   },
   "Phact Bay": {
     "mega_cities": [
+      "Planet Surface",
       "Old Dove",
       "Brno",
       "New Eagle"
@@ -358,6 +423,7 @@
   },
   "Fenrir III": {
     "mega_cities": [
+      "Planet Surface",
       "Lokaheim",
       "Pseudotopia",
       "Famewolf Peak"
@@ -365,11 +431,13 @@
   },
   "Mort": {
     "mega_cities": [
+      "Planet Surface",
       "Sapphire Lake"
     ]
   },
   "Ingmar": {
     "mega_cities": [
+      "Planet Surface",
       "Fort Sanguine",
       "Knight's Honor",
       "Sevenseal"
@@ -377,6 +445,7 @@
   },
   "Polaris Prime": {
     "mega_cities": [
+      "Planet Surface",
       "Vilhelmina Dorothea Fredrika",
       "Mogo Plains",
       "Kalasatama Port"
@@ -384,23 +453,27 @@
   },
   "Crimsica": {
     "mega_cities": [
+      "Planet Surface",
       "Lil Ome",
       "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch II"
     ]
   },
   "Oasis": {
     "mega_cities": [
+      "Planet Surface",
       "Respite"
     ]
   },
   "Bekvam III": {
     "mega_cities": [
+      "Planet Surface",
       "Convenience",
       "Firefly Meadows"
     ]
   },
   "Turing": {
     "mega_cities": [
+      "Planet Surface",
       "Chatoyant",
       "Carbondale",
       "Periwinkle Mills"
@@ -408,32 +481,40 @@
   },
   "Prasa": {
     "mega_cities": [
+      "Planet Surface",
       "Handakas",
       "Haku City"
     ]
   },
   "Tien Kwan": {
     "mega_cities": [
+      "Planet Surface",
       "Foundry",
       "Steel Resolve"
     ]
   },
   "Mintoria": {
     "mega_cities": [
+      "Planet Surface",
       "Seoraksan",
       "Gyeongseong"
     ]
   },
   "Genesis Prime": {
     "mega_cities": [
+      "Planet Surface",
       "Mallstrip Nodes",
       "Birth"
     ]
   },
   "New Cyberstan": {
-    "mega_cities": ["WIP", "Blestrail", "Hildoara Central"]
+    "mega_cities": [
+      "Planet Surface"
+    ]
   },
   "Klen Dahth II": {
-    "mega_cities": ["WIP"]
+    "mega_cities": [
+      "Planet Surface"
+    ]
   }
 }
