@@ -31,9 +31,9 @@ import re
 import webbrowser
 
 # Manual Configuration
-GWDay = "Day: 570"
-GWDate = "Date: 31/08/2025"
-VERSION = "1.5.001"
+GWDay = "Day: 571"
+GWDate = "Date: 01/09/2025"
+VERSION = "1.5.002"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -1026,26 +1026,30 @@ class MissionLogGUI:
         self.title_combo.set(self.titles[0])
 
         ttk.Label(mission_frame, text="Profile:").grid(row=4, column=2, sticky=tk.W, pady=5)
-        self.profile_pictures = ['AC-1 Dutiful', 'AC-2 Obedient', 'AF-02 Haz-Master', 'AF-50 Noxious Ranger',
-               'AF-52 Lockdown', 'AF-91 Field Chemist', 'B-01 Tactical', 'B-08 Light Gunner', 'B-22 Model Citizen',
-               'B-24 Enforcer', 'B-27 Fortified Commando', 'CD-35 Trench Engineer', 'CE-07 Demolition Specialist',
-               'CE-27 Ground Breaker', 'CE-64 Grenadier', 'CE-67 Titan', 'CE-74 Breaker', 'CE-81 Juggernaut',
-               'CE-101 Guerilla Gorilla', 'CM-09 Bonesnapper', 'CM-10 Clinician', 'CM-14 Physician',
-               'CM-17 Butcher', 'CM-21 Trench Paramedic', 'CW-4 Arctic Ranger', 'CW-9 White Wolf',
-               'CW-22 Kodiak', 'CW-36 Winter Warrior', 'DP-00 Tactical', 'DP-11 Champion of the People',
-               'DP-40 Hero of the Federation', 'DP-53 Savior of the Free', 'EX-00 Prototype X',
-               'EX-03 Prototype 3', 'EX-16 Prototype 16', 'FS-05 Marksman', 'FS-11 Executioner',
-               'FS-23 Battle Master', 'FS-34 Exterminator', 'FS-37 Ravager', 'FS-38 Eradicator',
-               'FS-55 Devastator', 'FS-61 Dreadnought', 'GS-11 Democracy\'s Deputy', 'GS-17 Frontier Marshal',
-               'GS-66 Lawmaker', 'I-09 Heatseeker', 'I-44 Salamander', 'I-92 Fire Fighter',
-               'I-102 Draconaught', 'IE-3 Martyr', 'IE-12 Righteous', 'IE-57 Hell-Bent',
-               'PH-9 Predator', 'PH-56 Jaguar', 'PH-202 Twigsnapper', 'RE-824 Bearer of the Standard',
-               'RE-1861 Parade Commander', 'RE-2310 Honorary Guard', 'SA-04 Combat Technician',
-               'SA-12 Servo Assisted', 'SA-25 Steel Trooper', 'SA-32 Dynamo', 'SC-15 Drone Master',
-               'SC-30 Trailblazer Scout', 'SC-34 Infiltrator', 'SC-37 Legionnaire', 'SR-18 Roadblock',
-               'SR-24 Street Scout', 'SR-64 Cinderblock', 'TR-7 Ambassador of the Brand',
-               'TR-9 Cavalier of Democracy', 'TR-40 Gold Eagle', 'TR-62 Knight', 'TR-117 Alpha Commander',
-               'UF-16 Inspector', 'UF-50 Bloodhound', 'UF-84 Doubt Killer']
+        self.profile_pictures = ['A-9 Helljumper', 'A-35 Recon', 'AC-1 Dutiful', 'AC-2 Obedient', 
+               'AD-11 Livewire', 'AD-26 Bleeding Edge', 'AD-49 Apollonian', 'AF-02 Haz-Master', 
+               'AF-50 Noxious Ranger', 'AF-52 Lockdown', 'AF-91 Field Chemist', 'B-01 Tactical', 
+               'B-08 Light Gunner', 'B-22 Model Citizen', 'B-24 Enforcer', 'B-27 Fortified Commando',
+               'BP-20 Corrections Officer', 'BP-32 Jackboot', 'BP-77 Grand Juror', 'CD-35 Trench Engineer',
+               'CE-07 Demolition Specialist', 'CE-27 Ground Breaker', 'CE-64 Grenadier', 'CE-67 Titan',
+               'CE-74 Breaker', 'CE-81 Juggernaut', 'CE-101 Guerilla Gorilla', 'CM-09 Bonesnapper',
+               'CM-10 Clinician', 'CM-14 Physician', 'CM-17 Butcher', 'CM-21 Trench Paramedic',
+               'CW-4 Arctic Ranger', 'CW-9 White Wolf', 'CW-22 Kodiak', 'CW-36 Winter Warrior',
+               'DP-00 Tactical', 'DP-11 Champion of the People', 'DP-40 Hero of the Federation',
+               'DP-53 Savior of the Free', 'DS-42 Federation\'s Blade', 'DS-191 Scorpion',
+               'EX-00 Prototype X', 'EX-03 Prototype 3', 'EX-16 Prototype 16', 'FS-05 Marksman',
+               'FS-11 Executioner', 'FS-23 Battle Master', 'FS-34 Exterminator', 'FS-37 Ravager',
+               'FS-38 Eradicator', 'FS-55 Devastator', 'FS-61 Dreadnought', 'GS-11 Democracy\'s Deputy',
+               'GS-17 Frontier Marshal', 'GS-66 Lawmaker', 'I-09 Heatseeker', 'I-44 Salamander',
+               'I-92 Fire Fighter', 'I-102 Draconaught', 'IE-3 Martyr', 'IE-12 Righteous',
+               'IE-57 Hell-Bent', 'PH-9 Predator', 'PH-56 Jaguar', 'PH-202 Twigsnapper',
+               'RE-824 Bearer of the Standard', 'RE-1861 Parade Commander', 'RE-2310 Honorary Guard',
+               'SA-04 Combat Technician', 'SA-12 Servo Assisted', 'SA-25 Steel Trooper',
+               'SA-32 Dynamo', 'SC-15 Drone Master', 'SC-30 Trailblazer Scout', 'SC-34 Infiltrator',
+               'SC-37 Legionnaire', 'SR-18 Roadblock', 'SR-24 Street Scout', 'SR-64 Cinderblock',
+               'TR-7 Ambassador of the Brand', 'TR-9 Cavalier of Democracy', 'TR-40 Gold Eagle',
+               'TR-62 Knight', 'TR-117 Alpha Commander', 'UF-16 Inspector', 'UF-50 Bloodhound',
+               'UF-84 Doubt Killer']
         self.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=self.profile_picture, state='readonly', width=32)
         self.profile_picture_combo['values'] = self.profile_pictures
         self.profile_picture_combo.grid(row=4, column=2, sticky=tk.W, padx=(45,0), pady=5)
@@ -1077,12 +1081,12 @@ class MissionLogGUI:
             except Exception:
                 planetary_data = {}
             if not selected_planet or selected_planet not in planetary_data:
-                mega_cities_combo['values'] = ["NONE"]
-                mega_cities_combo.set("NONE")
+                mega_cities_combo['values'] = ["Planet Surface"]
+                mega_cities_combo.set("Planet Surface")
             else:
                 mega_cities_list = planetary_data[selected_planet].get("mega_cities", [])
-                mega_cities_combo['values'] = mega_cities_list if mega_cities_list else ["NONE"]
-                mega_cities_combo.set(mega_cities_list[0] if mega_cities_list else "NONE")
+                mega_cities_combo['values'] = mega_cities_list if mega_cities_list else ["Planet Surface"]
+                mega_cities_combo.set(mega_cities_list[0] if mega_cities_list else "Planet Surface")
 
         def update_planets(*args):
             # Populate planets based on selected sector and immediately refresh mega cities.
@@ -1852,8 +1856,8 @@ if __name__ == "__main__":
             settings_data = json.load(f)
             discord_uid = settings_data.get('discord_uid', '0')
             if not (re.match(r'^\d{17,19}$', discord_uid) or (DEBUG and discord_uid == '0')):
-                logging.error("Please set a valid Discord ID in the settings.json file")
-                messagebox.showerror("Error", "Please set a valid Discord ID in the settings.json file")
+                logging.error("Please set a valid Discord ID in the settings.py file")
+                messagebox.showerror("Error", "Please set a valid Discord ID in the settings.py file")
                 os._exit(1)
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.error(f"Error loading settings.json: {e}")
