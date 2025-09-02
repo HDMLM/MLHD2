@@ -169,14 +169,14 @@ ACHIEVEMENT_DEFS = {
         )
     },
     "ReliableDiver": {
-        "message": ("More than 50% of your logged missions are involved in a Major Order :major_order: ", "HINT: You're one to obey orders"),
+        "message": ("More than 50% of your logged missions are involved in a Major Order", "HINT: You're one to obey orders"),
         "title": (
             "<a:EasyAwardBaftaMusic2025:1359268029850058974> **RELIABLE DIVER**",
             "<:achievement_style_1:1374174053254041640> **~~RELIABLE DIVER~~**"
         )
     },
     "DSSDiver": {
-        "message": ("More than 50% of your logged Missions are involved with the Democracy Space Station :dss: ", "HINT: You like a good bit of support"),
+        "message": ("More than 50% of your logged Missions are involved with the Democracy Space Station", "HINT: You like a good bit of support"),
         "title": (
             "<a:EasyAwardBaftaMusic2025:1359268029850058974> **I <3 DSS**",
             "<:achievement_style_1:1374174053254041640> **~~I <3 DSS~~**"

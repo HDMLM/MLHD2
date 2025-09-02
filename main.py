@@ -31,9 +31,9 @@ import re
 import webbrowser
 
 # Manual Configuration
-GWDay = "Day: 571"
-GWDate = "Date: 01/09/2025"
-VERSION = "1.5.002"
+GWDay = "Day: 572"
+GWDate = "Date: 02/09/2025"
+VERSION = "1.5.003"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -1494,6 +1494,10 @@ class MissionLogGUI:
         if self.planet.get() == "Angel's Venture" or self.planet.get() == "Moradesh" or self.planet.get() == "Ivis":
             self._show_error("ADVISORY: You cannot deploy on a fractured planet")
             return
+        
+        if self.planet.get() == "Widow's Harbor" or self.planet.get() == "New Haven" or self.planet.get() == "Pilen V" or self.planet.get() == "Mars":
+            self._show_error("ADVISORY: You cannot deploy on a scoured planet")
+            return
 
         data = self._collect_mission_data()
 
@@ -1734,7 +1738,7 @@ class MissionLogGUI:
                         "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&"
                     },
                     "footer": {
-                    "text": f"{UID}  {streak_emoji} v{VERSION}{DEV_RELEASE}",
+                    "text": f"{streak_emoji}\n{UID}     v{VERSION}{DEV_RELEASE}",
                     "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"
                     },
                     "image": {"url": f"{biome_banner}"},
