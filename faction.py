@@ -312,7 +312,7 @@ BIOME_BANNERS = {
 	"Fenmire": config['BiomeBanners']['Plains'],
 	"The Weir": config['BiomeBanners']['Plains'],
 	"Bellatrix": config['BiomeBanners']['Plains'],
-	"Oshaune": config['BiomeBanners']['Plains'],
+	"Oshaune": config['BiomeBanners']['Hive World'],
 	"Varylia 5": config['BiomeBanners']['Plains'],
 	"Hort": config['BiomeBanners']['Plains'],
 	"Draupnir": config['BiomeBanners']['Plains'],
