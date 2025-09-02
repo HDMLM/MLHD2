@@ -33,16 +33,10 @@ import webbrowser
 # Manual Configuration
 GWDay = "Day: 572"
 GWDate = "Date: 02/09/2025"
-VERSION = "1.5.003"
+VERSION = "1.5.004"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
-
-# File paths
-SETTINGS_FILE = 'settings.json'
-PERSISTENCE_FILE = 'persistent.json'
-EXCEL_FILE_PROD = 'mission_log.xlsx'
-EXCEL_FILE_TEST = 'mission_log_test.xlsx'
 
 # Load config
 config = configparser.ConfigParser()
@@ -51,6 +45,19 @@ DISCORD_CLIENT_ID = config['Discord']['DISCORD_CLIENT_ID']
 
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
+
+# File paths
+if DEBUG:
+    SETTINGS_FILE = 'settings-dev.json'
+    PERSISTENCE_FILE = 'persistent-dev.json'
+    streak_file = 'streak_data-dev.json'
+else:
+    SETTINGS_FILE = 'settings.json'
+    PERSISTENCE_FILE = 'persistent.json'
+    streak_file = 'streak_data.json'
+
+EXCEL_FILE_PROD = 'mission_log.xlsx'
+EXCEL_FILE_TEST = 'mission_log_test.xlsx'
 
 # Theme System
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
@@ -571,7 +578,6 @@ TITLE_ICONS = {
     "ROOKIE": config['TitleIcons']['ROOKIE'],
     "BURIER OF HEADS": config['TitleIcons']['BURIER OF HEADS']
 }
-
 
 PROFILE_PICTURES = {
     "B-01 Tactical": config['ProfilePictures']['B-01 Tactical'],
@@ -1472,6 +1478,11 @@ class MissionLogGUI:
             self._show_error(f"Error saving persistent settings: {e}")
 
     def submit_data(self) -> None:
+        with open('DCord.json', 'r') as f:
+            discord_data = json.load(f)
+            global Platform
+            Platform = discord_data.get('platform', 'Not Selected')
+
     # Handle mission report submission.
         if not self._validate_submission():
             return
@@ -1481,6 +1492,10 @@ class MissionLogGUI:
 
         if self.enemy_type.get() == "Observing":
             self._show_error("ADVISORY: You cannot submit an observation mission")
+            return
+
+        if Platform == "Not Selected":
+            self._show_error("ADVISORY: You must select a platform in settings before submitting")
             return
 
         if self.mission_type.get() == "No missions available":
@@ -1646,10 +1661,36 @@ class MissionLogGUI:
             title_icon = get_title_icon(data['Title'])
             profile_picture = get_profile_picture(self.profile_picture.get())
 
+            # Get discord_uid from DCord.json
+            with open('DCord.json', 'r') as f:
+                dcord_data = json.load(f)
+                user_discord_uid = dcord_data.get('discord_uid', '')
+
+            bicon = config['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+            
+            if dcord_data.get('platform') == 'Steam':
+                    PIco = config['BadgeIcons-Platform']['Steam']
+            elif dcord_data.get('platform') == 'PlayStation':
+                    PIco = config['BadgeIcons-Platform']['PlayStation']
+            elif dcord_data.get('platform') == 'Xbox':
+                    PIco = config['BadgeIcons-Platform']['Xbox']
+            else:
+                    PIco = ''
+
+            # Check mission log for planet visits
+            excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
+            try:
+                df = pd.read_excel(excel_file)
+                bsuperearth = config['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
+                bcyberstan = config['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
+                bmaleveloncreek = config['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
+                bcalypso = config['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+                bpopliix = config['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+            except Exception as e:
+                logging.error(f"Error checking mission log for planet visits: {e}")
 
             # Streak tracking (missions within 1h chain)
             helldiver_name = "Helldiver"
-            streak_file = 'streak_data.json'
             streak = 1  # Default streak value
             highest_streak = 0  # Default highest streak value
             streak_emoji = ""  # No streak emoji by default
@@ -1720,13 +1761,21 @@ class MissionLogGUI:
             except (FileNotFoundError, json.JSONDecodeError) as e:
                 logging.error(f"Error loading settings.json: {e}")
                 UID = '0'  # Fallback to default
+            # Platform from local DCord.json (user settings)
+            try:
+                with open('DCord.json', 'r') as f:
+                    settings_data = json.load(f)
+                    Platform = settings_data.get('platform', "Not Selected")
+            except (FileNotFoundError, json.JSONDecodeError) as e:
+                logging.error(f"Error loading DCord.json: {e}")
+                Platform = "Not Selected"  # Fallback to default
             MICo = str(data["Major Order"]) + " " + config['MiscIcon']['MO'] if data["Major Order"] else str(data["Major Order"])
             DSSIco = str(data["DSS Active"]) + " " + config['MiscIcon']['DSS'] if data["DSS Active"] else str(data["DSS Active"])
 
             message_content = {
                 "content": None,
                 "embeds": [{
-                    "title": f"{data['Super Destroyer']}\nDeployed {data['Helldivers']}",
+                    "title": f"{data['Super Destroyer']}\nDeployed {data['Helldivers']}\n{bicon}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
                     "description": f"**Level {data['Level']} | {data['Title']} {title_icon}\nMission: {total_missions_main}**\n\n<a:easyshine1:1349110651829747773> <:hd1superearth:1103949794285723658> **Galactic Intel** {planet_icon} <a:easyshine3:1349110648528699422>\n> Sector: {data['Sector']}\n> Planet: {data['Planet']}\n> Mega City: {data['Mega City']}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data['DSS Modifier']} {dss_icon}\n\n",
                     "color": system_color,
                     "fields": [{
@@ -1866,6 +1915,18 @@ if __name__ == "__main__":
     except (FileNotFoundError, json.JSONDecodeError) as e:
         logging.error(f"Error loading settings.json: {e}")
         messagebox.showerror("Error", f"Error loading settings.json: {e}")
+        os._exit(1)
+    try:
+        with open('DCord.json', 'r') as f:
+            settings_data = json.load(f)
+            platform = settings_data.get('platform', "Not Selected")
+            if platform == "Not Selected":
+                logging.error("Please set a valid Platform in settings.py")
+                messagebox.showerror("Error", "Please set a valid Platform in settings.py")
+                os._exit(1)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.error(f"Error loading DCord.json: {e}")
+        messagebox.showerror("Error", f"Error loading DCord.json: {e}")
         os._exit(1)
 
     root = tk.Tk()

@@ -115,11 +115,31 @@ class SettingsPage(tk.Tk):
         reset_btn = ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_defaults)
         reset_btn.pack(side=tk.LEFT, padx=5)
 
+        # Platform Selection
+        platform_frame = ttk.Frame(discord_frame)
+        platform_frame.grid(row=4, column=0, columnspan=2, sticky=tk.W, pady=10)
+        ttk.Label(platform_frame, text="Platform:").pack(side=tk.LEFT, padx=5)
+        
+        # Load platform from DCord.json if it exists, otherwise default to Steam
+        default_platform = "Not Selected"
+        try:
+            if os.path.exists("DCord.json"):
+                with open("DCord.json", "r") as f:
+                    loaded_settings = json.load(f)
+                    default_platform = loaded_settings.get("platform", "Not Selected")
+        except Exception:
+            pass
+            
+        self.platform_var = tk.StringVar(value=default_platform)
+        platform_dropdown = ttk.Combobox(platform_frame, textvariable=self.platform_var, values=["Not Selected", "Steam", "PlayStation", "Xbox"], state="readonly")
+        platform_dropdown.pack(side=tk.LEFT, padx=5)
+
     def save_settings(self):
         # Save theme, UID, and webhooks to DCord.json only
         settings_data = {
             "discord_uid": self.discord_uid_var.get(),
-            "discord_webhooks": self.webhooks
+            "discord_webhooks": self.webhooks,
+            "platform": self.platform_var.get()
         }
         try:
             with open("DCord.json", "w") as f:
@@ -137,6 +157,7 @@ class SettingsPage(tk.Tk):
                     loaded_settings = json.load(f)
                     self.settings["discord_uid"] = loaded_settings.get("discord_uid", "")
                     self.settings["discord_webhooks"] = loaded_settings.get("discord_webhooks", [])
+                    self.settings["platform"] = loaded_settings.get("platform", "")
         except Exception as e:
             messagebox.showerror("Error", f"Could not load settings: {str(e)}")
         self.discord_uid_var.set(self.settings["discord_uid"])
