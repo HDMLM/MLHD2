@@ -33,7 +33,7 @@ import webbrowser
 # Manual Configuration
 GWDay = "Day: 572"
 GWDate = "Date: 02/09/2025"
-VERSION = "1.5.004"
+VERSION = "1.5.005"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -529,7 +529,10 @@ SUBFACTION_ICONS = {
     "Incineration Corps": config['SubfactionIcons']['IncinerationCorps'],
     "Jet Brigade & Incineration Corps": config['SubfactionIcons']['JetBrigadeIncinerationCorps'],
     "Spore Burst Strain": config['SubfactionIcons']['SporeBurstStrain'],
-    "The Great Host": config['SubfactionIcons']['TheGreatHost']
+    "The Great Host": config['SubfactionIcons']['TheGreatHost'],
+    "Rupture Strain": config['SubfactionIcons']['RuptureStrain'],
+    "Hive Lords": config['SubfactionIcons']['HiveLords'],
+    "Rupture Strain & Hive Lords": config['SubfactionIcons']['RuptureStrainHiveLords']
 }
 
 
@@ -719,7 +722,10 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Incineration Corps": "IncinerationCorps",
         "Jet Brigade & Incineration Corps": "JetBrigadeIncinerationCorps",
         "Spore Burst Strain": "SporeBurstStrain",
-        "The Great Host": "TheGreatHost"
+        "The Great Host": "TheGreatHost",
+        "Rupture Strain": "RuptureStrain",
+        "Hive Lords": "HiveLords",
+        "Rupture Strain & Hive Lords": "RuptureStrainHiveLords"
     }
     return replacements.get(normalized, normalized)
 
