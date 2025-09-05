@@ -489,7 +489,7 @@ class MissionLogGUI:
              'ADMIRABLE ADMIRAL', 'COMMANDER', 'GALACTIC COMMANDER', 'HELL COMMANDER', 'GENERAL',
              '5-STAR GENERAL', '10-STAR GENERAL', 'PRIVATE', 'SUPER PRIVATE', 'SUPER CITIZEN',
              'VIPER COMMANDO', 'FIRE SAFETY OFFICER', 'EXPERT EXTERMINATOR', 'FREE OF THOUGHT',
-             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO', 'EXTRA JUDICIAL']
+             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO', 'EXTRA JUDICIAL', 'EXEMPLARY SUBJECT', 'ROOKIE', 'BURIER OF HEADS']
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
         self.title_combo['values'] = self.titles
         self.title_combo.grid(row=3, column=2, sticky=tk.W, padx=(45,0), pady=5)
