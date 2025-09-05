@@ -506,7 +506,7 @@ class MissionLogGUI:
                'CM-10 Clinician', 'CM-14 Physician', 'CM-17 Butcher', 'CM-21 Trench Paramedic',
                'CW-4 Arctic Ranger', 'CW-9 White Wolf', 'CW-22 Kodiak', 'CW-36 Winter Warrior',
                'DP-00 Tactical', 'DP-11 Champion of the People', 'DP-40 Hero of the Federation',
-               'DP-53 Savior of the Free', 'DS-42 Federation\'s Blade', 'DS-191 Scorpion',
+               'DP-53 Savior of the Free', 'DS-10 Big Game Hunter', 'DS-42 Federation\'s Blade', 'DS-191 Scorpion',
                'EX-00 Prototype X', 'EX-03 Prototype 3', 'EX-16 Prototype 16', 'FS-05 Marksman',
                'FS-11 Executioner', 'FS-23 Battle Master', 'FS-34 Exterminator', 'FS-37 Ravager',
                'FS-38 Eradicator', 'FS-55 Devastator', 'FS-61 Dreadnought', 'GS-11 Democracy\'s Deputy',
