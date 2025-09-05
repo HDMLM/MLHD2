@@ -34,7 +34,7 @@ from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAM
 # Manual Configuration
 GWDay = "Day: 575"
 GWDate = "Date: 05/09/2025"
-VERSION = "1.5.006"
+VERSION = "1.5.007"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"

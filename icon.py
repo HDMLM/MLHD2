@@ -428,9 +428,7 @@ SUBFACTION_ICONS = {
     "Jet Brigade & Incineration Corps": iconconfig['SubfactionIcons']['JetBrigadeIncinerationCorps'],
     "Spore Burst Strain": iconconfig['SubfactionIcons']['SporeBurstStrain'],
     "The Great Host": iconconfig['SubfactionIcons']['TheGreatHost'],
-    "Rupture Strain": iconconfig['SubfactionIcons']['RuptureStrain'],
-    "Hive Lords": iconconfig['SubfactionIcons']['HiveLords'],
-    "Rupture Strain & Hive Lords": iconconfig['SubfactionIcons']['RuptureStrainHiveLords']
+    "Rupture Strain": iconconfig['SubfactionIcons']['RuptureStrain']
 }
 
 
