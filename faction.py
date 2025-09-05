@@ -4,534 +4,19 @@ from logging_config import setup_logging
 import configparser
 import requests
 import json
-
+from datetime import datetime
+from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
+from main import VERSION, DEV_RELEASE
 
 # Read config file
 config = configparser.ConfigParser()
 config.read('config.config')
-
+iconconfig = configparser.ConfigParser()
+iconconfig.read('icon.config')
 
 #Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
-
-DIFFICULTY_ICONS = {
-    "1 - TRIVIAL": config['DifficultyIcons']['1 - TRIVIAL'],
-    "2 - EASY": config['DifficultyIcons']['2 - EASY'],
-    "3 - MEDIUM": config['DifficultyIcons']['3 - MEDIUM'],
-    "4 - CHALLENGING": config['DifficultyIcons']['4 - CHALLENGING'],
-    "5 - HARD": config['DifficultyIcons']['5 - HARD'],
-    "6 - EXTREME": config['DifficultyIcons']['6 - EXTREME'],
-    "7 - SUICIDE MISSION": config['DifficultyIcons']['7 - SUICIDE MISSION'],
-    "8 - IMPOSSIBLE": config['DifficultyIcons']['8 - IMPOSSIBLE'],
-    "9 - HELLDIVE": config['DifficultyIcons']['9 - HELLDIVE'],
-    "10 - SUPER HELLDIVE": config['DifficultyIcons']['10 - SUPER HELLDIVE']
-}
-
-# Enemy icons and colors from config
-ENEMY_ICONS = {
-    "Automatons": config['EnemyIcons']['Automatons'],
-    "Terminids": config['EnemyIcons']['Terminids'],
-    "Illuminate": config['EnemyIcons']['Illuminate'],
-    "Observing": config['EnemyIcons']['Observation'],
-}
-
-# Planet Icons
-PLANET_ICONS = {
-    "Super Earth": config['PlanetIcons']['Human Homeworld'],
-    "Cyberstan": config['PlanetIcons']['Automaton Homeworld'],
-    "Malevelon Creek": config['PlanetIcons']['Malevelon Creek'],
-    "Calypso": config['PlanetIcons']['Calypso'],
-    "Diaspora X": config['PlanetIcons']['Gloom'],
-    "Enuliale": config['PlanetIcons']['Gloom'],
-    "Epsilon Phoencis VI": config['PlanetIcons']['Gloom'],
-    "Gemstone Bluffs": config['PlanetIcons']['Gloom'],
-    "Nabatea Secundus": config['PlanetIcons']['Gloom'],
-    "Navi VII": config['PlanetIcons']['Gloom'],
-    "Azur Secundus": config['PlanetIcons']['Gloom'],
-    "Erson Sands": config['PlanetIcons']['Gloom'],
-    "Nivel 43": config['PlanetIcons']['Gloom'],
-    "Zagon Prime": config['PlanetIcons']['Gloom'],
-    "Hellmire": config['PlanetIcons']['Gloom'],
-    "Omicron": config['PlanetIcons']['Gloom'],
-    "Oshaune": config['PlanetIcons']['Gloom'],
-    "Fori Prime": config['PlanetIcons']['Gloom'],
-    "Aurora Bay": config['PlanetIcons']['Jet Brigade Factories'],
-    "Chort Bay": config['PlanetIcons']['Jet Brigade Factories'],
-    "Widow's Harbor": config['PlanetIcons']['Free Springs Retreat'],
-    "Mog": config['PlanetIcons']['Illuminate Rally Locus'],
-    "Bellatrix": config['PlanetIcons']['Illuminate Rally Locus'],
-    "Hydrobius": config['PlanetIcons']['Illuminate Rally Locus'],
-    "Haldus": config['PlanetIcons']['Illuminate Rally Locus'],
-    "Mastia": config['PlanetIcons']['Governmental'],
-    "Fenrir III": config['PlanetIcons']['Science'],
-    "Tarsh": config['PlanetIcons']['Governmental'],
-    "Claorell": config['PlanetIcons']['Hammer'],
-    "Achernar Secundus": config['PlanetIcons']['Hammer'],
-    "Turing": config['PlanetIcons']['Science'],
-    "Emeria": config['PlanetIcons']['Governmental'],
-    "Fort Union": config['PlanetIcons']['Governmental'],
-    "Fort Sanctuary": config['PlanetIcons']['Governmental'],
-}
-
-# Campaign Icons
-CAMPAIGN_ICONS = {
-    "Defense": config['CampaignIcons']['Defense'],
-    "Liberation": config['CampaignIcons']['Liberation'],
-    "Invasion": config['CampaignIcons']['Invasion'],
-    "High-Priority": config['CampaignIcons']['High-Priority'],
-    "Attrition": config['CampaignIcons']['Attrition'],
-    "Battle for Super Earth": config['CampaignIcons']['Battle for Super Earth'],
-}
-
-# Mission Icons
-MISSION_ICONS = {
-    "Terminate Illegal Broadcast": config['MissionIcons']['Terminate Illegal Broadcast'],
-    "Pump Fuel To ICBM": config['MissionIcons']['Pump Fuel To ICBM'],
-    "Upload Escape Pod Data": config['MissionIcons']['Upload Escape Pod Data'],
-    "Spread Democracy": config['MissionIcons']['Spread Democracy'],
-    "Conduct Geological Survey": config['MissionIcons']['Conduct Geological Survey'],
-    "Launch ICBM": config['MissionIcons']['Launch ICBM'],
-    "Retrieve Valuable Data": config['MissionIcons']['Retrieve Valuable Data'],
-    "Blitz: Search and Destroy": config['MissionIcons']['Blitz Search and Destroy'],
-    "Emergency Evacuation": config['MissionIcons']['Emergency Evacuation'],
-    "Retrieve Essential Personnel": config['MissionIcons']['Retrieve Essential Personnel'],
-    "Evacuate High-Value Assets": config['MissionIcons']['Evacuate High-Value Assets'],
-    "Eliminate Brood Commanders": config['MissionIcons']['Eliminate Brood Commanders'],
-    "Eliminate Chargers": config['MissionIcons']['Eliminate Chargers'],
-    "Eliminate Impaler": config['MissionIcons']['Eliminate Impaler'],
-    "Eliminate Bile Titans": config['MissionIcons']['Eliminate Bile Titans'],
-    "Activate E-710 Pumps": config['MissionIcons']['Activate E-710 Pumps'],
-    "Purge Hatcheries": config['MissionIcons']['Purge Hatcheries'],
-    "Enable E-710 Extraction": config['MissionIcons']['Enable E-710 Extraction'],
-    "Nuke Nursery": config['MissionIcons']['Nuke Nursery'],
-    "Activate Terminid Control System": config['MissionIcons']['Activate Terminid Control System'],
-    "Deactivate Terminid Control System": config['MissionIcons']['Deactivate Terminid Control System'],
-    "Deploy Dark Fluid": config['MissionIcons']['Deploy Dark Fluid'],
-    "Eradicate Terminid Swarm": config['MissionIcons']['Eradicate Terminid Swarm'],
-    "Destroy Transmission Network": config['MissionIcons']['Destroy Transmission Network'],
-    "Eliminate Devastators": config['MissionIcons']['Eliminate Devastators'],
-    "Eliminate Automaton Hulks": config['MissionIcons']['Eliminate Automaton Hulks'],
-    "Eliminate Automaton Factory Strider": config['MissionIcons']['Eliminate Automaton Factory Strider'],
-    "Sabotage Supply Bases": config['MissionIcons']['Sabotage Supply Bases'],
-    "Sabotage Air Base": config['MissionIcons']['Sabotage Air Base'],
-    "Eradicate Automaton Forces": config['MissionIcons']['Eradicate Automaton Forces'],
-    "Destroy Command Bunkers": config['MissionIcons']['Destroy Command Bunkers'],
-    "Neutralize Orbital Defenses": config['MissionIcons']['Neutralize Orbital Defenses'],
-    "Evacuate Colonists": config['MissionIcons']['Evacuate Colonists'],
-    "Retrieve Recon Craft Intel": config['MissionIcons']['Retrieve Recon Craft Intel'],
-    "Free Colony": config['MissionIcons']['Free Colony'],
-    "Blitz: Destroy Illuminate Warp Ships": config['MissionIcons']['Blitz Destroy Illuminate Warp Ships'],
-    "Destroy Harvesters": config['MissionIcons']['Destroy Harvesters'],
-    "Extract Research Probe Data": config['MissionIcons']['Extract Research Probe Data'],
-    "Collect Meteorological Data": config['MissionIcons']['Collect Meteorological Data'],
-    "Collect Gloom-Infused Oil": config['MissionIcons']['Collect Gloom-Infused Oil'],
-    "Blitz: Secure Research Site": config['MissionIcons']['Blitz Secure Research Site'],
-    "Collect Gloom Spore Readings": config['MissionIcons']['Collect Gloom Spore Readings'],
-    "Chart Terminid Tunnels": config['MissionIcons']['Chart Terminid Tunnels'],
-    "Take Down Overship": config['MissionIcons']['Take Down Overship'],
-    "Repel Invasion Fleet": config['MissionIcons']['Repel Invasion Fleet'],
-    "Evacuate Citizens": config['MissionIcons']['Evacuate Citizens'],
-    "Free The City": config['MissionIcons']['Free The City'],
-    "Restore Air Quality": config['MissionIcons']['Restore Air Quality'],
-    "Cleanse Infested District": config['MissionIcons']['Cleanse Infested District']
-}
-
-# Biome banners for Planets
-BIOME_BANNERS = {
-    "Propus": config['BiomeBanners']['Desert Dunes'],
-    "Klen Dahth II": config['BiomeBanners']['Desert Dunes'],
-    "Outpost 32": config['BiomeBanners']['Desert Dunes'],
-    "Lastofe": config['BiomeBanners']['Desert Dunes'],
-    "Diaspora X": config['BiomeBanners']['Desert Dunes'],
-    "Zagon Prime": config['BiomeBanners']['Desert Dunes'],
-    "Osupsam": config['BiomeBanners']['Desert Dunes'],
-    "Mastia": config['BiomeBanners']['Desert Dunes'],
-    "Caramoor": config['BiomeBanners']['Desert Dunes'],
-    "Heze Bay": config['BiomeBanners']['Desert Dunes'],
-    "Viridia Prime": config['BiomeBanners']['Desert Dunes'],
-    "Durgen": config['BiomeBanners']['Desert Dunes'],
-    "Phact Bay": config['BiomeBanners']['Desert Dunes'],
-    "Keid": config['BiomeBanners']['Desert Dunes'],
-    "Zzaniah Prime": config['BiomeBanners']['Desert Dunes'],
-    "Choohe": config['BiomeBanners']['Desert Dunes'],
-    "Pilen V": config['BiomeBanners']['Desert Cliffs'],
-    "Zea Rugosia": config['BiomeBanners']['Desert Cliffs'],
-    "Myradesh": config['BiomeBanners']['Desert Cliffs'],
-    "Azur Secundus": config['BiomeBanners']['Desert Cliffs'],
-    "Erata Prime": config['BiomeBanners']['Desert Cliffs'],
-    "Mortax Prime": config['BiomeBanners']['Desert Cliffs'],
-    "Cerberus IIIc": config['BiomeBanners']['Desert Cliffs'],
-    "Ustotu": config['BiomeBanners']['Desert Cliffs'],
-    "Erson Sands": config['BiomeBanners']['Desert Cliffs'],
-    "Canopus": config['BiomeBanners']['Desert Cliffs'],
-    "Hydrobius": config['BiomeBanners']['Desert Cliffs'],
-    "Polaris Prime": config['BiomeBanners']['Desert Cliffs'],
-    "Darrowsport": config['BiomeBanners']['Acidic Badlands'],
-    "Darius II": config['BiomeBanners']['Acidic Badlands'],
-    "Chort Bay": config['BiomeBanners']['Acidic Badlands'],
-    "Leng Secundus": config['BiomeBanners']['Acidic Badlands'],
-    "Rirga Bay": config['BiomeBanners']['Acidic Badlands'],
-    "Shete": config['BiomeBanners']['Acidic Badlands'],
-    "Skaash": config['BiomeBanners']['Acidic Badlands'],
-    "Wraith": config['BiomeBanners']['Acidic Badlands'],
-    "Slif": config['BiomeBanners']['Acidic Badlands'],
-    "Wilford Station": config['BiomeBanners']['Acidic Badlands'],
-    "Botein": config['BiomeBanners']['Acidic Badlands'],
-    "Wasat": config['BiomeBanners']['Acidic Badlands'],
-    "Esker": config['BiomeBanners']['Acidic Badlands'],
-    "Charbal-VII": config['BiomeBanners']['Acidic Badlands'],
-    "Kraz": config['BiomeBanners']['Rocky Canyons'],
-    "Hydrofall Prime": config['BiomeBanners']['Rocky Canyons'],
-    "Myrium": config['BiomeBanners']['Rocky Canyons'],
-    "Vernen Wells": config['BiomeBanners']['Rocky Canyons'],
-    "Calypso": config['BiomeBanners']['Rocky Canyons'],
-    "Achird III": config['BiomeBanners']['Rocky Canyons'],
-    "Azterra": config['BiomeBanners']['Rocky Canyons'],
-    "Senge 23": config['BiomeBanners']['Rocky Canyons'],
-    "Emeria": config['BiomeBanners']['Rocky Canyons'],
-    "Fori Prime": config['BiomeBanners']['Rocky Canyons'],
-    "Mekbuda": config['BiomeBanners']['Rocky Canyons'],
-    "Effluvia": config['BiomeBanners']['Rocky Canyons'],
-    "Pioneer II": config['BiomeBanners']['Rocky Canyons'],
-    "Castor": config['BiomeBanners']['Rocky Canyons'],
-    "Prasa": config['BiomeBanners']['Rocky Canyons'],
-    "Kuma": config['BiomeBanners']['Rocky Canyons'],
-	"Widow's Harbor": config['BiomeBanners']['Moon'],
-	"RD-4": config['BiomeBanners']['Moon'],
-	"Claorell": config['BiomeBanners']['Moon'],
-	"Maia": config['BiomeBanners']['Moon'],
-	"Curia": config['BiomeBanners']['Moon'],
-	"Sirius": config['BiomeBanners']['Moon'],
-	"Rasp": config['BiomeBanners']['Moon'],
-	"Terrek": config['BiomeBanners']['Moon'],
-	"Dolph": config['BiomeBanners']['Moon'],
-	"Fenrir III": config['BiomeBanners']['Moon'],
-	"Zosma": config['BiomeBanners']['Moon'],
-	"Euphoria III": config['BiomeBanners']['Moon'],
-	"Primordia": config['BiomeBanners']['Volcanic Jungle'],
-	"Rogue 5": config['BiomeBanners']['Volcanic Jungle'],
-	"Alta V": config['BiomeBanners']['Volcanic Jungle'],
-	"Mantes": config['BiomeBanners']['Volcanic Jungle'],
-	"Gaellivare": config['BiomeBanners']['Volcanic Jungle'],
-	"Meissa": config['BiomeBanners']['Volcanic Jungle'],
-	"Spherion": config['BiomeBanners']['Volcanic Jungle'],
-	"Kirrik": config['BiomeBanners']['Volcanic Jungle'],
-	"Baldrick Prime": config['BiomeBanners']['Volcanic Jungle'],
-	"Zegema Paradise": config['BiomeBanners']['Volcanic Jungle'],
-	"Irulta": config['BiomeBanners']['Volcanic Jungle'],
-	"Regnus": config['BiomeBanners']['Volcanic Jungle'],
-	"Navi VII": config['BiomeBanners']['Volcanic Jungle'],
-	"Oasis": config['BiomeBanners']['Volcanic Jungle'],
-	"Pollux 31": config['BiomeBanners']['Volcanic Jungle'],
-	"Aesir Pass": config['BiomeBanners']['Deadlands'],
-	"Alderidge Cove": config['BiomeBanners']['Deadlands'],
-	"Penta": config['BiomeBanners']['Deadlands'],
-	"Ain-5": config['BiomeBanners']['Deadlands'],
-	"Skat Bay": config['BiomeBanners']['Deadlands'],
-	"Alaraph": config['BiomeBanners']['Deadlands'],
-	"Veil": config['BiomeBanners']['Deadlands'],
-	"Troost": config['BiomeBanners']['Deadlands'],
-	"Haka": config['BiomeBanners']['Deadlands'],
-	"Nivel 43": config['BiomeBanners']['Deadlands'],
-	"Pandion-XXIV": config['BiomeBanners']['Deadlands'],
-	"Cirrus": config['BiomeBanners']['Deadlands'],
-	"Mort": config['BiomeBanners']['Deadlands'],
-	"Iridica": config['BiomeBanners']['Ethereal Jungle'],
-	"Seyshel Beach": config['BiomeBanners']['Ethereal Jungle'],
-	"Ursica XI": config['BiomeBanners']['Ethereal Jungle'],
-	"Acubens Prime": config['BiomeBanners']['Ethereal Jungle'],
-	"Fort Justice": config['BiomeBanners']['Ethereal Jungle'],
-	"Sulfura": config['BiomeBanners']['Ethereal Jungle'],
-	"Alamak VII": config['BiomeBanners']['Ethereal Jungle'],
-	"Tibit": config['BiomeBanners']['Ethereal Jungle'],
-	"Mordia 9": config['BiomeBanners']['Ethereal Jungle'],
-	"Emorath": config['BiomeBanners']['Ethereal Jungle'],
-	"Shallus": config['BiomeBanners']['Ethereal Jungle'],
-	"Vindemitarix Prime": config['BiomeBanners']['Ethereal Jungle'],
-	"Zefia": config['BiomeBanners']['Ethereal Jungle'],
-	"Bekvam III": config['BiomeBanners']['Ethereal Jungle'],
-	"Turing": config['BiomeBanners']['Ethereal Jungle'],
-	"New Haven": config['BiomeBanners']['Ionic Jungle'],
-	"Prosperity Falls": config['BiomeBanners']['Ionic Jungle'],
-	"Veld": config['BiomeBanners']['Ionic Jungle'],
-	"Malevelon Creek": config['BiomeBanners']['Ionic Jungle'],
-	"Siemnot": config['BiomeBanners']['Ionic Jungle'],
-	"Alairt III": config['BiomeBanners']['Ionic Jungle'],
-	"Merak": config['BiomeBanners']['Ionic Jungle'],
-	"Gemma": config['BiomeBanners']['Ionic Jungle'],
-	"Minchir": config['BiomeBanners']['Ionic Jungle'],
-	"Kuper": config['BiomeBanners']['Ionic Jungle'],
-	"Brink-2": config['BiomeBanners']['Ionic Jungle'],
-	"Peacock": config['BiomeBanners']['Ionic Jungle'],
-	"Genesis Prime": config['BiomeBanners']['Ionic Jungle'],
-	"New Kiruna": config['BiomeBanners']['Icy Glaciers'],
-	"Borea": config['BiomeBanners']['Icy Glaciers'],
-	"Marfark": config['BiomeBanners']['Icy Glaciers'],
-	"Epsilon Phoencis VI": config['BiomeBanners']['Icy Glaciers'],
-	"Kelvinor": config['BiomeBanners']['Icy Glaciers'],
-	"Vog-Sojoth": config['BiomeBanners']['Icy Glaciers'],
-	"Alathfar XI": config['BiomeBanners']['Icy Glaciers'],
-	"Okul VI": config['BiomeBanners']['Icy Glaciers'],
-	"Julheim": config['BiomeBanners']['Icy Glaciers'],
-	"Hadar": config['BiomeBanners']['Icy Glaciers'],
-	"Mog": config['BiomeBanners']['Icy Glaciers'],
-	"Vandalon IV": config['BiomeBanners']['Icy Glaciers'],
-	"Arkturus": config['BiomeBanners']['Icy Glaciers'],
-	"Hesoe Prime": config['BiomeBanners']['Icy Glaciers'],
-	"Vega Bay": config['BiomeBanners']['Icy Glaciers'],
-	"New Stockholm": config['BiomeBanners']['Icy Glaciers'],
-	"Heeth": config['BiomeBanners']['Icy Glaciers'],
-	"Choepessa IV": config['BiomeBanners']['Boneyard'],
-	"Martyr's Bay": config['BiomeBanners']['Boneyard'],
-	"Lesath": config['BiomeBanners']['Boneyard'],
-	"Cyberstan": config['BiomeBanners']['Boneyard'],
-	"Deneb Secundus": config['BiomeBanners']['Boneyard'],
-	"Acrux IX": config['BiomeBanners']['Boneyard'],
-	"Inari": config['BiomeBanners']['Boneyard'],
-	"Estanu": config['BiomeBanners']['Boneyard'],
-	"Stor Tha Prime": config['BiomeBanners']['Boneyard'],
-	"Halies Port": config['BiomeBanners']['Boneyard'],
-	"Oslo Station": config['BiomeBanners']['Boneyard'],
-	"Igla": config['BiomeBanners']['Boneyard'],
-	"Krakatwo": config['BiomeBanners']['Boneyard'],
-	"Grafmere": config['BiomeBanners']['Boneyard'],
-	"Eukoria": config['BiomeBanners']['Boneyard'],
-	"Tien Kwan": config['BiomeBanners']['Boneyard'],
-	"Pathfinder V": config['BiomeBanners']['Plains'],
-	"Fort Union": config['BiomeBanners']['Plains'],
-	"Volterra": config['BiomeBanners']['Plains'],
-	"Gemstone Bluffs": config['BiomeBanners']['Plains'],
-	"Acamar IV": config['BiomeBanners']['Plains'],
-	"Achernar Secundus": config['BiomeBanners']['Plains'],
-	"Electra Bay": config['BiomeBanners']['Plains'],
-	"Afoyay Bay": config['BiomeBanners']['Plains'],
-	"Matar Bay": config['BiomeBanners']['Plains'],
-	"Reaf": config['BiomeBanners']['Plains'],
-	"Termadon": config['BiomeBanners']['Plains'],
-	"Fenmire": config['BiomeBanners']['Plains'],
-	"The Weir": config['BiomeBanners']['Plains'],
-	"Bellatrix": config['BiomeBanners']['Plains'],
-	"Oshaune": config['BiomeBanners']['Hive World'],
-	"Varylia 5": config['BiomeBanners']['Plains'],
-	"Hort": config['BiomeBanners']['Plains'],
-	"Draupnir": config['BiomeBanners']['Plains'],
-	"Obari": config['BiomeBanners']['Plains'],
-	"Mintoria": config['BiomeBanners']['Plains'],
-	"Midasburg": config['BiomeBanners']['Tundra'],
-	"Demiurg": config['BiomeBanners']['Tundra'],
-	"Kerth Secundus": config['BiomeBanners']['Tundra'],
-	"Aurora Bay": config['BiomeBanners']['Tundra'],
-	"Martale": config['BiomeBanners']['Tundra'],
-	"Crucible": config['BiomeBanners']['Tundra'],
-	"Shelt": config['BiomeBanners']['Tundra'],
-	"Trandor": config['BiomeBanners']['Tundra'],
-	"Andar": config['BiomeBanners']['Tundra'],
-	"Diluvia": config['BiomeBanners']['Tundra'],
-	"Bunda Secundus": config['BiomeBanners']['Tundra'],
-	"Ilduna Prime": config['BiomeBanners']['Tundra'],
-	"Omicron": config['BiomeBanners']['Tundra'],
-	"Ras Algethi": config['BiomeBanners']['Tundra'],
-	"Duma Tyr": config['BiomeBanners']['Tundra'],
-	"Adhara": config['BiomeBanners']['Scorched Moor'],
-	"Hellmire": config['BiomeBanners']['Scorched Moor'],
-	"Imber": config['BiomeBanners']['Scorched Moor'],
-	"Menkent": config['BiomeBanners']['Scorched Moor'],
-	"Blistica": config['BiomeBanners']['Scorched Moor'],
-	"Herthon Secundus": config['BiomeBanners']['Scorched Moor'],
-	"Pöpli IX": config['BiomeBanners']['Scorched Moor'],
-	"Partion": config['BiomeBanners']['Scorched Moor'],
-	"Wezen": config['BiomeBanners']['Scorched Moor'],
-	"Marre IV": config['BiomeBanners']['Scorched Moor'],
-	"Karlia": config['BiomeBanners']['Scorched Moor'],
-	"Maw": config['BiomeBanners']['Scorched Moor'],
-	"Kneth Port": config['BiomeBanners']['Scorched Moor'],
-	"Grand Errant": config['BiomeBanners']['Scorched Moor'],
-	"Fort Sanctuary": config['BiomeBanners']['Ionic Crimson'],
-	"Elysian Meadows": config['BiomeBanners']['Ionic Crimson'],
-	"Acrab XI": config['BiomeBanners']['Ionic Crimson'],
-	"Enuliale": config['BiomeBanners']['Ionic Crimson'],
-	"Liberty Ridge": config['BiomeBanners']['Ionic Crimson'],
-	"Stout": config['BiomeBanners']['Ionic Crimson'],
-	"Gatria": config['BiomeBanners']['Ionic Crimson'],
-	"Freedom Peak": config['BiomeBanners']['Ionic Crimson'],
-	"Ubanea": config['BiomeBanners']['Ionic Crimson'],
-	"Valgaard": config['BiomeBanners']['Ionic Crimson'],
-	"Valmox": config['BiomeBanners']['Ionic Crimson'],
-	"Overgoe Prime": config['BiomeBanners']['Ionic Crimson'],
-	"Providence": config['BiomeBanners']['Ionic Crimson'],
-	"Kharst": config['BiomeBanners']['Ionic Crimson'],
-	"Gunvald": config['BiomeBanners']['Ionic Crimson'],
-	"Yed Prior": config['BiomeBanners']['Ionic Crimson'],
-	"Ingmar": config['BiomeBanners']['Ionic Crimson'],
-	"Crimsica": config['BiomeBanners']['Ionic Crimson'],
-	"Charon Prime": config['BiomeBanners']['Ionic Crimson'],
-	"Clasa": config['BiomeBanners']['Basic Swamp'],
-	"Seasse": config['BiomeBanners']['Basic Swamp'],
-	"Parsh": config['BiomeBanners']['Basic Swamp'],
-	"East Iridium Trading Bay": config['BiomeBanners']['Basic Swamp'],
-	"Gacrux": config['BiomeBanners']['Basic Swamp'],
-	"Barabos": config['BiomeBanners']['Basic Swamp'],
-	"Ivis": config['BiomeBanners']['Basic Swamp'],
-	"Fornskogur II": config['BiomeBanners']['Basic Swamp'],
-	"Nabatea Secundus": config['BiomeBanners']['Basic Swamp'],
-	"Haldus": config['BiomeBanners']['Basic Swamp'],
-	"Caph": config['BiomeBanners']['Basic Swamp'],
-	"Bore Rock": config['BiomeBanners']['Basic Swamp'],
-	"X-45": config['BiomeBanners']['Basic Swamp'],
-	"Pherkad Secundus": config['BiomeBanners']['Basic Swamp'],
-	"Krakabos": config['BiomeBanners']['Basic Swamp'],
-	"Asperoth Prime": config['BiomeBanners']['Basic Swamp'],
-	"Atrama": config['BiomeBanners']['Haunted Swamp'],
-	"Setia": config['BiomeBanners']['Haunted Swamp'],
-	"Tarsh": config['BiomeBanners']['Haunted Swamp'],
-	"Gar Haren": config['BiomeBanners']['Haunted Swamp'],
-	"Merga IV": config['BiomeBanners']['Haunted Swamp'],
-	"Ratch": config['BiomeBanners']['Haunted Swamp'],
-	"Bashyr": config['BiomeBanners']['Haunted Swamp'],
-	"Nublaria I": config['BiomeBanners']['Haunted Swamp'],
-	"Solghast": config['BiomeBanners']['Haunted Swamp'],
-	"Iro": config['BiomeBanners']['Haunted Swamp'],
-	"Socorro III": config['BiomeBanners']['Haunted Swamp'],
-	"Khandark": config['BiomeBanners']['Haunted Swamp'],
-	"Klaka 5": config['BiomeBanners']['Haunted Swamp'],
-	"Skitter": config['BiomeBanners']['Haunted Swamp'],
-    "Angel's Venture": config['BiomeBanners']['Fractured Planet'],
-    "Moradesh": config['BiomeBanners']['Fractured Planet'],
-    "Meridia": config['BiomeBanners']['Black Hole'],
-    "Super Earth": config['BiomeBanners']['Super Earth']
-}
-
-# Title icons for Titles
-TITLE_ICONS = {
-    "CADET": config['TitleIcons']['CADET'],
-    "SPACE CADET": config['TitleIcons']['SPACE CADET'], 
-    "SERGEANT": config['TitleIcons']['SERGEANT'],
-    "MASTER SERGEANT": config['TitleIcons']['MASTER SERGEANT'],
-    "CHIEF": config['TitleIcons']['CHIEF'],
-    "SPACE CHIEF PRIME": config['TitleIcons']['SPACE CHIEF PRIME'],
-    "DEATH CAPTAIN": config['TitleIcons']['DEATH CAPTAIN'],
-    "MARSHAL": config['TitleIcons']['MARSHAL'],
-    "STAR MARSHAL": config['TitleIcons']['STAR MARSHAL'],
-    "ADMIRAL": config['TitleIcons']['ADMIRAL'], 
-    "SKULL ADMIRAL": config['TitleIcons']['SKULL ADMIRAL'],
-    "FLEET ADMIRAL": config['TitleIcons']['FLEET ADMIRAL'],
-    "ADMIRABLE ADMIRAL": config['TitleIcons']['ADMIRABLE ADMIRAL'],
-    "COMMANDER": config['TitleIcons']['COMMANDER'],
-    "GALACTIC COMMANDER": config['TitleIcons']['GALACTIC COMMANDER'],
-    "HELL COMMANDER": config['TitleIcons']['HELL COMMANDER'],
-    "GENERAL": config['TitleIcons']['GENERAL'],
-    "5-STAR GENERAL": config['TitleIcons']['5-STAR GENERAL'],
-    "10-STAR GENERAL": config['TitleIcons']['10-STAR GENERAL'],
-    "PRIVATE": config['TitleIcons']['PRIVATE'],
-    "SUPER PRIVATE": config['TitleIcons']['SUPER PRIVATE'],
-    "SUPER CITIZEN": config['TitleIcons']['SUPER CITIZEN'],
-    "VIPER COMMANDO": config['TitleIcons']['VIPER COMMANDO'],
-    "FIRE SAFETY OFFICER": config['TitleIcons']['FIRE SAFETY OFFICER'],
-    "EXPERT EXTERMINATOR": config['TitleIcons']['EXPERT EXTERMINATOR'],
-    "FREE OF THOUGHT": config['TitleIcons']['FREE OF THOUGHT'],
-    "SUPER PEDESTRIAN": config['TitleIcons']['SUPER PEDESTRIAN'],
-    "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
-    "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
-    "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
-    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL'],
-    "EXEMPLARY SUBJECT": config['TitleIcons']['EXEMPLARY SUBJECT'],
-    "ROOKIE": config['TitleIcons']['ROOKIE'],
-    "BURIER OF HEADS": config['TitleIcons']['BURIER OF HEADS']
-}
-
-
-PROFILE_PICTURES = {
-    "B-01 Tactical": config['ProfilePictures']['B-01 Tactical'],
-    "TR-7 Ambassador of the Brand": config['ProfilePictures']['TR-7 Ambassador of the Brand'],
-    "TR-9 Cavalier of Democracy": config['ProfilePictures']['TR-9 Cavalier of Democracy'],
-    "TR-62 Knight": config['ProfilePictures']['TR-62 Knight'],
-    "DP-53 Savior of the Free": config['ProfilePictures']['DP-53 Savior of the Free'],
-    "TR-117 Alpha Commander": config['ProfilePictures']['TR-117 Alpha Commander'],
-    "SC-37 Legionnaire": config['ProfilePictures']['SC-37 Legionnaire'],
-    "SC-15 Drone Master": config['ProfilePictures']['SC-15 Drone Master'],
-    "SC-34 Infiltrator": config['ProfilePictures']['SC-34 Infiltrator'],
-    "FS-05 Marksman": config['ProfilePictures']['FS-05 Marksman'],
-    "CD-35 Trench Engineer": config['ProfilePictures']['CD-35 Trench Engineer'],
-    "CM-09 Bonesnapper": config['ProfilePictures']['CM-09 Bonesnapper'],
-    "DP-40 Hero of the Federation": config['ProfilePictures']['DP-40 Hero of the Federation'],
-    "FS-23 Battle Master": config['ProfilePictures']['FS-23 Battle Master'],
-    "SC-30 Trailblazer Scout": config['ProfilePictures']['SC-30 Trailblazer Scout'],
-    "SA-04 Combat Technician": config['ProfilePictures']['SA-04 Combat Technician'],
-    "CM-14 Physician": config['ProfilePictures']['CM-14 Physician'],
-    "DP-11 Champion of the People": config['ProfilePictures']['DP-11 Champion of the People'],
-    "SA-25 Steel Trooper": config['ProfilePictures']['SA-25 Steel Trooper'],
-    "SA-12 Servo Assisted": config['ProfilePictures']['SA-12 Servo Assisted'],
-    "SA-32 Dynamo": config['ProfilePictures']['SA-32 Dynamo'],
-    "B-24 Enforcer": config['ProfilePictures']['B-24 Enforcer'],
-    "CE-74 Breaker": config['ProfilePictures']['CE-74 Breaker'],
-    "B-27 Fortified Commando": config['ProfilePictures']['B-27 Fortified Commando'],
-    "FS-38 Eradicator": config['ProfilePictures']['FS-38 Eradicator'],
-    "B-08 Light Gunner": config['ProfilePictures']['B-08 Light Gunner'],
-    "FS-61 Dreadnought": config['ProfilePictures']['FS-61 Dreadnought'],
-    "FS-11 Executioner": config['ProfilePictures']['FS-11 Executioner'],
-    "CM-21 Trench Paramedic": config['ProfilePictures']['CM-21 Trench Paramedic'],
-    "CE-81 Juggernaut": config['ProfilePictures']['CE-81 Juggernaut'],
-    "FS-34 Exterminator": config['ProfilePictures']['FS-34 Exterminator'],
-    "CE-67 Titan": config['ProfilePictures']['CE-67 Titan'],
-    "CM-17 Butcher": config['ProfilePictures']['CM-17 Butcher'],
-    "EX-03 Prototype 3": config['ProfilePictures']['EX-03 Prototype 3'],
-    "EX-16 Prototype 16": config['ProfilePictures']['EX-16 Prototype 16'],
-    "EX-00 Prototype X": config['ProfilePictures']['EX-00 Prototype X'],
-    "CE-27 Ground Breaker": config['ProfilePictures']['CE-27 Ground Breaker'],
-    "CE-07 Demolition Specialist": config['ProfilePictures']['CE-07 Demolition Specialist'],
-    "FS-55 Devastator": config['ProfilePictures']['FS-55 Devastator'],
-    "CM-10 Clinician": config['ProfilePictures']['CM-10 Clinician'],
-    "FS-37 Ravager": config['ProfilePictures']['FS-37 Ravager'],
-    "CW-9 White Wolf": config['ProfilePictures']['CW-9 White Wolf'],
-    "CE-64 Grenadier": config['ProfilePictures']['CE-64 Grenadier'],
-    "CW-36 Winter Warrior": config['ProfilePictures']['CW-36 Winter Warrior'],
-    "CW-22 Kodiak": config['ProfilePictures']['CW-22 Kodiak'],
-    "CW-4 Arctic Ranger": config['ProfilePictures']['CW-4 Arctic Ranger'],
-    "PH-56 Jaguar": config['ProfilePictures']['PH-56 Jaguar'],
-    "CE-101 Guerilla Gorilla": config['ProfilePictures']['CE-101 Guerilla Gorilla'],
-    "PH-9 Predator": config['ProfilePictures']['PH-9 Predator'],
-    "PH-202 Twigsnapper": config['ProfilePictures']['PH-202 Twigsnapper'],
-    "TR-40 Gold Eagle": config['ProfilePictures']['TR-40 Gold Eagle'],
-    "I-44 Salamander": config['ProfilePictures']['I-44 Salamander'],
-    "I-92 Fire Fighter": config['ProfilePictures']['I-92 Fire Fighter'],
-    "I-09 Heatseeker": config['ProfilePictures']['I-09 Heatseeker'],
-    "I-102 Draconaught": config['ProfilePictures']['I-102 Draconaught'],
-    "AF-52 Lockdown": config['ProfilePictures']['AF-52 Lockdown'],
-    "AF-91 Field Chemist": config['ProfilePictures']['AF-91 Field Chemist'],
-    "AF-50 Noxious Ranger": config['ProfilePictures']['AF-50 Noxious Ranger'],
-    "AF-02 Haz-Master": config['ProfilePictures']['AF-02 Haz-Master'],
-    "DP-00 Tactical": config['ProfilePictures']['DP-00 Tactical'],
-    "UF-84 Doubt Killer": config['ProfilePictures']['UF-84 Doubt Killer'],
-    "UF-50 Bloodhound": config['ProfilePictures']['UF-50 Bloodhound'],
-    "UF-16 Inspector": config['ProfilePictures']['UF-16 Inspector'],
-    "SR-64 Cinderblock": config['ProfilePictures']['SR-64 Cinderblock'],
-    "SR-24 Street Scout": config['ProfilePictures']['SR-24 Street Scout'],
-    "SR-18 Roadblock": config['ProfilePictures']['SR-18 Roadblock'],
-    "AC-1 Dutiful": config['ProfilePictures']['AC-1 Dutiful'],
-    "AC-2 Obedient": config['ProfilePictures']['AC-2 Obedient'],
-    "IE-57 Hell-Bent": config['ProfilePictures']['IE-57 Hell-Bent'],
-    "IE-3 Martyr": config['ProfilePictures']['IE-3 Martyr'], 
-    "IE-12 Righteous": config['ProfilePictures']['IE-12 Righteous'],
-    "B-22 Model Citizen": config['ProfilePictures']['B-22 Model Citizen'],
-    "GS-11 Democracy's Deputy": config['ProfilePictures']['GS-11 Democracy\'s Deputy'],
-    "GS-17 Frontier Marshal": config['ProfilePictures']['GS-17 Frontier Marshal'],
-    "GS-66 Lawmaker": config['ProfilePictures']['GS-66 Lawmaker'],
-    "RE-824 Bearer of the Standard": config['ProfilePictures']['RE-824 Bearer of the Standard'],
-    "RE-2310 Honorary Guard": config['ProfilePictures']['RE-2310 Honorary Guard'],
-    "RE-1861 Parade Commander": config['ProfilePictures']['RE-1861 Parade Commander'],
-    "BP-20 Corrections Officer": config['ProfilePictures']['BP-20 Corrections Officer'],
-    "BP-32 Jackboot": config['ProfilePictures']['BP-32 Jackboot'],
-    "BP-77 Grand Juror": config['ProfilePictures']['BP-77 Grand Juror'],
-    "AD-11 Livewire": config['ProfilePictures']['AD-11 Livewire'],
-    "AD-26 Bleeding Edge": config['ProfilePictures']['AD-26 Bleeding Edge'],
-    "AD-49 Apollonian": config['ProfilePictures']['AD-49 Apollonian'],
-    "A-9 Helljumper": config['ProfilePictures']['A-9 Helljumper'],
-    "A-35 Recon": config['ProfilePictures']['A-35 Recon'],
-    "DS-191 Scorpion": config['ProfilePictures']['DS-191 Scorpion'],
-    "DS-42 Federation's Blade": config['ProfilePictures']['DS-42 Federation\'s Blade']
-}
 
 # Read the Excel file
 try:
@@ -564,6 +49,13 @@ helldiver_name = df['Helldivers'].iloc[-1] if 'Helldivers' in df.columns else "U
 helldiver_level = df['Level'].iloc[-1] if 'Level' in df.columns else 0
 helldiver_title = df['Title'].iloc[-1] if 'Title' in df.columns else "Unknown"
 
+if DEBUG:
+    webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
+else:
+    # Load webhook URLs from DCord.json
+    with open('DCord.json', 'r') as f:
+        discord_data = json.load(f)
+        webhook_urls = discord_data.get('discord_webhooks', [])
 
 if Rating_Percentage >= 90:
     Rating = "Outstanding Patriotism"
@@ -618,6 +110,43 @@ def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     closest_ts = valid_times.loc[closest_idx]
 
     return closest_ts.strftime('%d-%m-%Y %H:%M:%S')
+
+def get_first_deployment(df: pd.DataFrame, enemy_type: str) -> str:
+    if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
+        return 'No date available'
+
+    # Filter rows for the enemy type
+    subset = df[df['Enemy Type'] == enemy_type]
+    if subset.empty:
+        return 'No deployments'
+
+    # Clean and parse time strings 
+    times_raw = subset['Time'].astype(str).str.strip()
+
+    # Normalize any '/' to '-' just in case
+    times_normalized = times_raw.str.replace('/', '-', regex=False)
+
+    # First try strict expected format
+    times_parsed = pd.to_datetime(times_normalized,
+                                  format='%d-%m-%Y %H:%M:%S', 
+                                  errors='coerce')
+
+    # Fallback: attempt a more permissive parse (dayfirst=True)
+    if times_parsed.isna().all():
+        times_parsed = pd.to_datetime(times_normalized,
+                                      errors='coerce',
+                                      dayfirst=True)
+
+    # Drop NaT values
+    valid_mask = ~times_parsed.isna()
+    if not valid_mask.any():
+        return 'No valid dates'
+
+    valid_times = times_parsed[valid_mask]
+
+    # Get the earliest timestamp
+    first_ts = valid_times.min()
+    return first_ts.strftime('%d-%m-%Y %H:%M:%S')
 
 # Iterate through each row
 for index, row in df.iterrows():
@@ -699,13 +228,42 @@ MissionCount = df.apply(lambda row: row.astype(str).str.contains(search_mission,
 search_campaign = df['Mission Category'].mode()[0]
 CampaignCount = df.apply(lambda row: row.astype(str).str.contains(search_campaign, case=False).sum(), axis=1).sum()
 search_faction = df['Enemy Type'].mode()[0]
-FactionCount = df.apply(lambda row: row.astype(str).str.contains(search_faction, case=False).sum(), axis=1).sum()
+FactionCount = df['Enemy Type'].apply(lambda x: str(x).lower() == search_faction.lower()).sum()
+search_subfaction = df['Enemy Subfaction'].mode()[0]
+SubfactionCount = df.apply(lambda row: row.astype(str).str.contains(search_subfaction, case=False).sum(), axis=1).sum()
 search_difficulty = df['Difficulty'].mode()[0]
 DifficultyCount = df.apply(lambda row: row.astype(str).str.contains(search_difficulty, case=False).sum(), axis=1).sum()
 search_planet = df['Planet'].mode()[0]
-PlanetCount = df.apply(lambda row: row.astype(str).str.contains(search_planet, case=False).sum(), axis=1).sum()
+PlanetCount = df['Planet'].apply(lambda x: str(x).lower() == search_planet.lower()).sum()
 search_sector = df['Sector'].mode()[0]
 SectorCount = df.apply(lambda row: row.astype(str).str.contains(search_sector, case=False).sum(), axis=1).sum()
+
+# Get discord_uid from DCord.json
+with open('DCord.json', 'r') as f:
+    dcord_data = json.load(f)
+    user_discord_uid = dcord_data.get('discord_uid', '')
+
+bicon = iconconfig['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+            
+if dcord_data.get('platform') == 'Steam':
+        PIco = iconconfig['BadgeIcons-Platform']['Steam']
+elif dcord_data.get('platform') == 'PlayStation':
+        PIco = iconconfig['BadgeIcons-Platform']['PlayStation']
+elif dcord_data.get('platform') == 'Xbox':
+        PIco = iconconfig['BadgeIcons-Platform']['Xbox']
+else:
+        PIco = ''
+# Check mission log for planet visits
+excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
+try:
+    df = pd.read_excel(excel_file)
+    bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
+    bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
+    bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
+    bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+    bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+except Exception as e:
+    logging.error(f"Error checking mission log for planet visits: {e}")
 
 highest_streak = 0
 profile_picture = ""
@@ -719,6 +277,13 @@ with open('streak_data.json', 'r') as f:
 with open('DCord.json', 'r') as f:
     dcord_data = json.load(f)
 
+# Calculate Mega City deployments excluding "Planet Surface" and empty values
+mega_city_count = df[df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
+
+terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+
 # Create embed data
 embed_data = {
     "content": None,
@@ -728,12 +293,15 @@ embed_data = {
             "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773>  <a:easyshine2:1349110649753698305> Combat Statistics <a:easyshine2:1349110649753698305> <a:easyshine3:1349110648528699422>\n" + 
                         f"> Kills - {df['Kills'].sum()}\n" +
                         f"> Deaths - {df['Deaths'].sum()}\n" +
+                        f"> KDR - {(df['Kills'].sum() / df['Deaths'].sum()):.2f}\n" +
                         f"> Highest Kills in Mission - {df['Kills'].max()}\n" +
 
                         f"\n<a:easyshine1:1349110651829747773>  <a:easysuperearth:1343266082881802443> Mission Statistics <a:easysuperearth:1343266082881802443> <a:easyshine3:1349110648528699422>\n" + 
                         f"> Deployments - {len(df)}\n" +
                         f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n" +
                         f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n" +
+                        f"> Mega City Deployments - {mega_city_count}\n" +
+                        f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode()[0])}\n" +
 
                         f"\n<a:easyshine1:1349110651829747773>  <a:easyskullgold:1232018045791375360> Performance Statistics <a:easyskullgold:1232018045791375360> <a:easyshine3:1349110648528699422>\n" +                      
                         f"> Rating - {Rating} | {int(Rating_Percentage)}%\n" +
@@ -743,12 +311,13 @@ embed_data = {
                         f"> Mission - {df['Mission Type'].mode()[0]} {MISSION_ICONS.get(df['Mission Type'].mode()[0], '')} (x{MissionCount})\n" +
                         f"> Campaign - {df['Mission Category'].mode()[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode()[0], '')} (x{CampaignCount})\n" +
                         f"> Faction - {df['Enemy Type'].mode()[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode()[0], '')} (x{FactionCount})\n" +
+                        f"> Subfaction - {df['Enemy Subfaction'].mode()[0]} {SUBFACTION_ICONS.get(df['Enemy Subfaction'].mode()[0], '')} (x{SubfactionCount})\n"
                         f"> Difficulty - {df['Difficulty'].mode()[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode()[0], '')} (x{DifficultyCount})\n" +
                         f"> Planet - {df['Planet'].mode()[0]} {PLANET_ICONS.get(df['Planet'].mode()[0], '')} (x{PlanetCount})\n" +
                         f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n",
             "color": 7257043,
             "author": {"name": "SEAF Battle Record"},
-            "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
+            "footer": {"text": f"{discord_data['discord_uid']}   v{VERSION}{DEV_RELEASE}","icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode()[0], '')}"},
             "thumbnail": {"url": f"{profile_picture}"}
         },
@@ -757,12 +326,14 @@ embed_data = {
       "description": f"<a:easyshine1:1349110651829747773> <:hd2bugs:1337190441170370693> Terminid Front Statistics <:hd2bugs:1337190441170370693> <a:easyshine3:1349110648528699422>\n" +
                          f"> <:resistance:1370883421496148068> Kills - {df[df['Enemy Type'] == 'Terminids']['Kills'].sum()}\n" +
                          f"> <:helldiverHD:1370887412443648070> Deaths - {df[df['Enemy Type'] == 'Terminids']['Deaths'].sum()}\n" +
+                         f"> <:kdr:1413294827277254717> KDR - {(df[df['Enemy Type'] == 'Terminids']['Kills'].sum() / df[df['Enemy Type'] == 'Terminids']['Deaths'].sum()):.2f}\n" +
                          f"> <:highprioritytarget:1370882658019704903> Highest Kills in Mission - {df[df['Enemy Type'] == 'Terminids']['Kills'].max()}\n\n" +
 
                          f"> <:deployments:1370887552525139968> Deployments - {df[df['Enemy Type'] == 'Terminids']['Enemy Type'].count().sum()}\n" +
                          f"> <:major_order:1356035244033048788> Major Order Deployments - {df[df['Enemy Type'] == 'Terminids']['Major Order'].astype(int).sum()}\n" +
                          f"> <:dss:1356034406430806036> DSS Deployments - {df[df['Enemy Type'] == 'Terminids']['DSS Active'].astype(int).sum()}\n" +
-                         f"> <:lastdeployment:1370887542445965564> Last Deployment - {get_last_deployment(df, 'Terminids')}\n\n" +
+                         f"> <:bugmegacity:1413306697182875669> Mega City Deployments - {terminids_mega_city_count}\n" +
+                         f"> <:last_deploy:1413295626258481172> Last Deployment - {get_last_deployment(df, 'Terminids')}\n\n" +
 
                          f"> <:liberation_campaign:1355955855572602962> Liberations - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
                          f"> <:defence_campaign:1355955857480876282> Defenses - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Defense']['Mission Category'].count().sum()}\n" +
@@ -784,12 +355,14 @@ embed_data = {
       "description": "<a:easyshine1:1349110651829747773> <:hd2bots:1337190442449502208> Automaton Front Statistics <:hd2bots:1337190442449502208> <a:easyshine3:1349110648528699422>\n" +
                          f"> <:resistance:1370883421496148068> Kills - {df[df['Enemy Type'] == 'Automatons']['Kills'].sum()}\n" +
                          f"> <:helldiverHD:1370887412443648070> Deaths - {df[df['Enemy Type'] == 'Automatons']['Deaths'].sum()}\n" +
+                         f"> <:kdr:1413294827277254717> KDR - {(df[df['Enemy Type'] == 'Automatons']['Kills'].sum() / df[df['Enemy Type'] == 'Automatons']['Deaths'].sum()):.2f}\n" +
                          f"> <:highprioritytarget:1370882658019704903> Highest Kills in Mission - {df[df['Enemy Type'] == 'Automatons']['Kills'].max()}\n\n" +
 
                          f"> <:deployments:1370887552525139968> Deployments - {df[df['Enemy Type'] == 'Automatons']['Enemy Type'].count().sum()}\n" +
                          f"> <:major_order:1356035244033048788> Major Order Deployments - {df[df['Enemy Type'] == 'Automatons']['Major Order'].astype(int).sum()}\n" +
                          f"> <:dss:1356034406430806036> DSS Deployments - {df[df['Enemy Type'] == 'Automatons']['DSS Active'].astype(int).sum()}\n" +
-                         f"> <:lastdeployment:1370887542445965564> Last Deployment - {get_last_deployment(df, 'Automatons')}\n\n" +
+                         f"> <:botmegacity:1413306695391645809> Mega City Deployments - {automatons_mega_city_count}\n" +
+                         f"> <:last_deploy:1413295626258481172> Last Deployment - {get_last_deployment(df, 'Automatons')}\n\n" +
 
                          f"> <:liberation_campaign:1355955855572602962> Liberations - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
                          f"> <:defence_campaign:1355955857480876282> Defenses - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Defense']['Mission Category'].count().sum()}\n" +
@@ -812,12 +385,14 @@ embed_data = {
       "description": "<a:easyshine1:1349110651829747773> <:hd2squids:1337190439979319306> Illuminate Cult Statistics <:hd2squids:1337190439979319306> <a:easyshine3:1349110648528699422>\n" +
                          f"> <:resistance:1370883421496148068> Kills - {df[df['Enemy Type'] == 'Illuminate']['Kills'].sum()}\n" +
                          f"> <:helldiverHD:1370887412443648070> Deaths - {df[df['Enemy Type'] == 'Illuminate']['Deaths'].sum()}\n" +
+                         f"> <:kdr:1413294827277254717> KDR - {(df[df['Enemy Type'] == 'Illuminate']['Kills'].sum() / df[df['Enemy Type'] == 'Illuminate']['Deaths'].sum()):.2f}\n" +
                          f"> <:highprioritytarget:1370882658019704903> Highest Kills in Mission - {df[df['Enemy Type'] == 'Illuminate']['Kills'].max()}\n\n" +
 
                          f"> <:deployments:1370887552525139968> Deployments - {df[df['Enemy Type'] == 'Illuminate']['Enemy Type'].count().sum()}\n" +
                          f"> <:major_order:1356035244033048788> Major Order Deployments - {df[df['Enemy Type'] == 'Illuminate']['Major Order'].astype(int).sum()}\n" +
                          f"> <:dss:1356034406430806036> DSS Deployments - {df[df['Enemy Type'] == 'Illuminate']['DSS Active'].astype(int).sum()}\n" +
-                         f"> <:lastdeployment:1370887542445965564> Last Deployment - {get_last_deployment(df, 'Illuminate')}\n\n" +
+                         f"> <:squidmegacity:1413306694032687114> Mega City Deployments - {illuminate_mega_city_count}\n" +
+                         f"> <:last_deploy:1413295626258481172> Last Deployment - {get_last_deployment(df, 'Illuminate')}\n\n" +
 
                          f"> <:liberation_campaign:1355955855572602962> Liberations - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
                          f"> <:defence_campaign:1355955857480876282> Defenses - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Defense']['Mission Category'].count().sum()}\n" +
@@ -839,23 +414,23 @@ embed_data = {
 }
 
 # Update the embed title with name and level
-embed_data["embeds"][0]["title"] = f"{helldiver_ses}\nHelldiver: {helldiver_name}"
+embed_data["embeds"][0]["title"] = f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}"
 
 # Enemy type specific embeds with icons
 enemy_icons = {
     "Automatons": {
-        "emoji": config['EnemyIcons']['Automatons'],
-        "color": int(config['SystemColors']['Automatons']),
+        "emoji": iconconfig['EnemyIcons']['Automatons'],
+        "color": int(iconconfig['SystemColors']['Automatons']),
         "url": "https://i.ibb.co/bgNp2q73/Automatons-Icon.png"
     },
     "Terminids": {
-        "emoji": config['EnemyIcons']['Terminids'],
-        "color": int(config['SystemColors']['Terminids']),
+        "emoji": iconconfig['EnemyIcons']['Terminids'],
+        "color": int(iconconfig['SystemColors']['Terminids']),
         "url": "https://i.ibb.co/PspGgJkH/Terminids-Icon.png"
     },
     "Illuminate": {
-        "emoji": config['EnemyIcons']['Illuminate'],
-        "color": int(config['SystemColors']['Illuminate']),
+        "emoji": iconconfig['EnemyIcons']['Illuminate'],
+        "color": int(iconconfig['SystemColors']['Illuminate']),
         "url": "https://i.ibb.co/wr4Nm5HT/Illuminate-Icon.png"
     }
 }

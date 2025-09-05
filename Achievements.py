@@ -4,6 +4,8 @@ import requests
 import json
 import logging
 from logging_config import setup_logging
+from icon import TITLE_ICONS
+from main import VERSION, DEV_RELEASE
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
@@ -119,45 +121,6 @@ WEBHOOK_URLS = {
     'TEST': config['Webhooks']['TEST'].split(',')
 }
 ACTIVE_WEBHOOK = WEBHOOK_URLS['TEST'] if DEBUG else WEBHOOK_URLS['PROD']
-
-#get title icons
-TITLE_ICONS = {
-    "CADET": config['TitleIcons']['CADET'],
-    "SPACE CADET": config['TitleIcons']['SPACE CADET'], 
-    "SERGEANT": config['TitleIcons']['SERGEANT'],
-    "MASTER SERGEANT": config['TitleIcons']['MASTER SERGEANT'],
-    "CHIEF": config['TitleIcons']['CHIEF'],
-    "SPACE CHIEF PRIME": config['TitleIcons']['SPACE CHIEF PRIME'],
-    "DEATH CAPTAIN": config['TitleIcons']['DEATH CAPTAIN'],
-    "MARSHAL": config['TitleIcons']['MARSHAL'],
-    "STAR MARSHAL": config['TitleIcons']['STAR MARSHAL'],
-    "ADMIRAL": config['TitleIcons']['ADMIRAL'], 
-    "SKULL ADMIRAL": config['TitleIcons']['SKULL ADMIRAL'],
-    "FLEET ADMIRAL": config['TitleIcons']['FLEET ADMIRAL'],
-    "ADMIRABLE ADMIRAL": config['TitleIcons']['ADMIRABLE ADMIRAL'],
-    "COMMANDER": config['TitleIcons']['COMMANDER'],
-    "GALACTIC COMMANDER": config['TitleIcons']['GALACTIC COMMANDER'],
-    "HELL COMMANDER": config['TitleIcons']['HELL COMMANDER'],
-    "GENERAL": config['TitleIcons']['GENERAL'],
-    "5-STAR GENERAL": config['TitleIcons']['5-STAR GENERAL'],
-    "10-STAR GENERAL": config['TitleIcons']['10-STAR GENERAL'],
-    "PRIVATE": config['TitleIcons']['PRIVATE'],
-    "SUPER PRIVATE": config['TitleIcons']['SUPER PRIVATE'],
-    "SUPER CITIZEN": config['TitleIcons']['SUPER CITIZEN'],
-    "VIPER COMMANDO": config['TitleIcons']['VIPER COMMANDO'],
-    "FIRE SAFETY OFFICER": config['TitleIcons']['FIRE SAFETY OFFICER'],
-    "EXPERT EXTERMINATOR": config['TitleIcons']['EXPERT EXTERMINATOR'],
-    "FREE OF THOUGHT": config['TitleIcons']['FREE OF THOUGHT'],
-    "SUPER PEDESTRIAN": config['TitleIcons']['SUPER PEDESTRIAN'],
-    "ASSAULT INFANTRY": config['TitleIcons']['ASSAULT INFANTRY'],
-    "SERVANT OF FREEDOM": config['TitleIcons']['SERVANT OF FREEDOM'],
-    "SUPER SHERIFF": config['TitleIcons']['SUPER SHERIFF'],
-    "DECORATED HERO": config['TitleIcons']['DECORATED HERO'],
-    "EXTRA JUDICIAL": config['TitleIcons']['EXTRA JUDICIAL'],
-    "EXEMPLARY SUBJECT": config['TitleIcons']['EXEMPLARY SUBJECT'],
-    "ROOKIE": config['TitleIcons']['ROOKIE'],
-    "BURIER OF HEADS": config['TitleIcons']['BURIER OF HEADS']
-}
 
 # Define achievement metadata for messages and titles
 ACHIEVEMENT_DEFS = {
@@ -282,6 +245,15 @@ WEBHOOK_URLS = {
 }
 ACTIVE_WEBHOOK = WEBHOOK_URLS['TEST'] if DEBUG else WEBHOOK_URLS['PROD']
 
+# UID from local DCord.json (user settings)
+try:
+    with open('DCord.json', 'r') as f:
+        settings_data = json.load(f)
+        UID = settings_data.get('discord_uid', '0')
+except (FileNotFoundError, json.JSONDecodeError) as e:
+    logging.error(f"Error loading settings.json: {e}")
+    UID = '0'  # Fallback to default
+
 # Create embed data
 embed_data = {
     "content": None,
@@ -333,7 +305,7 @@ embed_data = {
                         
             "color": 7257043,
             "author": {"name": "SEAF Battle Record"},
-            "footer": {"text": config['Discord']['UID'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
+            "footer": {"text": f"\n{UID}   v{VERSION}{DEV_RELEASE}","icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": f"https://cdn.discordapp.com/attachments/1340508329977446484/1374164186850000957/helldiversBanner.png?ex=682d0da0&is=682bbc20&hm=c80377ccc47f3e1b08661f1f48fadc8f8c171dbb9158087a9a96613a0ad366fb&"},
             "thumbnail": {"url": f"{profile_picture}"}
         }
