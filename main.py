@@ -29,12 +29,12 @@ import subprocess
 import random
 import re
 import webbrowser
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
+from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, PLANET_PROFILES
 
 # Manual Configuration
-GWDay = "Day: 575"
-GWDate = "Date: 05/09/2025"
-VERSION = "1.5.007"
+GWDay = "Day: 577"
+GWDate = "Date: 07/09/2025"
+VERSION = "1.5.008"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -181,9 +181,7 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Jet Brigade & Incineration Corps": "JetBrigadeIncinerationCorps",
         "Spore Burst Strain": "SporeBurstStrain",
         "The Great Host": "TheGreatHost",
-        "Rupture Strain": "RuptureStrain",
-        "Hive Lords": "HiveLords",
-        "Rupture Strain & Hive Lords": "RuptureStrainHiveLords"
+        "Rupture Strain": "RuptureStrain"
     }
     return replacements.get(normalized, normalized)
 
@@ -484,46 +482,68 @@ class MissionLogGUI:
         ttk.Entry(mission_frame, textvariable=self.level, width=35).grid(row=2, column=2, sticky=tk.W, padx=(45,0), pady=5)
 
         ttk.Label(mission_frame, text="Title:").grid(row=3, column=2, sticky=tk.W, pady=5)
-        self.titles = ['CADET', 'SPACE CADET', 'SERGEANT', 'MASTER SERGEANT', 'CHIEF', 'SPACE CHIEF PRIME', 
-             'DEATH CAPTAIN', 'MARSHAL', 'STAR MARSHAL', 'ADMIRAL', 'SKULL ADMIRAL', 'FLEET ADMIRAL',
-             'ADMIRABLE ADMIRAL', 'COMMANDER', 'GALACTIC COMMANDER', 'HELL COMMANDER', 'GENERAL',
-             '5-STAR GENERAL', '10-STAR GENERAL', 'PRIVATE', 'SUPER PRIVATE', 'SUPER CITIZEN',
-             'VIPER COMMANDO', 'FIRE SAFETY OFFICER', 'EXPERT EXTERMINATOR', 'FREE OF THOUGHT',
-             'ASSAULT INFANTRY', 'SUPER PEDESTRIAN', 'SERVANT OF FREEDOM', 'SUPER SHERIFF', 'DECORATED HERO', 'EXTRA JUDICIAL', 'EXEMPLARY SUBJECT', 'ROOKIE', 'BURIER OF HEADS']
+        # Load titles from json file
+        with open('Titles.json', 'r') as f:
+            titles_data = json.load(f)
+            self.titles = titles_data["Titles"]
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
         self.title_combo['values'] = self.titles
         self.title_combo.grid(row=3, column=2, sticky=tk.W, padx=(45,0), pady=5)
         self.title_combo.set(self.titles[0])
 
         ttk.Label(mission_frame, text="Profile:").grid(row=4, column=2, sticky=tk.W, pady=5)
-        self.profile_pictures = ['A-9 Helljumper', 'A-35 Recon', 'AC-1 Dutiful', 'AC-2 Obedient', 
-               'AD-11 Livewire', 'AD-26 Bleeding Edge', 'AD-49 Apollonian', 'AF-02 Haz-Master', 
-               'AF-50 Noxious Ranger', 'AF-52 Lockdown', 'AF-91 Field Chemist', 'B-01 Tactical', 
-               'B-08 Light Gunner', 'B-22 Model Citizen', 'B-24 Enforcer', 'B-27 Fortified Commando',
-               'BP-20 Corrections Officer', 'BP-32 Jackboot', 'BP-77 Grand Juror', 'CD-35 Trench Engineer',
-               'CE-07 Demolition Specialist', 'CE-27 Ground Breaker', 'CE-64 Grenadier', 'CE-67 Titan',
-               'CE-74 Breaker', 'CE-81 Juggernaut', 'CE-101 Guerilla Gorilla', 'CM-09 Bonesnapper',
-               'CM-10 Clinician', 'CM-14 Physician', 'CM-17 Butcher', 'CM-21 Trench Paramedic',
-               'CW-4 Arctic Ranger', 'CW-9 White Wolf', 'CW-22 Kodiak', 'CW-36 Winter Warrior',
-               'DP-00 Tactical', 'DP-11 Champion of the People', 'DP-40 Hero of the Federation',
-               'DP-53 Savior of the Free', 'DS-10 Big Game Hunter', 'DS-42 Federation\'s Blade', 'DS-191 Scorpion',
-               'EX-00 Prototype X', 'EX-03 Prototype 3', 'EX-16 Prototype 16', 'FS-05 Marksman',
-               'FS-11 Executioner', 'FS-23 Battle Master', 'FS-34 Exterminator', 'FS-37 Ravager',
-               'FS-38 Eradicator', 'FS-55 Devastator', 'FS-61 Dreadnought', 'GS-11 Democracy\'s Deputy',
-               'GS-17 Frontier Marshal', 'GS-66 Lawmaker', 'I-09 Heatseeker', 'I-44 Salamander',
-               'I-92 Fire Fighter', 'I-102 Draconaught', 'IE-3 Martyr', 'IE-12 Righteous',
-               'IE-57 Hell-Bent', 'PH-9 Predator', 'PH-56 Jaguar', 'PH-202 Twigsnapper',
-               'RE-824 Bearer of the Standard', 'RE-1861 Parade Commander', 'RE-2310 Honorary Guard',
-               'SA-04 Combat Technician', 'SA-12 Servo Assisted', 'SA-25 Steel Trooper',
-               'SA-32 Dynamo', 'SC-15 Drone Master', 'SC-30 Trailblazer Scout', 'SC-34 Infiltrator',
-               'SC-37 Legionnaire', 'SR-18 Roadblock', 'SR-24 Street Scout', 'SR-64 Cinderblock',
-               'TR-7 Ambassador of the Brand', 'TR-9 Cavalier of Democracy', 'TR-40 Gold Eagle',
-               'TR-62 Knight', 'TR-117 Alpha Commander', 'UF-16 Inspector', 'UF-50 Bloodhound',
-               'UF-84 Doubt Killer']
+        # Load profile pictures from json
+        with open('ProfilePictures.json', 'r') as f:
+            profile_data = json.load(f)
+            self.profile_pictures = profile_data["Profile Pictures"]
         self.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=self.profile_picture, state='readonly', width=32)
         self.profile_picture_combo['values'] = self.profile_pictures
         self.profile_picture_combo.grid(row=4, column=2, sticky=tk.W, padx=(45,0), pady=5)
         self.profile_picture_combo.set(self.profile_pictures[0])
+
+    # --- Mission Details Section ---
+        details_frame = ttk.LabelFrame(content, text="Mission Details", padding=10)
+        details_frame.grid(row=1, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+
+        # Create frame for profile picture preview with increased size
+        profile_preview_frame = ttk.LabelFrame(mission_frame, text="Profile Preview", padding=5)
+        profile_preview_frame.grid(row=0, column=3, rowspan=6, sticky=tk.N, padx=(20,0))  # Adjusted row span and sticky
+
+        # Create label to hold the preview image with fixed square dimensions
+        self.preview_label = tk.Label(profile_preview_frame, width=120, height=120)
+        self.preview_label.pack(padx=0, pady=0)  # Reduced vertical padding
+
+        def update_profile_preview(*args):
+            try:
+                # Get selected profile name
+                profile_name = self.profile_picture.get()
+                if not profile_name:
+                    return
+                
+
+                # Construct path to profile picture
+                img_path = os.path.join('.\media', 'profile_pictures', f"{profile_name}.png")
+
+
+                # Load and resize image for preview
+                img = tk.PhotoImage(file=img_path)
+                img = img.subsample(1,1)  # Reduced subsample factor for larger image
+
+                # Store reference to prevent garbage collection
+                self.preview_img = img
+
+                # Update preview label
+                self.preview_label.configure(image=img)
+
+            except Exception as e:
+                logging.error(f"Failed to load profile preview: {e}")
+                self.preview_label.configure(image='')
+
+        # Bind preview update to profile selection
+        self.profile_picture.trace_add("write", update_profile_preview)
+
+        # Initial preview update
+        update_profile_preview()
 
         ttk.Label(mission_frame, text="Sector:").grid(row=3, column=0, sticky=tk.W, pady=5)
         sector_combo = ttk.Combobox(mission_frame, textvariable=self.sector, values=sector_list, state='readonly', width=27)
@@ -535,6 +555,113 @@ class MissionLogGUI:
         planet_combo.grid(row=4, column=1, padx=5, pady=5)
         self.sector_combo = sector_combo
         self.planet_combo = planet_combo
+
+        # Create frame for planet preview with increased size
+        planet_preview_frame = ttk.LabelFrame(mission_frame, text="Planet Preview", padding=5)
+        planet_preview_frame.grid(row=0, column=4, rowspan=6, sticky=tk.N, padx=(20,0))
+
+        # Create label to hold the preview image with fixed square dimensions
+        self.planet_preview_label = tk.Label(planet_preview_frame, width=120, height=120)
+        self.planet_preview_label.pack(padx=0, pady=0)
+
+        # sector frame and label
+        # Removed explicit width/height so this preview does not force row 0 taller; span rows instead.
+        sector_frame = ttk.LabelFrame(mission_frame, text="Sector Preview [WIP]", padding=5)  # Replace with "sector preview" later
+        sector_frame.grid(row=0, column=5, rowspan=6, sticky=tk.N, padx=(20,0))
+
+        self.sector_info_label = tk.Label(sector_frame)  # no width/height -> uses image natural size
+        self.sector_info_label.pack(padx=0, pady=0)
+
+        try:
+            phimg = tk.PhotoImage(file="sector-placeholder.png")
+            self.sector_info_img = phimg.subsample(1,1)
+            self.sector_info_label.configure(image=self.sector_info_img)
+        except Exception as e:
+            logging.error(f"Failed to load sector preview image: {e}")
+
+        # Create label and frame to hold the biome of the planet
+        # Removed explicit width/height so this preview does not force row 0 taller; span rows instead.
+        biome_frame = ttk.LabelFrame(details_frame, text="Planet Biome", padding=5)
+        biome_frame.grid(row=0, column=6, rowspan=6, sticky=tk.N, padx=(20,0))
+
+        self.planet_biome_label = tk.Label(biome_frame)
+        self.planet_biome_label.pack(padx=0, pady=0)
+
+        def update_biome_banner(*args,f):
+            try:
+                planet_name = self.planet.get()
+                biome_map = f
+                biome_name = biome_map.get(planet_name, "Mars")
+                logging.debug(f"Planet: {planet_name}, Biome: {biome_name}")
+                self.current_biome = biome_name
+
+                # Build absolute, cross-platform path to biome banner
+                base_dir = os.path.dirname(os.path.abspath(__file__))
+                banner_path = os.path.join(base_dir, 'media', 'biome_banners', f"{biome_name}.png")
+                if not os.path.isfile(banner_path):
+                    logging.warning(f"Biome banner not found at {banner_path}, falling back to Mars.png")
+                    banner_path = os.path.join(base_dir, 'media', 'biome_banners', 'Mars.png')
+
+                logging.debug(f"Loading biome banner from: {banner_path}")
+
+                img = tk.PhotoImage(file=banner_path)
+                # Keep a reference and apply to label
+                self.biome_banner_img = img
+                self.planet_biome_label.configure(image=img)
+            except Exception as e:
+                logging.error(f"Failed to load biome banner: {e}")
+                #fallback to default
+                banner_path = os.path.join('.\media', 'biome_banners', "Mars.png")
+                self.planet_biome_label.configure(image='')
+
+        def update_planet_preview(*args):
+            try:
+                # Get selected planet name
+                planet_name = self.planet.get()
+                if not planet_name:
+                    return
+                
+                with open('BiomePlanets.json', 'r', encoding='utf-8') as f:
+                    biome_map = json.load(f)
+                biome_name = biome_map.get(planet_name, "Mars")
+                # Compare selected planet (parent) to BiomePlanets.json keys and get its biome (child)
+                child_biome = biome_map.get(planet_name)
+                if not child_biome:
+                    # Case-insensitive fallback search
+                    for parent, child in biome_map.items():
+                        if parent.lower() == planet_name.lower():
+                            child_biome = child
+                            break
+
+                # Final fallback
+                if not child_biome:
+                    child_biome = "Super Earth"
+
+                BiomePlanet = child_biome
+                
+                # Construct path to planet picture
+                img_path = os.path.join('.\media', 'planets', f"{BiomePlanet}.png")
+                # Load and resize image for preview
+                img = tk.PhotoImage(file=img_path)
+                img = img.subsample(1,1)  # Reduced subsample factor for larger image
+
+                # Store reference to prevent garbage collection
+                self.planet_preview_img = img
+
+                # Update preview label
+                self.planet_preview_label.configure(image=img)
+
+                update_biome_banner(f=biome_map) # passing biome data to avoid reloading file
+
+            except Exception as e:
+                logging.error(f"Failed to load planet preview: {e}")
+                self.planet_preview_label.configure(image='')
+
+        # Bind preview update to planet selection
+        self.planet.trace_add("write", update_planet_preview)
+
+        # Initial preview update
+        update_planet_preview()
 
         ttk.Label(mission_frame, text="Mega City:").grid(row=5, column=0, sticky=tk.W, pady=5)
         mega_cities_combo = ttk.Combobox(mission_frame, textvariable=self.mega_cities, state='readonly', width=27)
@@ -580,9 +707,7 @@ class MissionLogGUI:
         update_planets()
         update_mega_cities()
 
-    # --- Mission Details Section ---
-        details_frame = ttk.LabelFrame(content, text="Mission Details", padding=10)
-        details_frame.grid(row=1, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+
 
     # Enemy selection
         ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -789,7 +914,7 @@ class MissionLogGUI:
         GUIbutton.grid(row=4, column=0, pady=15, padx=(20,0))
 
     # Planet aggregation export
-        export_button = ttk.Button(export_frame, text="Export Excel\n    Data to\n  Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
+        export_button = ttk.Button(export_frame, text="Export Planet\n    Data to\n  Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
         export_button.grid(row=4, column=1, padx=(40,0), pady=15)
 
     # Faction aggregation export
@@ -875,15 +1000,30 @@ class MissionLogGUI:
             else:
                 SText = "Fighting: " + enemytype
 
-
-            self.RPC.update(
-                state=f"Sector: {sector}\nPlanet: {planet}",
-                details=f"Helldiver: {helldiver} Level: {level} | {title}",
-                large_image="superearth",
-                large_text="Helldivers 2",
-                small_image=small_image,
-                small_text=f"{SText}",
-            )
+            # Use raw activity dict so we can specify the activity type (4 = Custom Status) - Copilot the fuck is this shit?
+            activity = {
+                "state": "Operating Mission Logger",
+                "details": f"Helldiver: {helldiver} Level: {level} | {title}",
+                "type": 4,  # 0=Playing,1=Streaming,2=Listening,3=Watching,4=Custom,5=Competing
+                "assets": {
+                    "large_image": "test",
+                    "large_text": "Helldivers 2",
+                    "small_image": small_image,
+                    "small_text": SText,
+                }
+            }
+            try:
+                self.RPC.update(activity=activity)
+            except TypeError:
+                # Fallback if the installed pypresence version rejects 'type'
+                self.RPC.update(
+                    state="Operating Mission Logger",
+                    details=f"Helldiver: {helldiver} Level: {level} | {title}",
+                    large_image="test",
+                    large_text="Helldivers 2",
+                    small_image=small_image,
+                    small_text=SText,
+                )
             self.last_rpc_update = current_time
         except Exception as e:
             logging.error(f"Failed to update Discord Rich Presence: {e}")
