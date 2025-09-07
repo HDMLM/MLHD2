@@ -32,9 +32,9 @@ import webbrowser
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, PLANET_PROFILES
 
 # Manual Configuration
-GWDay = "Day: 577"
-GWDate = "Date: 07/09/2025"
-VERSION = "1.5.008"
+GWDay = "Day: 578"
+GWDate = "Date: 08/09/2025"
+VERSION = "1.5.009"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -914,12 +914,16 @@ class MissionLogGUI:
         GUIbutton.grid(row=4, column=0, pady=15, padx=(20,0))
 
     # Planet aggregation export
-        export_button = ttk.Button(export_frame, text="Export Planet\n    Data to\n  Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
+        export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
         export_button.grid(row=4, column=1, padx=(40,0), pady=15)
 
     # Faction aggregation export
         export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
         export_button.grid(row=4, column=2, padx=(40,0), pady=15)
+
+    # Favourite aggregation export
+        export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'favourites.py']), padding=(6,5), width=14)
+        export_button.grid(row=4, column=3, padx=(40,0), pady=15)
 
     # Achievements + Invite + Theme + Settings buttons
         image_button_frame = ttk.Frame(mission_frame)
@@ -934,13 +938,13 @@ class MissionLogGUI:
             # Create the button with the image in the export frame
             image_button = ttk.Button(export_frame, image=self.button_image, command=lambda: subprocess.run(['python', 'Achievements.py']), width=7)
             image_button.configure(compound=tk.CENTER)
-            image_button.grid(row=4, column=3, padx=(125,0), pady=15) 
+            image_button.grid(row=4, column=4, padx=(125,0), pady=15) 
             
         except Exception as e:
             logging.error(f"Failed to load button image: {e}")
             # Fallback to text button if image loading fails
             fallback_button = ttk.Button(export_frame, text="Image Button", command=lambda: subprocess.run(['python', 'Achievements.py']))
-            fallback_button.grid(row=4, column=3, padx=(125,0), pady=15)
+            fallback_button.grid(row=4, column=4, padx=(125,0), pady=15)
 
     # Discord invite button image
         try:
@@ -951,21 +955,21 @@ class MissionLogGUI:
             # Create the button with the image in the export frame
             invite_button = ttk.Button(export_frame, image=self.invite_image, command=lambda: webbrowser.open("https://discord.gg/U6ydgwFKZG"), width=7)
             invite_button.configure(compound=tk.CENTER)
-            invite_button.grid(row=4, column=3, padx=(0,20), pady=15)
+            invite_button.grid(row=4, column=4, padx=(0,20), pady=15)
             
         except Exception as e:
             logging.error(f"Failed to load invite button image: {e}")
             # Fallback to text button if image loading fails
             invite_fallback = ttk.Button(export_frame, text="Invite Button", command=lambda: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
-            invite_fallback.grid(row=4, column=3, padx=(0,20), pady=15)
+            invite_fallback.grid(row=4, column=4, padx=(0,20), pady=15)
 
     # Theme toggle
-        theme_button = ttk.Button(export_frame, text="Toggle\nTheme", command=self.toggle_theme, padding=(6,5), width=14)
-        theme_button.grid(row=4, column=4, padx=(40,0), pady=15)
+        theme_button = ttk.Button(export_frame, text="\nToggle Theme\n", command=self.toggle_theme, padding=(6,5), width=14)
+        theme_button.grid(row=4, column=5, padx=(40,0), pady=15)
 
     # Settings editor
-        settings_button = ttk.Button(export_frame, text="Settings", command=lambda: subprocess.run(['python', 'settings.py']), padding=(6,5), width=14)
-        settings_button.grid(row=4, column=5, padx=(40,0), pady=15)
+        settings_button = ttk.Button(export_frame, text="\nSettings\n", command=lambda: subprocess.run(['python', 'settings.py']), padding=(6,5), width=14)
+        settings_button.grid(row=4, column=6, padx=(40,0), pady=15)
 
 
     def _update_discord_presence(self) -> None:

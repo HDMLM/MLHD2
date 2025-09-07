@@ -2604,19 +2604,21 @@
                 "Eliminate Brood Commanders",
                 "Pump Fuel To ICBM",
                 "Restore Air Quality",
-                "Retrieve Essential Personnel",
+                "Retrieve Essential Personnel", 
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Terminate Illegal Broadcast",
-                "Upload Escape Pod Data",
-                "Unlisted Mission"
+                "Unlisted Mission",
+                "Upload Escape Pod Data"
                 ],
                 "2 - EASY": [
                 "Activate E-710 Pumps",
-                "Cleanse Infested District",
+                "Cleanse Infested District", 
                 "Eliminate Brood Commanders",
                 "Eradicate Terminid Swarm",
                 "Purge Hatcheries",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2627,11 +2629,12 @@
                 "Conduct Geological Survey",
                 "Eliminate Chargers",
                 "Emergency Evacuation",
-                "Eradicate Terminid Swarm",
+                "Eradicate Terminid Swarm", 
                 "Launch ICBM",
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2648,6 +2651,7 @@
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2662,10 +2666,11 @@
                 "Eradicate Terminid Swarm",
                 "Evacuate High-Value Assets",
                 "Launch ICBM",
-                "Nuke Nursery",
+                "Nuke Nursery", 
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2682,6 +2687,7 @@
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2696,8 +2702,9 @@
                 "Launch ICBM",
                 "Nuke Nursery",
                 "Purge Hatcheries",
-                "Restore Air Quality",
+                "Restore Air Quality", 
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2714,6 +2721,7 @@
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2730,6 +2738,7 @@
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2746,6 +2755,7 @@
                 "Purge Hatcheries",
                 "Restore Air Quality",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ]
@@ -2759,9 +2769,10 @@
                 "Pump Fuel To ICBM",
                 "Restore Air Quality",
                 "Restore Oil Pumps",
+                "Secure E-711 Extraction",
                 "Terminate Illegal Broadcast",
-                "Upload Escape Pod Data",
-                "Unlisted Mission"
+                "Unlisted Mission",
+                "Upload Escape Pod Data"
                 ],
                 "2 - EASY": [
                 "Activate E-710 Pumps",
@@ -2771,6 +2782,7 @@
                 "Extract Mysterious Substance",
                 "Restore Air Quality",
                 "Restore Oil Pumps",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2795,6 +2807,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2820,6 +2833,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2846,6 +2860,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2870,6 +2885,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2894,6 +2910,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2918,6 +2935,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2942,6 +2960,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ],
@@ -2966,6 +2985,7 @@
                 "Restore Air Quality",
                 "Restore Oil Pumps",
                 "Retrieve Valuable Data",
+                "Secure E-711 Extraction",
                 "Spread Democracy",
                 "Unlisted Mission"
                 ]
@@ -2981,6 +3001,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "2 - EASY": [
@@ -2994,6 +3015,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "3 - MEDIUM": [
@@ -3007,6 +3029,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "4 - CHALLENGING": [
@@ -3020,6 +3043,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "5 - HARD": [
@@ -3033,6 +3057,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "6 - EXTREME": [
@@ -3046,6 +3071,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "7 - SUICIDE MISSION": [
@@ -3059,6 +3085,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "8 - IMPOSSIBLE": [
@@ -3072,6 +3099,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "9 - HELLDIVE": [
@@ -3085,6 +3113,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ],
                 "10 - SUPER HELLDIVE": [
@@ -3098,6 +3127,7 @@
                 "Deploy Dark Fluid",
                 "Extract Research Probe Data",
                 "Restore Air Quality",
+                "Secure E-711 Extraction",
                 "Unlisted Mission"
                 ]
             }

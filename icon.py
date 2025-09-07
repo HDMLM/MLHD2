@@ -149,7 +149,8 @@ MISSION_ICONS = {
     "Destroy Spore Lung": iconconfig['MissionIcons']['Destroy Spore Lung'],
     "Conduct Mobile E-711 Extraction": iconconfig['MissionIcons']['Conduct Mobile E-711 Extraction'],
     "Extract Mysterious Substance": iconconfig['MissionIcons']['Extract Mysterious Substance'],
-    "Restore Oil Pumps": iconconfig['MissionIcons']['Restore Oil Pumps'] 
+    "Restore Oil Pumps": iconconfig['MissionIcons']['Restore Oil Pumps'],
+    "Secure E-711 Extraction": iconconfig['MissionIcons']['Secure E-711 Extraction'],
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)
