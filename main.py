@@ -29,12 +29,13 @@ import subprocess
 import random
 import re
 import webbrowser
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, PLANET_PROFILES
+from PIL import Image, ImageTk
+from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
 
 # Manual Configuration
-GWDay = "Day: 578"
-GWDate = "Date: 08/09/2025"
-VERSION = "1.5.009"
+GWDay = "Day: 579"
+GWDate = "Date: 09/09/2025"
+VERSION = "1.5.010"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -181,7 +182,16 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Jet Brigade & Incineration Corps": "JetBrigadeIncinerationCorps",
         "Spore Burst Strain": "SporeBurstStrain",
         "The Great Host": "TheGreatHost",
-        "Rupture Strain": "RuptureStrain"
+        "Rupture Strain": "RuptureStrain",
+        "Dragonroach": "Dragonroach",
+        "Rupture Strain & Dragonroach": "RuptureStrainDragonroach"
+    }
+    return replacements.get(normalized, normalized)
+
+def normalize_hvt_name(hvt: str) -> str:
+    normalized = " ".join(hvt.split()).title()
+    replacements = {
+        "Hive Lords": "HiveLords"
     }
     return replacements.get(normalized, normalized)
 
@@ -189,6 +199,14 @@ def get_subfaction_icon(subfaction_type: str) -> str:
     # Return subfaction icon (empty if missing).
     icon = SUBFACTION_ICONS.get(subfaction_type, "NaN")
     logging.info(f"Getting subfaction icon for '{subfaction_type}', found: {icon}")
+    if icon == "NaN":
+        icon = ""
+    return icon
+
+def get_hvt_icon(hvt_type: str) -> str:
+    # Return HVT icon (empty if missing).
+    icon = HVT_ICONS.get(normalize_hvt_name(hvt_type), "NaN")
+    logging.info(f"Getting HVT icon for '{hvt_type}', found: {icon}")
     if icon == "NaN":
         icon = ""
     return icon
@@ -341,6 +359,7 @@ class MissionLogGUI:
         self.deaths = tk.StringVar()
         self.enemy_type = tk.StringVar()
         self.subfaction_type = tk.StringVar()
+        self.hvt_type = tk.StringVar()
         self.Helldivers = tk.StringVar()
         self.mission_category = tk.StringVar()
         self.rating = tk.StringVar(value="Outstanding Patriotism")
@@ -425,7 +444,7 @@ class MissionLogGUI:
         time_label = ttk.Label(header_frame, textvariable=mission_time_var)
         time_label.pack(side=tk.LEFT, padx=(3,0))
 
-        ttk.Label(header_frame, text="Galactic War").pack(side=tk.LEFT, padx=(550,0))
+        ttk.Label(header_frame, text="Galactic War").pack(side=tk.LEFT, padx=(750,0))
 
         gw_label = ttk.Label(header_frame, textvariable=gw_date_var, cursor="hand2")
         gw_label.pack(side=tk.LEFT, padx=(2,0))
@@ -566,7 +585,7 @@ class MissionLogGUI:
 
         # sector frame and label
         # Removed explicit width/height so this preview does not force row 0 taller; span rows instead.
-        sector_frame = ttk.LabelFrame(mission_frame, text="Sector Preview [WIP]", padding=5)  # Replace with "sector preview" later
+        sector_frame = ttk.LabelFrame(mission_frame, text="Sector Preview", padding=5)  # Replace with "sector preview" later
         sector_frame.grid(row=0, column=5, rowspan=6, sticky=tk.N, padx=(20,0))
 
         self.sector_info_label = tk.Label(sector_frame)  # no width/height -> uses image natural size
@@ -657,6 +676,73 @@ class MissionLogGUI:
                 logging.error(f"Failed to load planet preview: {e}")
                 self.planet_preview_label.configure(image='')
 
+        def update_sector_preview(*args):
+            try:
+            # Get selected sector name and enemy type
+                sector_name = self.sector.get()
+                enemy_type = self.enemy_type.get()
+                if not sector_name:
+                    return
+
+                # Define chroma colors based on enemy type
+                enemy_colors = {
+                    "Automatons": "#ff6d6d",
+                    "Terminids": "#ffc100",
+                    "Illuminate": "#8960ca",
+                    "Observing": "#41639C"
+                }
+            
+                # Get color for current enemy, default to white
+                chroma_color = enemy_colors.get(enemy_type, "#ffffff")
+
+                # Construct path to sector image
+                img_path = os.path.join('.\media', 'sectors', f"{sector_name}.png")
+
+                # Load image using PIL first for color manipulation
+                pil_img = Image.open(img_path)
+
+                # Convert to RGBA if not already
+                pil_img = pil_img.convert('RGBA')
+
+                # Get image data
+                data = pil_img.getdata()
+
+                # Replace white pixels with enemy color
+                new_data = []
+                for item in data:
+                    # If pixel is white (or nearly white), replace with chroma color
+                    if item[0] > 240 and item[1] > 240 and item[2] > 240:
+                        # Convert hex color to RGB
+                        r = int(chroma_color[1:3], 16)
+                        g = int(chroma_color[3:5], 16)
+                        b = int(chroma_color[5:7], 16)
+                        new_data.append((r, g, b, item[3]))  # Keep original alpha
+                    else:
+                        new_data.append(item)
+            
+                # Update image with new colors
+                pil_img.putdata(new_data)
+
+                # Convert PIL image to PhotoImage
+                photo = ImageTk.PhotoImage(pil_img)
+
+                # Store reference to prevent garbage collection
+                self.sector_preview_img = photo
+
+                # Update preview label
+                self.sector_info_label.configure(image=photo)
+
+            except Exception as e:
+                logging.error(f"Failed to load sector preview: {e}")
+                self.sector_info_label.configure(image='')
+
+        # Bind preview update to both sector AND enemy type selection
+        self.sector.trace_add("write", update_sector_preview)
+        self.enemy_type.trace_add("write", update_sector_preview)
+
+        # Initial preview update
+        update_sector_preview()
+
         # Bind preview update to planet selection
         self.planet.trace_add("write", update_planet_preview)
 
@@ -716,20 +802,24 @@ class MissionLogGUI:
             missions_data = json.load(f)
             enemy_types = list(missions_data.keys())
 
+        with open('Enemies.json', 'r') as f:
+            enemies_data = json.load(f)
+            enemy_types = list(enemies_data.keys())
+
         enemy_combo = ttk.Combobox(details_frame, textvariable=self.enemy_type, values=enemy_types, state='readonly', width=27)
         enemy_combo.grid(row=0, column=1, padx=5, pady=5)
         enemy_combo.set(enemy_types[0])
 
     # Major Order + DSS toggles
-        ttk.Label(details_frame, text="Major Order:").grid(row=3, column=2, sticky=tk.W, pady=5)
-        ttk.Checkbutton(details_frame, variable=self.MO).grid(row=3, column=2, sticky=tk.W, padx=(100,0), pady=5)
+        ttk.Label(details_frame, text="Major Order:").grid(row=2, column=2, sticky=tk.W, pady=5)
+        ttk.Checkbutton(details_frame, variable=self.MO).grid(row=2, column=2, sticky=tk.W, padx=(100,0), pady=5)
 
     # DSS modifier dropdown (shown only if active)
-        ttk.Label(details_frame, text="DSS Active:").grid(row=1, column=2, sticky=tk.W, pady=5)
-        ttk.Checkbutton(details_frame, variable=self.DSS).grid(row=1, column=2, sticky=tk.W, padx=(100,0), pady=5)
+        ttk.Label(details_frame, text="DSS Active:").grid(row=2, column=2, sticky=tk.W, pady=5, padx=(150,0))
+        ttk.Checkbutton(details_frame, variable=self.DSS).grid(row=2, column=2, sticky=tk.W, padx=(250,0), pady=5)
 
         self.dss_frame = ttk.Frame(details_frame)
-        self.dss_frame.grid(row=2, column=2, sticky=tk.W, pady=5)
+        self.dss_frame.grid(row=3, column=2, sticky=tk.W, pady=5)
         ttk.Label(self.dss_frame, text="DSS Modifier:").pack(side=tk.LEFT)
         dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm", "Eagle Blockade"]
         self.DSSMod.set("Inactive")  # Set default value
@@ -751,6 +841,11 @@ class MissionLogGUI:
         ttk.Label(details_frame, text="Enemy Subfaction:").grid(row=0, column=2, sticky=tk.W, pady=5)
         subfaction_combo = ttk.Combobox(details_frame, textvariable=self.subfaction_type, state='readonly', width=27)
         subfaction_combo.grid(row=0, column=2, sticky=tk.E, padx=(125,0), pady=5)
+
+    # HVT Type
+        ttk.Label(details_frame, text="High-Value Target:").grid(row=1, column=2, sticky=tk.W, pady=5)
+        hvt_combo = ttk.Combobox(details_frame, textvariable=self.hvt_type, state='readonly', width=27)
+        hvt_combo.grid(row=1, column=2, padx=(125,0), pady=5)
 
     # Campaign
         ttk.Label(details_frame, text="Mission Campaign:").grid(row=1, column=0, sticky=tk.W, pady=5)
@@ -776,6 +871,53 @@ class MissionLogGUI:
             if subfactions:
                 subfaction_combo.set(subfactions[0])
                 update_mission_categories()
+
+        def update_hvts(*args):
+            enemy = self.enemy_type.get()
+            subfaction = self.subfaction_type.get()
+            
+            try:
+                with open('Enemies.json', 'r') as f:
+                    enemies_data = json.load(f)
+                
+                # Get HVTs for selected enemy/subfaction
+                if enemy in enemies_data:
+                    hvt_list = enemies_data[enemy].get(subfaction, [])
+                    
+                    # Convert string to list if needed
+                    if isinstance(hvt_list, str):
+                        if hvt_list == "No HVTs":
+                            hvt_list = ["No HVTs"]
+                        else:
+                            hvt_list = [hvt_list]
+                    elif not isinstance(hvt_list, list):
+                        hvt_list = ["No HVTs"]
+                    
+                    # Ensure list is not empty before setting values
+                    if not hvt_list:
+                        hvt_list = ["No HVTs"]
+                        
+                    hvt_combo['values'] = hvt_list
+                    hvt_combo.set(hvt_list[0] if hvt_list else "No HVTs")
+                    logging.info(f"Updated HVTs for {enemy}/{subfaction}: {hvt_list}")
+                else:
+                    hvt_combo['values'] = ["No HVTs"]
+                    hvt_combo.set("No HVTs")
+                    logging.info(f"No enemy type found: {enemy}")
+                    
+            except Exception as e:
+                logging.error(f"Error updating HVTs: {e}")
+                hvt_combo['values'] = ["Error loading HVTs"]
+                hvt_combo.set("Error loading HVTs")
+
+        enemy_combo.bind('<<ComboboxSelected>>', lambda e: [update_subfactions(e), update_hvts(e)])
+        subfaction_combo.bind('<<ComboboxSelected>>', lambda e: [update_mission_categories(e), update_hvts(e)])
+        update_hvts() # Initial population
+
+        # Clear HVT when enemy type changes
+        def reset_hvt(*args):
+            self.hvt_type.set("No HVTs")
+        self.enemy_type.trace_add("write", reset_hvt)
 
         def update_mission_categories(*args):
             enemy = self.enemy_type.get()
@@ -829,8 +971,10 @@ class MissionLogGUI:
                 if available_missions:
                     mission_type_combo.set(available_missions[0])
 
-        enemy_combo.bind('<<ComboboxSelected>>', update_subfactions)
-        subfaction_combo.bind('<<ComboboxSelected>>', update_mission_categories)
+        enemy_combo.bind('<<ComboboxSelected>>', lambda e: [update_subfactions()])
+        subfaction_combo.bind('<<ComboboxSelected>>', lambda e: [update_mission_categories()])
+        self.enemy_type.trace_add("write", lambda *args: update_hvts())
+        self.subfaction_type.trace_add("write", lambda *args: update_hvts())
         mission_cat_combo.bind('<<ComboboxSelected>>', update_mission_types)
         difficulty_combo.bind('<<ComboboxSelected>>', update_available_missions)
 
@@ -1075,6 +1219,7 @@ class MissionLogGUI:
             'DSSMod': self.DSSMod.get(),
             'campaign': self.mission_category.get(),
             'subfaction': self.subfaction_type.get(),
+            'hvt': self.hvt_type.get(),
             'shipName1': self.shipName1.get(),
             'shipName2': self.shipName2.get(),
             'profile_picture': self.profile_picture.get(),
@@ -1194,6 +1339,7 @@ class MissionLogGUI:
             'Mega City': self.mega_cities.get(),
             'Enemy Type': self.enemy_type.get(),
             'Enemy Subfaction': self.subfaction_type.get(),
+            'Enemy HVT': self.hvt_type.get(),
             'Major Order': self.MO.get(),
             'DSS Active': self.DSS.get(),
             'DSS Modifier': self.DSSMod.get(),
@@ -1259,6 +1405,7 @@ class MissionLogGUI:
             system_color = get_system_color(data['Enemy Type'])
             diff_icon = get_difficulty_icon(data['Difficulty'])
             subfaction_icon = get_subfaction_icon(data['Enemy Subfaction'])
+            hvt_icon = get_hvt_icon(data['Enemy HVT'])
             campaign_icon = get_campaign_icon(data['Mission Category'])
             if data['Mission Type'] == "Blitz: Search and Destroy" and data['Enemy Type'] == "Automatons":
                 mission_icon = get_mission_icon("PLACEHOLDER")
@@ -1388,7 +1535,9 @@ class MissionLogGUI:
                     "color": system_color,
                     "fields": [{
                         "name": f"<a:easyshine1:1349110651829747773> {enemy_icon} **Enemy Intel** {subfaction_icon} <a:easyshine3:1349110648528699422>",
-                        "value": f"> Faction: {data['Enemy Type']}\n> Subfaction: {data['Enemy Subfaction']}\n> Campaign: {data['Mission Category']}\n\n<a:easyshine1:1349110651829747773> {campaign_icon} **Mission Intel** {mission_icon} <a:easyshine3:1349110648528699422>\n> Mission: {data['Mission Type']}\n> Difficulty: {data['Difficulty']} {diff_icon}\n> Kills: {data['Kills']}\n> Deaths: {data['Deaths']}\n> KDR: {(int(data['Kills']) / max(1, int(data['Deaths']))):.2f}\n> Rating: {data['Rating']}\n\n {Stars}\n"
+                        "value": f"> Faction: {data['Enemy Type']}\n> Subfaction: {data['Enemy Subfaction']}\n" +
+                        (f"> High-Value Target: {data['Enemy HVT']} {hvt_icon}\n" if data['Enemy HVT'] != "No HVTs" else "") +
+                        f"> Campaign: {data['Mission Category']}\n\n<a:easyshine1:1349110651829747773> {campaign_icon} **Mission Intel** {mission_icon} <a:easyshine3:1349110648528699422>\n> Mission: {data['Mission Type']}\n> Difficulty: {data['Difficulty']} {diff_icon}\n> Kills: {data['Kills']}\n> Deaths: {data['Deaths']}\n> KDR: {(int(data['Kills']) / max(1, int(data['Deaths']))):.2f}\n> Rating: {data['Rating']}\n\n {Stars}\n"
                     }],
                     "author": {
                         "name": f"Super Earth Mission Report\nDate: {date}",

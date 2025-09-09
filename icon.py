@@ -430,9 +430,14 @@ SUBFACTION_ICONS = {
     "Jet Brigade & Incineration Corps": iconconfig['SubfactionIcons']['JetBrigadeIncinerationCorps'],
     "Spore Burst Strain": iconconfig['SubfactionIcons']['SporeBurstStrain'],
     "The Great Host": iconconfig['SubfactionIcons']['TheGreatHost'],
-    "Rupture Strain": iconconfig['SubfactionIcons']['RuptureStrain']
+    "Rupture Strain": iconconfig['SubfactionIcons']['RuptureStrain'],
+    "Dragonroach": iconconfig['SubfactionIcons']['Dragonroach'],
+    "Rupture Strain & Dragonroach": iconconfig['SubfactionIcons']['RuptureStrainDragonroach']
 }
 
+HVT_ICONS = {
+    "HiveLords": iconconfig['HVTIcons']['HiveLords'],
+}
 
 DSS_ICONS = {
     "Eagle Storm": iconconfig['MiscIcon']['Eagle Storm'],
