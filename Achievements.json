@@ -1,15 +1,80 @@
 [
   {
-    "title": "HIGH COMMAND'S FAVOURITE",
-    "description": "Log 1000 Missions"
+    "title": "HIGH COMMAND'S FAVOURITE I",
+    "description": "Log 100 Missions"
   },
   {
-    "title": "RELIABLE DIVER",
-    "description": "More than 50% of your logged missions are involved in a Major Order"
+    "title": "HIGH COMMAND'S FAVOURITE II",
+    "description": "Log 250 Missions"
   },
   {
-    "title": "I <3 DSS",
-    "description": "More than 50% of your logged Missions are involved with the Democracy Space Station"
+    "title": "HIGH COMMAND'S FAVOURITE III",
+    "description": "Log 500 Missions"
+  },
+  {
+    "title": "RELIABLE DIVER I",
+    "description": "Log 100 Major Order Missions"
+  },
+  {
+    "title": "RELIABLE DIVER II",
+    "description": "Log 250 Major Order Missions"
+  },
+  {
+    "title": "RELIABLE DIVER III",
+    "description": "Log 500 Major Order Missions"
+  },
+  {
+    "title": "I <3 DSS I",
+    "description": "Log 100 Missions with the Democracy Space Station in Orbit"
+  },
+  {
+    "title": "I <3 DSS II",
+    "description": "Log 250 Missions with the Democracy Space Station in Orbit"
+  },
+  {
+    "title": "I <3 DSS III",
+    "description": "Log 500 Missions with the Democracy Space Station in Orbit"
+  },
+  {
+    "title": "BELONG TO THE STREETS I",
+    "description": "Log 100 Missions inside a Mega City"
+  },
+  {
+    "title": "BELONG TO THE STREETS II",
+    "description": "Log 250 Missions inside a Mega City"
+  },
+  {
+    "title": "BELONG TO THE STREETS III",
+    "description": "Log 500 Missions inside a Mega City"
+  },
+  {
+    "title": "THE LONG MARCH OF LIBERTY I",
+    "description": "Log Missions on 25 Different Planets"
+  },
+  {
+    "title": "THE LONG MARCH OF LIBERTY II",
+    "description": "Log Missions on 50 Different Planets"
+  },
+  {
+    "title": "THE LONG MARCH OF LIBERTY III",
+    "description": "Log Missions on 100 Different Planets"
+  },
+  
+  {
+    "title": "MASTER OF THE MAP I",
+    "description": "Log Missions on 15 Different Sectors"
+  },
+  {
+    "title": "MASTER OF THE MAP II",
+    "description": "Log Missions on 30 Different Sectors"
+  },
+  {
+    "title": "MASTER OF THE MAP III",
+    "description": "Log Missions on 45 Different Sectors"
+  },
+  {
+    "title": "ACHIEVEMENT HUNTER",
+    "description": "Complete Every Achievement"
   },
   {
     "title": "OUTBREAK PERFECTED",

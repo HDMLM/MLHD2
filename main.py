@@ -33,9 +33,9 @@ from PIL import Image, ImageTk
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
 
 # Manual Configuration
-GWDay = "Day: 579"
-GWDate = "Date: 09/09/2025"
-VERSION = "1.5.010"
+GWDay = "Day: 582"
+GWDate = "Date: 12/09/2025"
+VERSION = "1.5.011"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -808,7 +808,7 @@ class MissionLogGUI:
 
         enemy_combo = ttk.Combobox(details_frame, textvariable=self.enemy_type, values=enemy_types, state='readonly', width=27)
         enemy_combo.grid(row=0, column=1, padx=5, pady=5)
-        enemy_combo.set(enemy_types[0])
+        enemy_combo.set("Observing")  # Set default to Observing instead of first option
 
     # Major Order + DSS toggles
         ttk.Label(details_frame, text="Major Order:").grid(row=2, column=2, sticky=tk.W, pady=5)
