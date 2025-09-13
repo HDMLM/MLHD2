@@ -6,9 +6,9 @@
         "Jet Brigade & Incineration Corps": "No HVTs"
     },
     "Terminids": {
-        "Terminid Horde": "No HVTs",
-        "Predator Strain": "No HVTs",
-        "Spore Burst Strain": "No HVTs",
+        "Terminid Horde": ["No HVTs", "Hive Lords"],
+        "Predator Strain": ["No HVTs", "Hive Lords"],
+        "Spore Burst Strain": ["No HVTs", "Hive Lords"],
         "Rupture Strain": ["No HVTs", "Hive Lords"],
         "Dragonroach": ["No HVTs", "Hive Lords"],
         "Rupture Strain & Dragonroach": ["No HVTs", "Hive Lords"]
