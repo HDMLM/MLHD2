@@ -52,13 +52,13 @@ setup_logging(DEBUG)
 
 # File paths
 if DEBUG:
-    SETTINGS_FILE = 'settings-dev.json'
-    PERSISTENCE_FILE = 'persistent-dev.json'
-    streak_file = 'streak_data-dev.json'
+    SETTINGS_FILE = './JSON/settings-dev.json'
+    PERSISTENCE_FILE = './JSON/persistent-dev.json'
+    streak_file = './JSON/streak_data-dev.json'
 else:
-    SETTINGS_FILE = 'settings.json'
-    PERSISTENCE_FILE = 'persistent.json'
-    streak_file = 'streak_data.json'
+    SETTINGS_FILE = './JSON/settings.json'
+    PERSISTENCE_FILE = './JSON/persistent.json'
+    streak_file = './JSON/streak_data.json'
 
 EXCEL_FILE_PROD = 'mission_log.xlsx'
 EXCEL_FILE_TEST = 'mission_log_test.xlsx'
@@ -89,48 +89,22 @@ def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=N
         "TNotebook.Tab": {"configure": {"background": button_bg or bg, "foreground": fg}},
     }
 
-light_theme = make_theme(
-    bg="#ffffff", fg="#000000",
-    entry_bg="#ffffff", entry_fg="#000000",
-    button_bg="#e0e0e0", button_fg="#000000",
-    frame_bg="#ffffff"
-)
-
-dark_theme = make_theme(
-    bg="#252526", fg="white",
-    entry_bg="#3c3c3c", entry_fg="white",
-    button_bg="#444444", button_fg="white",
+# Apply default theme to the GUI
+DEFAULT_THEME = make_theme(
+    bg="#252526",      # background color
+    fg="#FFFFFF",      # foreground/text color
+    entry_bg="#252526",
+    entry_fg="#000000",
+    button_bg="#4C4C4C",
+    button_fg="#000000",
     frame_bg="#252526"
 )
 
-THEMES = {
-    "light": light_theme,
-    "dark": dark_theme
-}
+def apply_theme(style, theme_dict):
+    for widget, opts in theme_dict.items():
+        for method, cfg in opts.items():
+            getattr(style, method)(widget, **cfg)
 
-def get_current_theme():
-    # Return the last saved theme name (light/dark) or fallback to light.
-    if os.path.exists(PERSISTENCE_FILE):
-        try:
-            with open(PERSISTENCE_FILE, 'r') as f:
-                settings = json.load(f)
-                return settings.get('theme', 'light')
-        except Exception:
-            pass
-    return 'light'
-
-def set_current_theme(theme_name):
-    # Persist the chosen theme to the persistence file.
-    settings = {}
-    if os.path.exists(PERSISTENCE_FILE):
-        try:
-            with open(PERSISTENCE_FILE, 'r') as f:
-                settings = json.load(f)
-        except Exception:
-            settings = {}
-    settings['theme'] = theme_name
-    with open(PERSISTENCE_FILE, 'w') as f:
-        json.dump(settings, f, indent=4)
 
 def get_enemy_icon(enemy_type: str) -> str:
     # Return enemy icon emoji (empty string fallback).
@@ -217,20 +191,55 @@ def total_missions():
     return total_rows
 
 class MissionLogGUI:
+    def update_submit_button_image(self, status: str) -> None:
+        """
+        Updates the submission button image depending on status.
+        Args:
+            status (str): 'Passed' or 'Fail'.
+        """
+        try:
+            if status == "Passed":
+                img = self.submit_img_yes
+            elif status == "Fail":
+                img = self.submit_img_no
+            else:
+                img = self.submit_img_default
+            if hasattr(self, 'submit_label'):
+                self.submit_label.configure(image=img)
+                self.submit_label.image = img  # Prevent garbage collection
+                self._submit_img_state = img
+                # After 4 seconds, reset to default
+                if status in ("Passed", "Fail"):
+                    self.root.after(4000, lambda: self._reset_submit_button_image())
+        except Exception as e:
+            logging.error(f"Failed to update submit button image: {e}")
+
+    def _reset_submit_button_image(self):
+        if hasattr(self, 'submit_label'):
+            self.submit_label.configure(image=self.submit_img_default)
+            self.submit_label.image = self.submit_img_default
+            self._submit_img_state = self.submit_img_default
+
     def __init__(self, root: tk.Tk) -> None:
         # Initialize the GUI application.
+        style = ttk.Style()
+        apply_theme(style, DEFAULT_THEME)
         self.root = root
         if DEBUG:
             self.root.title("Helldiver Mission Log Manager v-{} DEBUG:{}".format(VERSION, DEBUG))
         else:
             self.root.title("Helldiver Mission Log Manager v-{}".format(VERSION))
         self.root.resizable(False, False)
-        self.current_theme = "light"  # Default theme
         self.RPC = None
         self.last_rpc_update = 0
         def load_icon():
             try:
-                icon = tk.PhotoImage(file='SuperEarth.png')
+                from PIL import Image, ImageTk
+                pil_icon = Image.open('SuperEarth.png').convert('RGBA')
+                bg_color = (37, 37, 38, 255)  # #252526
+                background = Image.new('RGBA', pil_icon.size, bg_color)
+                pil_icon = Image.alpha_composite(background, pil_icon)
+                icon = ImageTk.PhotoImage(pil_icon)
                 self.root.after(0, lambda: self.root.iconphoto(False, icon))
             except Exception as e:
                 logging.error(f"Failed to load icon: {e}")
@@ -246,100 +255,6 @@ class MissionLogGUI:
         self._setup_ui()
         self.root.after(100, self.load_settings)
         self.root.after(2000, self._periodic_rpc_update)
-
-    def toggle_theme(self):
-        new_theme = "dark" if self.current_theme == "light" else "light"
-        self.apply_theme(new_theme)
-
-    def apply_theme(self, theme_name):
-        if theme_name not in THEMES:
-            logging.error(f"Unknown theme: {theme_name}")
-            return
-            
-        theme = THEMES[theme_name]
-        style = ttk.Style()
-        style.theme_use('clam')
-        
-    # Apply theme styles
-        for widget_type, settings in theme.items():
-            if 'configure' in settings:
-                try:
-                    style.configure(widget_type, **settings['configure'])
-                except Exception as e:
-                    logging.error(f"Error applying theme to {widget_type}: {e}")
-            if 'map' in settings:
-                        try:
-                            style.map(widget_type, **settings['map'])
-                        except Exception as e:
-                            logging.error(f"Error applying map for {widget_type}: {e}")
-                
-        
-    # theme related tweaks
-        if theme_name == 'dark':
-            self.root.option_add("*TCombobox*Listbox*Background", '#2d2d2d')
-            self.root.option_add("*TCombobox*Listbox*Foreground", 'white')
-            style.configure('TCombobox', foreground='black', fieldbackground='#2d2d2d')
-        else:
-            self.root.option_add("*TCombobox*Listbox*Background", '#ffffff')
-            self.root.option_add("*TCombobox*Listbox*Foreground", 'black')
-            style.configure('TCombobox', foreground='black', fieldbackground='#ffffff')
-        
-        if '.' in theme and 'configure' in theme['.']:
-            root_bg = theme['.']['configure'].get('background')
-            if root_bg:
-                self.root.configure(background=root_bg)
-        
-        if 'TFrame' in theme and 'configure' in theme['TFrame']:
-            frame_bg = theme['TFrame']['configure'].get('background')
-            if frame_bg:
-                style.configure('Custom.TFrame', background=frame_bg)
-                self.frame.configure(style='Custom.TFrame')
-        
-        self.current_theme = theme_name
-        
-        settings = {}
-        try:
-            with open(self.settings_file, 'r') as f:
-                settings = json.load(f)
-        except (FileNotFoundError, json.JSONDecodeError):
-            pass
-        
-        settings['theme'] = theme_name
-        with open(self.settings_file, 'w') as f:
-            json.dump(settings, f, indent=4)
-
-        self._update_widget_styles(self.root, theme_name)
-
-    def _update_widget_styles(self, widget, theme_name):
-        theme = THEMES[theme_name]
-        tframe = theme.get('TFrame', {}).get('configure', {})
-        tlabel = theme.get('TLabel', {}).get('configure', {})
-        tbutton = theme.get('TButton', {}).get('configure', {})
-        if isinstance(widget, (tk.Frame, ttk.Frame, ttk.LabelFrame)):
-            bg = tframe.get('background', None)
-            if bg:
-                try:
-                    widget.configure(background=bg)
-                except Exception:
-                    pass
-        elif isinstance(widget, (tk.Label, ttk.Label)):
-            fg = tlabel.get('foreground', None)
-            bg = tlabel.get('background', None)
-            if fg or bg:
-                try:
-                    widget.configure(foreground=fg, background=bg)
-                except Exception:
-                    pass
-        elif isinstance(widget, (tk.Button, ttk.Button)):
-            fg = tbutton.get('foreground', None)
-            bg = tbutton.get('background', None)
-            if fg or bg:
-                try:
-                    widget.configure(foreground=fg, background=bg)
-                except Exception:
-                    pass
-        for child in widget.winfo_children():
-            self._update_widget_styles(child, theme_name)
 
     def _periodic_rpc_update(self) -> None:
         try:
@@ -394,8 +309,6 @@ class MissionLogGUI:
 
     def _create_main_frame(self) -> None:
         style = ttk.Style()
-        theme_name = getattr(self, 'current_theme', 'light')
-        style.configure('Custom.TFrame', background=THEMES[theme_name]['TFrame']['configure']['background'])
 
         self.frame = ttk.Frame(self.root, padding="10", style='Custom.TFrame')
         self.frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
@@ -444,16 +357,25 @@ class MissionLogGUI:
         time_label = ttk.Label(header_frame, textvariable=mission_time_var)
         time_label.pack(side=tk.LEFT, padx=(3,0))
 
-        ttk.Label(header_frame, text="Galactic War").pack(side=tk.LEFT, padx=(750,0))
+        # Galactic War label and toggle
+        gw_frame = ttk.Frame(header_frame)
+        gw_frame.pack(side=tk.LEFT, padx=(730,0))
 
-        gw_label = ttk.Label(header_frame, textvariable=gw_date_var, cursor="hand2")
+        ttk.Label(gw_frame, text="Galactic War").pack(side=tk.LEFT)
+
+        # Set a fixed width for the label to prevent window expansion
+        gw_label = ttk.Label(gw_frame, textvariable=gw_date_var, cursor="hand2", width=12, anchor="w")
         gw_label.pack(side=tk.LEFT, padx=(2,0))
         gw_label.bind("<Button-1>", toggle_gw_date)
 
         try:
-            self.gw_icon_img = tk.PhotoImage(file="gw_icon.png")  #this shit is the TF2 coconut img ngl XD
-            self.gw_icon_img = self.gw_icon_img.subsample(55, 55) #     nvm im better than valve lmaoooo
-            self.gw_icon_label = ttk.Label(header_frame, image=self.gw_icon_img, cursor="hand2")
+            pil_gw_icon = Image.open("./media/SyInt/gw_icon.png").convert('RGBA')
+            pil_gw_icon = pil_gw_icon.resize((pil_gw_icon.width // 55, pil_gw_icon.height // 55), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_gw_icon.size, bg_color)
+            pil_gw_icon = Image.alpha_composite(background, pil_gw_icon)
+            self.gw_icon_img = ImageTk.PhotoImage(pil_gw_icon)
+            self.gw_icon_label = ttk.Label(gw_frame, image=self.gw_icon_img, cursor="hand2")
             self.gw_icon_label.pack(side=tk.LEFT, padx=(6,0))
             self.gw_icon_label.bind("<Button-1>", toggle_gw_date)
         except Exception as e:
@@ -466,9 +388,12 @@ class MissionLogGUI:
 
         self.update_time = update_time
         mission_frame.grid(row=0, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
+        # Fix: Explicitly configure grid columns to prevent overlap
+        for col in range(8):
+            mission_frame.columnconfigure(col, weight=1)
 
         # Load sectors from config (and store for later)
-        with open('PlanetSectors.json', 'r') as f:
+        with open('./JSON/PlanetSectors.json', 'r') as f:
             sectors_data = json.load(f)
             self.sectors_data = sectors_data
             sector_list = list(sectors_data.keys())
@@ -502,7 +427,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Title:").grid(row=3, column=2, sticky=tk.W, pady=5)
         # Load titles from json file
-        with open('Titles.json', 'r') as f:
+        with open('./JSON/Titles.json', 'r') as f:
             titles_data = json.load(f)
             self.titles = titles_data["Titles"]
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
@@ -512,7 +437,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Profile:").grid(row=4, column=2, sticky=tk.W, pady=5)
         # Load profile pictures from json
-        with open('ProfilePictures.json', 'r') as f:
+        with open('./JSON/ProfilePictures.json', 'r') as f:
             profile_data = json.load(f)
             self.profile_pictures = profile_data["Profile Pictures"]
         self.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=self.profile_picture, state='readonly', width=32)
@@ -529,7 +454,7 @@ class MissionLogGUI:
         profile_preview_frame.grid(row=0, column=3, rowspan=6, sticky=tk.N, padx=(20,0))  # Adjusted row span and sticky
 
         # Create label to hold the preview image with fixed square dimensions
-        self.preview_label = tk.Label(profile_preview_frame, width=120, height=120)
+        self.preview_label = tk.Label(profile_preview_frame, width=120, height=120, borderwidth=0)  # Fixed size for square preview
         self.preview_label.pack(padx=0, pady=0)  # Reduced vertical padding
 
         def update_profile_preview(*args):
@@ -545,8 +470,9 @@ class MissionLogGUI:
 
 
                 # Load and resize image for preview
-                img = tk.PhotoImage(file=img_path)
-                img = img.subsample(1,1)  # Reduced subsample factor for larger image
+                pil_img = Image.open(img_path).convert("RGBA")
+                pil_img = pil_img.resize((120, 120), Image.LANCZOS)  # Adjust size as needed
+                img = ImageTk.PhotoImage(pil_img)
 
                 # Store reference to prevent garbage collection
                 self.preview_img = img
@@ -580,30 +506,31 @@ class MissionLogGUI:
         planet_preview_frame.grid(row=0, column=4, rowspan=6, sticky=tk.N, padx=(20,0))
 
         # Create label to hold the preview image with fixed square dimensions
-        self.planet_preview_label = tk.Label(planet_preview_frame, width=120, height=120)
+        self.planet_preview_label = tk.Label(planet_preview_frame, width=120, height=120, borderwidth=0)
         self.planet_preview_label.pack(padx=0, pady=0)
 
         # sector frame and label
-        # Removed explicit width/height so this preview does not force row 0 taller; span rows instead.
         sector_frame = ttk.LabelFrame(mission_frame, text="Sector Preview", padding=5)  # Replace with "sector preview" later
         sector_frame.grid(row=0, column=5, rowspan=6, sticky=tk.N, padx=(20,0))
 
-        self.sector_info_label = tk.Label(sector_frame)  # no width/height -> uses image natural size
+        self.sector_info_label = tk.Label(sector_frame, borderwidth=0)  # no width/height -> uses image natural size
         self.sector_info_label.pack(padx=0, pady=0)
 
         try:
-            phimg = tk.PhotoImage(file="sector-placeholder.png")
-            self.sector_info_img = phimg.subsample(1,1)
+            pil_phimg = Image.open("sector-placeholder.png").convert('RGBA')
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_phimg.size, bg_color)
+            pil_phimg = Image.alpha_composite(background, pil_phimg)
+            self.sector_info_img = ImageTk.PhotoImage(pil_phimg)
             self.sector_info_label.configure(image=self.sector_info_img)
         except Exception as e:
             logging.error(f"Failed to load sector preview image: {e}")
 
         # Create label and frame to hold the biome of the planet
-        # Removed explicit width/height so this preview does not force row 0 taller; span rows instead.
         biome_frame = ttk.LabelFrame(details_frame, text="Planet Biome", padding=5)
         biome_frame.grid(row=0, column=6, rowspan=6, sticky=tk.N, padx=(20,0))
 
-        self.planet_biome_label = tk.Label(biome_frame)
+        self.planet_biome_label = tk.Label(biome_frame, borderwidth=0)  # no width/height -> uses image natural size
         self.planet_biome_label.pack(padx=0, pady=0)
 
         def update_biome_banner(*args,f):
@@ -623,10 +550,12 @@ class MissionLogGUI:
 
                 logging.debug(f"Loading biome banner from: {banner_path}")
 
-                img = tk.PhotoImage(file=banner_path)
-                # Keep a reference and apply to label
-                self.biome_banner_img = img
-                self.planet_biome_label.configure(image=img)
+                pil_banner = Image.open(banner_path).convert('RGBA')
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_banner.size, bg_color)
+                pil_banner = Image.alpha_composite(background, pil_banner)
+                self.biome_banner_img = ImageTk.PhotoImage(pil_banner)
+                self.planet_biome_label.configure(image=self.biome_banner_img)
             except Exception as e:
                 logging.error(f"Failed to load biome banner: {e}")
                 #fallback to default
@@ -639,8 +568,8 @@ class MissionLogGUI:
                 planet_name = self.planet.get()
                 if not planet_name:
                     return
-                
-                with open('BiomePlanets.json', 'r', encoding='utf-8') as f:
+
+                with open('./JSON/BiomePlanets.json', 'r', encoding='utf-8') as f:
                     biome_map = json.load(f)
                 biome_name = biome_map.get(planet_name, "Mars")
                 # Compare selected planet (parent) to BiomePlanets.json keys and get its biome (child)
@@ -661,17 +590,13 @@ class MissionLogGUI:
                 # Construct path to planet picture
                 img_path = os.path.join('.\media', 'planets', f"{BiomePlanet}.png")
                 # Load and resize image for preview
-                img = tk.PhotoImage(file=img_path)
-                img = img.subsample(1,1)  # Reduced subsample factor for larger image
-
-                # Store reference to prevent garbage collection
-                self.planet_preview_img = img
-
-                # Update preview label
-                self.planet_preview_label.configure(image=img)
-
+                pil_img = Image.open(img_path).convert('RGBA')
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                self.planet_preview_img = ImageTk.PhotoImage(pil_img)
+                self.planet_preview_label.configure(image=self.planet_preview_img)
                 update_biome_banner(f=biome_map) # passing biome data to avoid reloading file
-
             except Exception as e:
                 logging.error(f"Failed to load planet preview: {e}")
                 self.planet_preview_label.configure(image='')
@@ -723,6 +648,11 @@ class MissionLogGUI:
                 # Update image with new colors
                 pil_img.putdata(new_data)
 
+                # Composite with frame background (same as planet preview)
+                bg_color = (37, 37, 38, 255)  # #252526
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+
                 # Convert PIL image to PhotoImage
                 photo = ImageTk.PhotoImage(pil_img)
 
@@ -759,7 +689,7 @@ class MissionLogGUI:
             # Populate mega cities based on currently selected planet.
             selected_planet = self.planet.get()
             try:
-                with open("MegaCityPlanets.json", "r") as f:
+                with open("./JSON/MegaCityPlanets.json", "r") as f:
                     planetary_data = json.load(f)
             except Exception:
                 planetary_data = {}
@@ -793,16 +723,89 @@ class MissionLogGUI:
         update_planets()
         update_mega_cities()
 
+        # Create a dedicated frame for achievement and invite buttons to avoid affecting grid row height
+        button_icon_frame = ttk.Frame(mission_frame)
+        button_icon_frame.grid(row=0, column=7, padx=(0,10), pady=(0,10), sticky=tk.NE,rowspan=7)
+        # Settings button with hover effect
+        try:
+            def load_settings_btn_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 4, pil_img.height // 4), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
 
+            self.settings_btn_img_default = load_settings_btn_img("./media/SyInt/SettingsButton.png")
+            self.settings_btn_img_hover = load_settings_btn_img("./media/SyInt/SettingsButtonHover.png")
+
+            self.settings_btn_label = tk.Label(
+                button_icon_frame,
+                image=self.settings_btn_img_default,
+                borderwidth=0,
+                highlightthickness=0,
+                cursor="hand2"
+            )
+            self.settings_btn_label.pack(side=tk.TOP, pady=(10,8), padx=(10,0))  # <-- pad top and left by 10
+
+            def on_settings_btn_enter(e):
+                self.settings_btn_label.configure(image=self.settings_btn_img_hover)
+            def on_settings_btn_leave(e):
+                self.settings_btn_label.configure(image=self.settings_btn_img_default)
+
+            self.settings_btn_label.bind("<Enter>", on_settings_btn_enter)
+            self.settings_btn_label.bind("<Leave>", on_settings_btn_leave)
+            self.settings_btn_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'settings.py']))
+        except Exception as e:
+            logging.error(f"Failed to load settings button image: {e}")
+            fallback_label = tk.Label(button_icon_frame, text="Settings", cursor="hand2")
+            fallback_label.pack(side=tk.TOP, pady=(10,8), padx=(10,0))  # <-- pad top and left by 10
+            fallback_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'settings.py']))
+
+        # Invite button with hover effect
+        try:
+            def load_invite_btn_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 4, pil_img.height // 4), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.invite_btn_img_default = load_invite_btn_img("./media/SyInt/InviteButton.png")
+            self.invite_btn_img_hover = load_invite_btn_img("./media/SyInt/InviteButtonHover.png")
+
+            self.invite_btn_label = tk.Label(
+            button_icon_frame,
+            image=self.invite_btn_img_default,
+            borderwidth=0,
+            highlightthickness=0,
+            cursor="hand2"
+            )
+            self.invite_btn_label.pack(side=tk.TOP, pady=(0,8), padx=(10,0))  # <-- pad top and left by 10
+
+            def on_invite_btn_enter(e):
+                self.invite_btn_label.configure(image=self.invite_btn_img_hover)
+            def on_invite_btn_leave(e):
+                self.invite_btn_label.configure(image=self.invite_btn_img_default)
+
+            self.invite_btn_label.bind("<Enter>", on_invite_btn_enter)
+            self.invite_btn_label.bind("<Leave>", on_invite_btn_leave)
+            self.invite_btn_label.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
+        except Exception as e:
+            logging.error(f"Failed to load invite button image: {e}")
+            invite_fallback = tk.Label(button_icon_frame, text="Invite Button", cursor="hand2")
+            invite_fallback.pack(side=tk.TOP, pady=(0,8), padx=(10,0))  # <-- pad top and left by 10
+            invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
 
     # Enemy selection
         ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
 
-        with open('Missions.json', 'r') as f:
+        with open('./JSON/Missions.json', 'r') as f:
             missions_data = json.load(f)
             enemy_types = list(missions_data.keys())
 
-        with open('Enemies.json', 'r') as f:
+        with open('./JSON/Enemies.json', 'r') as f:
             enemies_data = json.load(f)
             enemy_types = list(enemies_data.keys())
 
@@ -877,7 +880,7 @@ class MissionLogGUI:
             subfaction = self.subfaction_type.get()
             
             try:
-                with open('Enemies.json', 'r') as f:
+                with open('./JSON/Enemies.json', 'r') as f:
                     enemies_data = json.load(f)
                 
                 # Get HVTs for selected enemy/subfaction
@@ -1041,9 +1044,57 @@ class MissionLogGUI:
         rating_combo = ttk.Combobox(stats_frame, textvariable=self.rating, values=ratings, state='readonly', width=27)
         rating_combo.grid(row=3, column=1, padx=5, pady=5)
 
-    # Submit
-        submit_button = ttk.Button(content, text="Submit Mission Report", command=self.submit_data)
-        submit_button.grid(row=3, column=0, pady=15)
+    # Submit (Image Button with Hover)
+        try:
+            def load_btn_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width, pil_img.height), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.submit_img_default = load_btn_img("./media/SyInt/SubmitButtonNH.png")
+            self.submit_img_hover = load_btn_img("./media/SyInt/SubmitButtonHover.png")
+            self.submit_img_yes = load_btn_img("./media/SyInt/SubmitButtonYes.png")
+            self.submit_img_no = load_btn_img("./media/SyInt/SubmitButtonNo.png")
+
+            self._submit_img_state = self.submit_img_default
+            self.submit_label = tk.Label(content, image=self.submit_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.submit_label.grid(row=3, column=0, pady=15)
+
+            def on_enter(e):
+                self.submit_label.configure(image=self.submit_img_hover)
+            def on_leave(e):
+                self.submit_label.configure(image=self._submit_img_state)
+
+            self.submit_label.bind("<Enter>", on_enter)
+            self.submit_label.bind("<Leave>", on_leave)
+            self.submit_label.bind("<Button-1>", lambda e: self.submit_data())
+        except Exception as e:
+            logging.error(f"Failed to load submit button image: {e}")
+            submit_button = ttk.Button(content, text="Submit Mission Report", command=self.submit_data, width=130, padding=(0, 30))
+            submit_button.grid(row=3, column=0, pady=15)
+
+        # Submission overlay image placed behind the submit button
+        try:
+            overlay_img_path = "./media/SyInt/SubmissionOverlay.png"
+            pil_overlay = Image.open(overlay_img_path).convert('RGBA')
+            new_width = int(pil_overlay.width * 1.05)
+            new_height = pil_overlay.height
+            pil_overlay = pil_overlay.resize((new_width, new_height), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_overlay.size, bg_color)
+            pil_overlay = Image.alpha_composite(background, pil_overlay)
+            self.submit_overlay_img = ImageTk.PhotoImage(pil_overlay)
+            self.submit_overlay_label = tk.Label(
+            content, image=self.submit_overlay_img, borderwidth=0, highlightthickness=0, bg="#252526"
+            )
+            self.submit_overlay_label.grid(row=3, column=0, pady=(10, 0), padx=(0, 5), sticky="n")
+            self.submit_overlay_label.lower(self.submit_label)
+        except Exception as e:
+            logging.error(f"Failed to load submission overlay image: {e}")
+
 
     # Export + Style sections
         bottom_frame = ttk.LabelFrame(content, text="Report Style and Export", padding=10)
@@ -1053,67 +1104,152 @@ class MissionLogGUI:
         export_frame = ttk.LabelFrame(content, text="Exporting", padding=10)
         export_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
-    # Export GUI launcher
-        GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=lambda: subprocess.run(['python', 'exportGUI.py'], shell=False), padding=(6,5), width=14)
-        GUIbutton.grid(row=4, column=0, pady=15, padx=(20,0))
+        # Export GUI launcher with image and hover effect
+        try:
+            def load_export_gui_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
 
-    # Planet aggregation export
-        export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
-        export_button.grid(row=4, column=1, padx=(40,0), pady=15)
+            self.export_gui_img_default = load_export_gui_img("./media/SyInt/ExportGUIButton.png")
+            self.export_gui_img_hover = load_export_gui_img("./media/SyInt/ExportGUIButtonHover.png")
 
-    # Faction aggregation export
-        export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
-        export_button.grid(row=4, column=2, padx=(40,0), pady=15)
+            # Pad left side by increasing padx
+            self.export_gui_label = tk.Label(export_frame, image=self.export_gui_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.export_gui_label.grid(row=4, column=0, pady=15, padx=(60,0))  # <-- Increased left padding here
 
-    # Favourite aggregation export
-        export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'favourites.py']), padding=(6,5), width=14)
-        export_button.grid(row=4, column=3, padx=(40,0), pady=15)
+            def on_export_gui_enter(e):
+                self.export_gui_label.configure(image=self.export_gui_img_hover)
+            def on_export_gui_leave(e):
+                self.export_gui_label.configure(image=self.export_gui_img_default)
+            self.export_gui_label.bind("<Enter>", on_export_gui_enter)
+            self.export_gui_label.bind("<Leave>", on_export_gui_leave)
+            self.export_gui_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'exportGUI.py'], shell=False))
+        except Exception as e:
+            logging.error(f"Failed to load Export GUI button image: {e}")
+            GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=lambda: subprocess.run(['python', 'exportGUI.py'], shell=False), padding=(6,5), width=14)
+            GUIbutton.grid(row=4, column=0, pady=15, padx=(60,0))  # <-- Increased left padding here
 
-    # Achievements + Invite + Theme + Settings buttons
+    # Planet aggregation export (with image and hover effect)
+        try:
+            def load_export_planet_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.export_planet_img_default = load_export_planet_img("./media/SyInt/ExportPlanetButton.png")
+            self.export_planet_img_hover = load_export_planet_img("./media/SyInt/ExportPlanetButtonHover.png")
+
+            self.export_planet_label = tk.Label(export_frame, image=self.export_planet_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.export_planet_label.grid(row=4, column=1, padx=(40,0), pady=15)
+
+            def on_export_planet_enter(e):
+                self.export_planet_label.configure(image=self.export_planet_img_hover)
+            def on_export_planet_leave(e):
+                self.export_planet_label.configure(image=self.export_planet_img_default)
+            self.export_planet_label.bind("<Enter>", on_export_planet_enter)
+            self.export_planet_label.bind("<Leave>", on_export_planet_leave)
+            self.export_planet_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'sub.py'], shell=False))
+        except Exception as e:
+            logging.error(f"Failed to load Export Planet button image: {e}")
+            export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
+            export_button.grid(row=4, column=1, padx=(40,0), pady=15)
+
+    # Faction aggregation export (with image and hover effect)
+        # Faction aggregation export (with image and hover effect)
+        try:
+            def load_export_faction_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.export_faction_img_default = load_export_faction_img("./media/SyInt/ExportFactionButton.png")
+            self.export_faction_img_hover = load_export_faction_img("./media/SyInt/ExportFactionButtonHover.png")
+
+            self.export_faction_label = tk.Label(export_frame, image=self.export_faction_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.export_faction_label.grid(row=4, column=2, padx=(40,0), pady=15)
+
+            def on_export_faction_enter(e):
+                self.export_faction_label.configure(image=self.export_faction_img_hover)
+            def on_export_faction_leave(e):
+                self.export_faction_label.configure(image=self.export_faction_img_default)
+            self.export_faction_label.bind("<Enter>", on_export_faction_enter)
+            self.export_faction_label.bind("<Leave>", on_export_faction_leave)
+            self.export_faction_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'faction.py'], shell=False))
+        except Exception as e:
+            logging.error(f"Failed to load Export Faction button image: {e}")
+            export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
+            export_button.grid(row=4, column=2, padx=(40,0), pady=15)
+
+        # Favourite aggregation export (with image and hover effect)
+        try:
+            def load_export_favourites_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.export_favourites_img_default = load_export_favourites_img("./media/SyInt/ExportFavouritesButton.png")
+            self.export_favourites_img_hover = load_export_favourites_img("./media/SyInt/ExportFavouritesButtonHover.png")
+
+            self.export_favourites_label = tk.Label(export_frame, image=self.export_favourites_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.export_favourites_label.grid(row=4, column=3, padx=(40,0), pady=15)
+
+            def on_export_favourites_enter(e):
+                self.export_favourites_label.configure(image=self.export_favourites_img_hover)
+            def on_export_favourites_leave(e):
+                self.export_favourites_label.configure(image=self.export_favourites_img_default)
+
+            self.export_favourites_label.bind("<Enter>", on_export_favourites_enter)
+            self.export_favourites_label.bind("<Leave>", on_export_favourites_leave)
+            self.export_favourites_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'favourites.py'], shell=False))
+        except Exception as e:
+            logging.error(f"Failed to load Export Favourites button image: {e}")
+            export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'favourites.py']), padding=(6,5), width=16)
+            export_button.grid(row=4, column=3, padx=(40,0), pady=15)
+
         image_button_frame = ttk.Frame(mission_frame)
         image_button_frame.grid(row=5, column=4, padx=5, pady=5)
 
-    # Achievement button image
+        # Achievements export button (with image and hover effect)
         try:
-            # Store the image as an instance attribute to prevent garbage collection
-            self.button_image = tk.PhotoImage(file="achievement.png")
-            self.button_image = self.button_image.subsample(2, 2)
-            
-            # Create the button with the image in the export frame
-            image_button = ttk.Button(export_frame, image=self.button_image, command=lambda: subprocess.run(['python', 'Achievements.py']), width=7)
-            image_button.configure(compound=tk.CENTER)
-            image_button.grid(row=4, column=4, padx=(125,0), pady=15) 
-            
+            def load_export_achievements_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.export_achievements_img_default = load_export_achievements_img("./media/SyInt/ExportAchievementsButton.png")
+            self.export_achievements_img_hover = load_export_achievements_img("./media/SyInt/ExportAchievementsButtonHover.png")
+
+            self.export_achievements_label = tk.Label(export_frame, image=self.export_achievements_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.export_achievements_label.grid(row=4, column=4, padx=(40,0), pady=15)
+
+            def on_export_achievements_enter(e):
+                self.export_achievements_label.configure(image=self.export_achievements_img_hover)
+            def on_export_achievements_leave(e):
+                self.export_achievements_label.configure(image=self.export_achievements_img_default)
+
+            self.export_achievements_label.bind("<Enter>", on_export_achievements_enter)
+            self.export_achievements_label.bind("<Leave>", on_export_achievements_leave)
+            self.export_achievements_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'achievements.py'], shell=False))
         except Exception as e:
-            logging.error(f"Failed to load button image: {e}")
-            # Fallback to text button if image loading fails
-            fallback_button = ttk.Button(export_frame, text="Image Button", command=lambda: subprocess.run(['python', 'Achievements.py']))
-            fallback_button.grid(row=4, column=4, padx=(125,0), pady=15)
-
-    # Discord invite button image
-        try:
-            # Store the image as an instance attribute to prevent garbage collection
-            self.invite_image = tk.PhotoImage(file="invite.png")
-            self.invite_image = self.invite_image.subsample(60, 60)
-            
-            # Create the button with the image in the export frame
-            invite_button = ttk.Button(export_frame, image=self.invite_image, command=lambda: webbrowser.open("https://discord.gg/U6ydgwFKZG"), width=7)
-            invite_button.configure(compound=tk.CENTER)
-            invite_button.grid(row=4, column=4, padx=(0,20), pady=15)
-            
-        except Exception as e:
-            logging.error(f"Failed to load invite button image: {e}")
-            # Fallback to text button if image loading fails
-            invite_fallback = ttk.Button(export_frame, text="Invite Button", command=lambda: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
-            invite_fallback.grid(row=4, column=4, padx=(0,20), pady=15)
-
-    # Theme toggle
-        theme_button = ttk.Button(export_frame, text="\nToggle Theme\n", command=self.toggle_theme, padding=(6,5), width=14)
-        theme_button.grid(row=4, column=5, padx=(40,0), pady=15)
-
-    # Settings editor
-        settings_button = ttk.Button(export_frame, text="\nSettings\n", command=lambda: subprocess.run(['python', 'settings.py']), padding=(6,5), width=14)
-        settings_button.grid(row=4, column=6, padx=(40,0), pady=15)
+            logging.error(f"Failed to load Export Achievements button image: {e}")
+            export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'achievements.py']), padding=(6,5), width=16)
+            export_button.grid(row=4, column=4, padx=(40,0), pady=15)
 
 
     def _update_discord_presence(self) -> None:
@@ -1180,17 +1316,10 @@ class MissionLogGUI:
     # Load user settings from file.
         def load():
             try:
-                theme = 'light'
-                if os.path.exists(SETTINGS_FILE):
-                    with open(SETTINGS_FILE, 'r') as f:
-                        settings = json.load(f)
-                        theme = settings.get('theme', 'light')
-                # Load all values from persistent.json
                 persistent_settings = {}
                 if os.path.exists(PERSISTENCE_FILE):
                     with open(PERSISTENCE_FILE, 'r') as f:
                         persistent_settings = json.load(f)
-                persistent_settings['theme'] = theme
                 self.root.after(0, lambda: self._apply_settings(persistent_settings))
             except Exception as e:
                 self.root.after(0, lambda: self._show_error(f"Error loading settings: {e}"))
@@ -1199,13 +1328,6 @@ class MissionLogGUI:
 
     def save_settings(self) -> None:
     # Save current settings to file.
-        # Save theme to settings.json
-        theme_data = {'theme': self.current_theme}
-        try:
-            with open(SETTINGS_FILE, 'w') as f:
-                json.dump(theme_data, f, indent=4)
-        except Exception as e:
-            self._show_error(f"Error saving theme: {e}")
         # Save all values to persistent.json
         settings = {
             'helldiver': self.Helldivers.get(),
@@ -1231,7 +1353,7 @@ class MissionLogGUI:
             self._show_error(f"Error saving persistent settings: {e}")
 
     def submit_data(self) -> None:
-        with open('DCord.json', 'r') as f:
+        with open('./JSON/DCord.json', 'r') as f:
             discord_data = json.load(f)
             global Platform
             Platform = discord_data.get('platform', 'Not Selected')
@@ -1245,49 +1367,88 @@ class MissionLogGUI:
 
         if self.enemy_type.get() == "Observing":
             self._show_error("ADVISORY: You cannot submit an observation mission")
+            self.update_submit_button_image("Fail")
             return
 
         if Platform == "Not Selected":
             self._show_error("ADVISORY: You must select a platform in settings before submitting")
+            self.update_submit_button_image("Fail")
             return
 
         if self.mission_type.get() == "No missions available":
             self._show_error("ADVISORY: You cannot submit without selecting a mission")
+            self.update_submit_button_image("Fail")
             return
 
         if self.planet.get() == "Meridia":
             self._show_error("ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Meridian Black Hole.")
+            self.update_submit_button_image("Fail")
             return
 
-        if self.planet.get() == "Angel's Venture" or self.planet.get() == "Moradesh" or self.planet.get() == "Ivis":
+        if self.planet.get() in ["Angel's Venture", "Moradesh", "Ivis"]:
             self._show_error("ADVISORY: You cannot deploy on a fractured planet")
+            self.update_submit_button_image("Fail")
             return
         
-        if self.planet.get() == "Widow's Harbor" or self.planet.get() == "New Haven" or self.planet.get() == "Pilen V" or self.planet.get() == "Mars":
+        if self.planet.get() in ["Widow's Harbor", "New Haven", "Pilen V", "Mars"]:
             self._show_error("ADVISORY: You cannot deploy on a scoured planet")
+            self.update_submit_button_image("Fail")
             return
 
         data = self._collect_mission_data()
 
+        sent_success = False
         if self._save_to_excel(data):
             if self._send_to_discord(data):
                 logging.info("Sent To Discord")
+                self.update_submit_button_image("Passed")
+                sent_success = True
+            else:
+                self.update_submit_button_image("Fail")
+            # Clear fields after submission
+            def clear_text_widgets(widget):
+                for child in widget.winfo_children():
+                    if isinstance(child, tk.Text):
+                        child.delete("1.0", tk.END)
+                    clear_text_widgets(child)
+            clear_text_widgets(self.root)
+            self.kills.set("")
+            self.deaths.set("")
+            self.rating.set("Outstanding Patriotism")
             
     def _validate_submission(self) -> bool:
     # Validate all required fields before submission.
         try:
             # Validate numeric fields
             level = int(self.level.get())
-            kills = int(self.kills.get())
-            deaths = int(self.deaths.get())
+
+            # Remove leading zeros using regex for kills
+            kills_str = re.sub(r'^0+', '', self.kills.get())
+            kills = int(kills_str) if kills_str else 0
+
+            # Remove leading zeros using regex for deaths
+            deaths_str = re.sub(r'^0+', '', self.deaths.get())
+            deaths = int(deaths_str) if deaths_str else 0
+
+            #set the cleaned values back to the variables
+            self.kills.set(kills)
+            self.deaths.set(deaths)
+
             #create a randint between 1 and 0 - to randomise for lil easter egg
             rndint = random.randint(0, 1)
+
+            #check for stupid values
+            if len(str(kills)) > 5 or len(str(deaths)) > 4:
+                self._show_error("ADVISORY: What are you even trying?")
+                self.update_submit_button_image("Fail")
+                return False
 
             if level < 1 or level > 150:  # Add reasonable level range
                 if rndint == 1:
                     self._show_error("ADVISORY: You are not a Helldiver")
                 else:
                     self._show_error("Level must be between 1 and 150")
+                self.update_submit_button_image("Fail")
                 return False
 
             if kills < 0 or kills > 10000:
@@ -1295,6 +1456,7 @@ class MissionLogGUI:
                     self._show_error("These kills will be reported to your Democracy Officer... I dear hope you're not lying...")
                 else:
                     self._show_error("Invalid number of kills")
+                self.update_submit_button_image("Fail")
                 return False
 
             if deaths < 0 or deaths > 1000:
@@ -1302,6 +1464,7 @@ class MissionLogGUI:
                     self._show_error("Surely you didn't die this many times... right?")
                 else:
                     self._show_error("Invalid number of deaths")
+                self.update_submit_button_image("Fail")
                 return False
 
             # Validate required text fields
@@ -1310,6 +1473,7 @@ class MissionLogGUI:
                     self._show_error("I know we're cannon fodder but you could at least give yourself a name... have some dignity!")
                 else:
                     self._show_error("Helldiver name is required")
+                self.update_submit_button_image("Fail")
                 return False
 
             if not self.mission_type.get().strip():
@@ -1317,6 +1481,7 @@ class MissionLogGUI:
                     self._show_error("Did you sit in your hellpod the entire time?")
                 else:
                     self._show_error("Mission type is required")
+                self.update_submit_button_image("Fail")
                 return False
 
             return True
@@ -1417,7 +1582,7 @@ class MissionLogGUI:
             profile_picture = get_profile_picture(self.profile_picture.get())
 
             # Get discord_uid from DCord.json
-            with open('DCord.json', 'r') as f:
+            with open('./JSON/DCord.json', 'r') as f:
                 dcord_data = json.load(f)
                 user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -1510,7 +1675,7 @@ class MissionLogGUI:
 
             # UID from local DCord.json (user settings)
             try:
-                with open('DCord.json', 'r') as f:
+                with open('./JSON/DCord.json', 'r') as f:
                     settings_data = json.load(f)
                     UID = settings_data.get('discord_uid', '0')
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -1518,7 +1683,7 @@ class MissionLogGUI:
                 UID = '0'  # Fallback to default
             # Platform from local DCord.json (user settings)
             try:
-                with open('DCord.json', 'r') as f:
+                with open('./JSON/DCord.json', 'r') as f:
                     settings_data = json.load(f)
                     Platform = settings_data.get('platform', "Not Selected")
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -1560,9 +1725,9 @@ class MissionLogGUI:
                 ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
             else:
                 # Use PROD webhook in production mode
-                with open('DCord.json', 'r') as f:
+                with open('./JSON/DCord.json', 'r') as f:
                     dcord_data = json.load(f)
-                    ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
+                    ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_logging', [])
 
             successes = []
             for url in ACTIVE_WEBHOOK:
@@ -1643,9 +1808,6 @@ class MissionLogGUI:
         self.shipName1.set(settings.get('shipName1', ''))
         self.shipName2.set(settings.get('shipName2', ''))
         self.profile_picture.set(settings.get('profile_picture', ''))
-        # Apply theme if present
-        theme = settings.get('theme', 'light')
-        self.apply_theme(theme)
         # After loading saved sector/planet ensure dependent dropdowns refresh
         try:
             # Re-run planet population with current sector.
@@ -1662,7 +1824,7 @@ class MissionLogGUI:
 
 if __name__ == "__main__":
     try:
-        with open('DCord.json', 'r') as f:
+        with open('./JSON/DCord.json', 'r') as f:
             settings_data = json.load(f)
             discord_uid = settings_data.get('discord_uid', '0')
             if not (re.match(r'^\d{17,19}$', discord_uid) or (DEBUG and discord_uid == '0')):
@@ -1675,7 +1837,7 @@ if __name__ == "__main__":
         messagebox.showerror("Error", f"Error loading settings.json: {e}")
         os._exit(1)
     try:
-        with open('DCord.json', 'r') as f:
+        with open('./JSON/DCord.json', 'r') as f:
             settings_data = json.load(f)
             platform = settings_data.get('platform', "Not Selected")
             if platform == "Not Selected":

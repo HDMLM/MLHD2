@@ -16,7 +16,7 @@ config.read('config.config')
 # Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
-SETTINGS_FILE = 'persistance.json'
+SETTINGS_FILE = './JSON/persistance.json'
 
 # Dropdown values as constants
 ENEMY_TYPES = ['All', 'Automatons', 'Illuminate', 'Terminids']
@@ -45,255 +45,105 @@ PLANETS = [
     'Draupnir', 'Meissa', 'Wasat', 'X-45', 'Vega Bay', 'Wezen'
 ]
 
-# Theme settings
-light_theme = {
-    ".": { 
-        "configure": {
-            "background": "#f0f0f0",  # Light grey background
-            "foreground": "#000000",  # Black text
-        }
-    },
-    "TLabel": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-        }
-    },
-    "TButton": {
-        "configure": {
-            "background": "#e0e0e0",  # Light grey button
-            "foreground": "#000000",  # Black text
-        }
-    },
-    "TEntry": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-            "fieldbackground": "#ffffff",
-            "insertcolor": "#000000",
-            "bordercolor": "#c0c0c0",
-            "lightcolor": "#ffffff",
-            "darkcolor": "#c0c0c0",
-        }
-    },
-    "TCheckbutton": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-            "indicatorbackground": "#ffffff", 
-            "indicatorforeground": "#000000",
-        }
-    },
-    "TCombobox": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",  # Black text
-            "fieldbackground": "#ffffff",
-            "insertcolor": "#000000",
-            "bordercolor": "#c0c0c0",
-            "lightcolor": "#ffffff",
-            "darkcolor": "#c0c0c0",
-            "arrowcolor": "#000000"
+# Theme system (mirrors main.py)
+def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None, heading_fg=None):
+    return {
+        ".": {"configure": {"background": bg, "foreground": fg}},
+        "TLabel": {"configure": {"background": bg, "foreground": fg}},
+        "TButton": {
+            "configure": {"background": button_bg or bg, "foreground": button_fg or fg},
+            # Hover/pressed state colors
+            "map": {
+                "background": [
+                    ("pressed", "#2e2e2e"),
+                    ("active", "#3a3a3a"),
+                ],
+                "foreground": [
+                    ("pressed", button_fg or fg),
+                    ("active", button_fg or fg),
+                ],
+            },
         },
-    },
-    "TFrame": {
-        "configure": {
-            "background": "#ffffff",
-        }
-    },
-    "TLabelframe": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",
-        }
-    },
-    "TLabelframe.Label": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",
-        }
-    },
-    "TNotebook": {
-        "configure": {
-            "background": "#f0f0f0",
-        }
-    },
-    "TNotebook.Tab": {
-        "configure": {
-            "background": "#e0e0e0",
-            "foreground": "#000000",
-        }
-    },
-    "Treeview": {
-        "configure": {
-            "background": "#ffffff",
-            "foreground": "#000000",
-            "fieldbackground": "#ffffff",
-        }
-    },
-    "Treeview.Heading": {
-        "configure": {
-            "background": "#e0e0e0",
-            "foreground": "#000000",
-        }
+        "TEntry": {"configure": {
+            "background": entry_bg or bg,
+            "foreground": entry_fg or fg,
+            "fieldbackground": entry_bg or bg,
+            "insertcolor": fg,
+        }},
+        "TCheckbutton": {"configure": {"background": bg, "foreground": fg}},
+        "TCombobox": {"configure": {
+            "background": entry_bg or bg,
+            "foreground": entry_fg or fg,
+            "fieldbackground": entry_bg or bg,
+            "insertcolor": fg,
+            "arrowcolor": fg,
+        }},
+        "TFrame": {"configure": {"background": frame_bg or bg}},
+        "TLabelframe": {"configure": {"background": frame_bg or bg, "foreground": fg}},
+        "TLabelframe.Label": {"configure": {"background": frame_bg or bg, "foreground": fg}},
+        "Treeview": {
+            "configure": {
+                "background": frame_bg or bg,
+                "foreground": fg,              
+                "fieldbackground": frame_bg or bg,
+                "rowheight": 22,
+                # The following are respected by 'clam' theme to remove white borders/edges
+                "bordercolor": frame_bg or bg,
+                "lightcolor": frame_bg or bg,
+                "darkcolor": frame_bg or bg,
+                "borderwidth": 0,
+                "focuscolor": frame_bg or bg,
+            },
+            "map": {
+                "background": [("selected", button_bg or bg)],
+                "foreground": [("selected", button_fg or fg)],
+            }
+        },
+        "Treeview.Heading": {
+            "configure": {"background": button_bg or bg, "foreground": heading_fg or fg},
+            "map": {
+                # Ensure header text stays visible on hover/press
+                "foreground": [
+                    ("active", "#000000"),
+                    ("pressed", "#000000"),
+                ],
+            },
+        },
+        "Treeview.empty": {"configure": {"background": frame_bg or bg}},
+        # Explicit scrollbar styling for 'clam' to avoid white troughs
+        "Vertical.TScrollbar": {"configure": {
+            "background": button_bg or bg,
+            "troughcolor": frame_bg or bg,
+            "bordercolor": frame_bg or bg,
+            "lightcolor": frame_bg or bg,
+            "darkcolor": frame_bg or bg,
+            "arrowcolor": fg,
+        }},
+        "Horizontal.TScrollbar": {"configure": {
+            "background": button_bg or bg,
+            "troughcolor": frame_bg or bg,
+            "bordercolor": frame_bg or bg,
+            "lightcolor": frame_bg or bg,
+            "darkcolor": frame_bg or bg,
+            "arrowcolor": fg,
+        }},
     }
-}
 
-dark_theme = {
-    ".": { 
-        "configure": {
-            "background": "#1e1e1e",  # Dark grey background
-            "foreground": "white",    # White text
-        }
-    },
-    "TLabel": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",    # White text
-        }
-    },
-    "TButton": {
-        "configure": {
-            "background": "#444444",  # Dark gray button
-            "foreground": "white",    # Gray text by default
-        },
-        "map": {
-            "foreground": [("hover", "white"), ("active", "white")],
-            "background": [("hover", "black"), ("active", "black")]
-        }
-    },
-    "TEntry": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",    # White text
-            "fieldbackground": "#3c3c3c",
-            "insertcolor": "#a3a3a3",
-            "bordercolor": "black",
-            "lightcolor": "#4d4d4d",
-            "darkcolor": "black",
-        }
-    },
-    "TCheckbutton": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",    # White text
-            "indicatorbackground": "white", 
-            "indicatorforeground": "black",
-        }
-    },
-    "TCombobox": {
-        "configure": {
-            "background": "#444444",
-            "foreground": "black",
-            "fieldbackground": "#444444",
-            "insertcolor": "white",
-            "bordercolor": "black",
-            "lightcolor": "#4d4d4d",
-            "darkcolor": "black",
-            "arrowcolor": "gray",
-        },
-    },
-    "TFrame": {
-        "configure": {
-            "background": "#252526",
-        }
-    },
-    "TLabelframe": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",
-        }
-    },
-    "TLabelframe.Label": {
-        "configure": {
-            "background": "#252526",
-            "foreground": "white",
-        }
-    },
-    "TNotebook": {
-        "configure": {
-            "background": "#444444",
-        }
-    },
-    "TNotebook.Tab": {
-        "configure": {
-            "background": "#444444",
-            "foreground": "white",
-        }
-    },
-    "Treeview": {
-        "configure": {
-            "background": "#2d2d2d",
-            "foreground": "white",
-            "fieldbackground": "#2d2d2d",
-        }
-    },
-    "Treeview.Heading": {
-        "configure": {
-            "background": "#444444",
-            "foreground": "white",
-        }
-    }
-}
+DEFAULT_THEME = make_theme(
+    bg="#252526",
+    fg="#FFFFFF",
+    entry_bg="#252526",
+    entry_fg="#FFFFFF",
+    button_bg="#4C4C4C",
+    button_fg="#FFFFFF",
+    frame_bg="#252526",
+    heading_fg="#FFFFFF",  # Table header text is black
+)
 
-THEMES = {
-    "light": light_theme,
-    "dark": dark_theme
-}
-
-def apply_theme(root, theme_name):
-    """Apply the selected theme to all widgets."""
-    if theme_name not in THEMES:
-        logging.error(f"Unknown theme: {theme_name}")
-        return
-        
-    theme = THEMES[theme_name]
-    style = ttk.Style()
-    style.theme_use('clam')  # Use 'clam' as a base theme
-    
-    # Apply theme styles to all widget types
-    for widget_type, settings in theme.items():
-        if 'configure' in settings:
-            try:
-                style.configure(widget_type, **settings['configure'])
-            except Exception as e:
-                logging.error(f"Error applying theme to {widget_type}: {e}")
-                
-        if 'map' in settings:
-            try:
-                style.map(widget_type, **settings['map'])
-            except Exception as e:
-                logging.error(f"Error applying map for {widget_type}: {e}")
-    
-    # Special handling for Combobox dropdown
-    if theme_name == 'dark':
-        root.option_add("*TCombobox*Listbox*Background", '#2d2d2d')
-        root.option_add("*TCombobox*Listbox*Foreground", 'white')
-    else:
-        root.option_add("*TCombobox*Listbox*Background", '#ffffff')
-        root.option_add("*TCombobox*Listbox*Foreground", 'black')
-    
-    # Configure the root background
-    if '.' in theme and 'configure' in theme['.']:
-        root_bg = theme['.']['configure'].get('background')
-        if root_bg:
-            root.configure(background=root_bg)
-            
-    return theme_name
-
-def get_current_theme():
-    if os.path.exists('settings.json'):
-        try:
-            with open('settings.json', 'r') as f:
-                settings = json.load(f)
-                return settings.get('theme', 'light')
-        except Exception:
-            return 'light'
-    return 'light'
-
-def apply_theme_from_settings(root):
-    theme_name = get_current_theme()
-    apply_theme(root, theme_name)
+def apply_theme(style: ttk.Style, theme_dict: dict):
+    for widget, opts in theme_dict.items():
+        for method, cfg in opts.items():
+            getattr(style, method)(widget, **cfg)
 
 def create_filter_dropdown(parent, label_text, var, values, on_select, padx=0):
     label = ttk.Label(parent, text=label_text)
@@ -313,13 +163,29 @@ def main():
     root.minsize(1050, 500)
     try:
         icon_path = os.path.join(os.path.dirname(__file__), "SuperEarth.png")
-        root._icon_image = tk.PhotoImage(file=icon_path)
+        from PIL import Image, ImageTk
+        pil_icon = Image.open(icon_path)
+        root._icon_image = ImageTk.PhotoImage(pil_icon)
         root.iconphoto(True, root._icon_image)
     except Exception as e:
         logging.warning(f"Unable to load window icon: {e}")
-    # Set current_theme from settings at the start
-    current_theme = get_current_theme()
-    apply_theme(root, current_theme)
+
+    # Apply the same theme system as main.py
+    style = ttk.Style()
+    # Use a theme that respects fieldbackground for Treeview (per SO solution)
+    try:
+        style.theme_use("clam")
+    except Exception:
+        # Fallback silently if 'clam' isn't available
+        pass
+    apply_theme(style, DEFAULT_THEME)
+    # Ensure the entire tree area uses the styled background (remove white gaps)
+    try:
+        style.layout("Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
+    except Exception:
+        # If layout change isn't supported, ignore
+        pass
+    root.configure(bg=DEFAULT_THEME["."]["configure"]["background"])  # match settings.py
     
     # Configure root grid layout
     root.grid_rowconfigure(0, weight=1)
@@ -350,7 +216,12 @@ def main():
         status_label.grid(row=0, column=0, sticky="nsew")
         
         # Create the table structure (but don't load data yet)
-        table = ttk.Treeview(table_frame, show="headings", selectmode="extended")
+        table = ttk.Treeview(
+            table_frame,
+            show="headings",
+            selectmode="extended",
+            padding=0
+        )
         
         # Variables for virtual scrolling
         PAGE_SIZE = 50  # Number of rows to load at once
@@ -530,8 +401,8 @@ def main():
         logging.error(f"Error setting up table: {e}")
     
     # Add scrollbars
-    y_scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=table.yview)
-    x_scrollbar = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=table.xview)
+    y_scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=table.yview, style="Vertical.TScrollbar")
+    x_scrollbar = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=table.xview, style="Horizontal.TScrollbar")
     table.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
     
     # Configure the scrollbar to use our virtual scrolling with improved performance
@@ -639,6 +510,10 @@ def main():
     table.grid(row=0, column=0, sticky="nsew")
     y_scrollbar.grid(row=0, column=1, sticky="ns")
     x_scrollbar.grid(row=1, column=0, sticky="ew")
+    # Add corner filler to cover scrollbar intersection (prevents white square)
+    corner = ttk.Frame(table_frame)
+    corner.configure(style="TFrame")
+    corner.grid(row=1, column=1, sticky="nsew")
     
     # Add a button
     def button_action():

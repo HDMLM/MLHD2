@@ -25,7 +25,7 @@ except FileNotFoundError:
 
 highest_streak = 0
 profile_picture = ""
-with open('streak_data.json', 'r') as f:
+with open('./JSON/streak_data.json', 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key
     highest_streak = streak_data.get("Helldiver", {}).get("highest_streak", 0)
@@ -124,7 +124,7 @@ all_campaigns = (total_liberation and total_defense and
                 total_attrition and total_bfse)
 
 # Load biome mapping from json file
-with open('BiomePlanets.json', 'r') as f:
+with open('./JSON/BiomePlanets.json', 'r') as f:
     biome_mapping = json.load(f)
 
 # Create a set of all unique biomes from the mapping
@@ -802,7 +802,7 @@ ACTIVE_WEBHOOK = WEBHOOK_URLS['TEST'] if DEBUG else WEBHOOK_URLS['PROD']
 
 # UID from local DCord.json (user settings)
 try:
-    with open('DCord.json', 'r') as f:
+    with open('./JSON/DCord.json', 'r') as f:
         settings_data = json.load(f)
         UID = settings_data.get('discord_uid', '0')
 except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -1041,11 +1041,11 @@ if DEBUG:
 else:
     # Load production webhooks from external JSON
     try:
-        with open('DCord.json', 'r') as f:
+        with open('./JSON/DCord.json', 'r') as f:
             dcord_data = json.load(f)
-            ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
+            ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_export', [])
         if not ACTIVE_WEBHOOK:
-            logging.error("No production webhooks found in DCord.json (key: discord_webhooks).")
+            logging.error("No production webhooks found in DCord.json (key: discord_webhooks_export).")
     except FileNotFoundError:
         logging.error("DCord.json not found. Cannot load production webhooks.")
         ACTIVE_WEBHOOK = []

@@ -1,0 +1,17 @@
+{
+    "helldiver": "Helldiver",
+    "level": 0,
+    "title": "CADET",
+    "sector": "Sol System",
+    "planet": "Mars",
+    "difficulty": "1 - TRIVIAL",
+    "mission": "Observing Galactic War",
+    "DSS": false,
+    "DSSMod": "Inactive",
+    "campaign": "Observation",
+    "subfaction": "No Faction",
+    "hvt": "No HVTs",
+    "shipName1": "SES Adjudicator",
+    "shipName2": "of Allegiance",
+    "profile_picture": "B-01 Tactical"
+}

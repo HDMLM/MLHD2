@@ -1,3 +1,7 @@
+#
+# Pretty sure this file is entirely outdated now, will check later
+#
+#
 import pandas as pd
 import logging
 from logging_config import setup_logging
