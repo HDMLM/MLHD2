@@ -787,10 +787,10 @@ for key, defs in ACHIEVEMENT_DEFS.items():
 
 # generate embed message
 
-helldiver_level = df['Level'].mode()[0]
-helldiver_title = df['Title'].mode()[0]
-helldiver_ses = df['Super Destroyer'].mode()[0]
-helldiver_name = df['Helldivers'].mode()[0]
+helldiver_level = df['Level'].iloc[-1]
+helldiver_title = df['Title'].iloc[-1]
+helldiver_ses = df['Super Destroyer'].iloc[-1]
+helldiver_name = df['Helldivers'].iloc[-1]
 latest_note = df['Note'].iloc[-1] if not pd.isna(df['Note'].iloc[-1]) else "No notes available"
 
 # Discord webhook configuration
