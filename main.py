@@ -6,7 +6,9 @@
 # Credits:
 # - Dean: Primary JSON data contributions, testing, debugging, cosmetic improvements
 # - Adam: Original script + GUI foundations
+# - Jesse(GameForDays2): Testing, feedback, and moral support
 # - Honourble mention, Copilot for handling that mundane shit like changing lists to data structs
+
 
 # Times i've wished we didn't use Excel - 22
 # Times we should move away from discord - 1
