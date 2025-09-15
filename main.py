@@ -33,9 +33,9 @@ from PIL import Image, ImageTk
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
 
 # Manual Configuration
-GWDay = "Day: 582"
-GWDate = "Date: 12/09/2025"
-VERSION = "1.5.011"
+GWDay = "Day: 585"
+GWDate = "Date: 15/09/2025"
+VERSION = "1.6.000"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -363,8 +363,8 @@ class MissionLogGUI:
 
         ttk.Label(gw_frame, text="Galactic War").pack(side=tk.LEFT)
 
-        # Set a fixed width for the label to prevent window expansion
-        gw_label = ttk.Label(gw_frame, textvariable=gw_date_var, cursor="hand2", width=12, anchor="w")
+        # Increased width to accommodate full year display
+        gw_label = ttk.Label(gw_frame, textvariable=gw_date_var, cursor="hand2", width=15, anchor="w")
         gw_label.pack(side=tk.LEFT, padx=(2,0))
         gw_label.bind("<Button-1>", toggle_gw_date)
 
