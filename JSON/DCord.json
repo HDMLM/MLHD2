@@ -1,25 +1,25 @@
 {
-    "discord_uid": "850139032720900116",
+    "discord_uid": "0",
     "discord_webhooks_logging": [
-        "https://discord.com/api/webhooks/1384265697974030499/29IkPD4jQgN08uKkUweksszIWQaL60LV71VyuFDFwuJSWX1CM-zG_FI8etfmfeLJ_QF5"
+        ""
     ],
     "discord_webhooks_export": [
-        "https://discord.com/api/webhooks/1378827754166030366/jAEO0kfgpZj3HaUn-fZV4la1_cZ1WXuxxlNdUym6TO28Beh7QX3GvBwDbPblmlZqreyj"
+        ""
     ],
     "discord_webhooks": [
-        "https://discord.com/api/webhooks/1378827754166030366/jAEO0kfgpZj3HaUn-fZV4la1_cZ1WXuxxlNdUym6TO28Beh7QX3GvBwDbPblmlZqreyj"
+        ""
     ],
     "discord_webhooks_logging_labeled": [
         {
-            "label": "raw",
-            "url": "https://discord.com/api/webhooks/1384265697974030499/29IkPD4jQgN08uKkUweksszIWQaL60LV71VyuFDFwuJSWX1CM-zG_FI8etfmfeLJ_QF5"
+            "label": "Delete Me",
+            "url": ""
         }
     ],
     "discord_webhooks_export_labeled": [
         {
-            "label": "test",
-            "url": "https://discord.com/api/webhooks/1378827754166030366/jAEO0kfgpZj3HaUn-fZV4la1_cZ1WXuxxlNdUym6TO28Beh7QX3GvBwDbPblmlZqreyj"
+            "label": "Delete Me",
+            "url": ""
         }
     ],
-    "platform": "Steam"
+    "platform": "Not Selected"
 }
