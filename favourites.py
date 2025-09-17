@@ -19,11 +19,26 @@ DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
 
 # Read the Excel file
+import tkinter as tk
+from tkinter import messagebox
+import random
+import sys
 try:
     df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
-except FileNotFoundError:
-    logging.error("Error: Excel file not found. Please ensure the file exists in the correct location.")
-    exit(1)
+    if df.empty:
+        logging.error("Error: Excel file is empty. Please ensure the file contains data.")
+        # Show a message box to the user
+        root = tk.Tk()
+        root.withdraw()
+        randint = random.randint(1, 2)
+        if randint == 1:
+            messagebox.showerror("Export Error", "You're favourite thing is clearly disobeying orders. No missions found in the log.")
+        else:
+            messagebox.showerror("Export Error", "No mission data recorded. Please log at least one mission before exporting.")
+        raise ValueError("Excel file is empty.")
+except (FileNotFoundError, ValueError) as e:
+    logging.error(f"Error: Unable to read Excel file. {e}")
+    sys.exit(0)  # Exit the subprocess gracefully and return to main
 
 # Initialize a dictionary to store column totals
 sectors = []
@@ -56,6 +71,12 @@ else:
     with open('./JSON/DCord.json', 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
+        # Normalize possible dict entries and filter invalid/empty
+        webhook_urls = [
+            (w.get('url') if isinstance(w, dict) else str(w)).strip()
+            for w in webhook_urls
+            if (isinstance(w, dict) and str(w.get('url', '')).strip()) or (isinstance(w, str) and w.strip())
+        ]
 
 if Rating_Percentage >= 90:
     Rating = "Outstanding Patriotism"
@@ -405,6 +426,12 @@ else:
     with open('./JSON/DCord.json', 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
+        # Normalize possible dict entries and filter invalid/empty
+        webhook_urls = [
+            (w.get('url') if isinstance(w, dict) else str(w)).strip()
+            for w in webhook_urls
+            if (isinstance(w, dict) and str(w.get('url', '')).strip()) or (isinstance(w, str) and w.strip())
+        ]
 
 # Send data to each webhook
 for webhook_url in webhook_urls:

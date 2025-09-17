@@ -7,7 +7,6 @@ import pandas as pd
 import logging
 from logging_config import setup_logging
 from typing import Dict, List, Optional
-from pypresence import Presence
 import time
 import configparser
 import threading
@@ -445,7 +444,6 @@ DSS_ICONS = {
     "Heavy Ordnance Distribution": iconconfig['MiscIcon']['Heavy Ordnance Distribution'],
     "Eagle Blockade": iconconfig['MiscIcon']['Eagle Blockade']
 }
-
 
 TITLE_ICONS = {
     "CADET": iconconfig['TitleIcons']['CADET'],

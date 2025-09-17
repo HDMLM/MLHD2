@@ -25,6 +25,10 @@ def setup_logging(debug: bool, log_file: str = "app.log") -> None:
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)  # Capture all; handlers filter
 
+    # Remove any pre-existing handlers added by libraries (to avoid duplicate/verbose output)
+    for h in list(root.handlers):
+        root.removeHandler(h)
+
     # Console handler
     ch = logging.StreamHandler()
     ch.setLevel(console_level)
@@ -41,6 +45,15 @@ def setup_logging(debug: bool, log_file: str = "app.log") -> None:
         root.error("Failed to set up file logging; continuing without file handler")
 
     _configured = True
+
+    # Quiet noisy third-party libraries by default
+    # Pillow (PIL) PNG plugin can be very verbose at DEBUG level.
+    for noisy in ("PIL", "PIL.PngImagePlugin", "urllib3", "requests", "discord", "discordrpc", "presence"):
+        nlog = logging.getLogger(noisy)
+        nlog.setLevel(logging.WARNING)
+        # Avoid duplicate output if library attached its own handlers
+        for h in list(nlog.handlers):
+            nlog.removeHandler(h)
 
 def get_logger(name: Optional[str] = None) -> logging.Logger:
     return logging.getLogger(name)
