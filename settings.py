@@ -5,6 +5,8 @@ import os
 import re
 import sys
 import traceback
+from PIL import Image, ImageTk
+import tkinter.font as tkfont
 
 # ---------- Paths ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -114,8 +116,18 @@ class SettingsPage(tk.Tk):
     # ----- Theme -----
     def apply_theme(self, style: ttk.Style, theme_dict):
         for widget, opts in theme_dict.items():
+            # Apply style configuration entries from a theme dict similar to main.py
             for method, cfg in opts.items():
-                getattr(style, method)(widget, **cfg)
+                if method == "configure":
+                    try:
+                        style.configure(widget, **cfg)
+                    except Exception:
+                        pass
+                elif method == "map":
+                    try:
+                        style.map(widget, **cfg)  # not used currently but supported
+                    except Exception:
+                        pass
 
     # ----- UI Build -----
     def create_widgets(self):
@@ -127,9 +139,75 @@ class SettingsPage(tk.Tk):
 
         # Profile tab (Username + Ship Name)
         profile_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(profile_frame, text="Profile")
-        # Identity section
-        identity_label = ttk.Label(profile_frame, text="Identity", font=("Arial", 12, "bold"))
+        # Discord tab
+        discord_frame = ttk.Frame(notebook, padding="10")
+
+        def load_tab_image(path):
+            img = Image.open(path)
+            w, h = img.size
+            img = img.resize((w // 3, h // 3), Image.LANCZOS)
+            # Remove alpha by compositing onto a dark background (like other buttons)
+            bg_color = (37, 37, 38, 255)
+            if img.mode == "RGBA":
+                bg = Image.new("RGBA", img.size, bg_color)
+                img = Image.alpha_composite(bg, img)
+                img = img.convert("RGB")
+            else:
+                bg = Image.new("RGB", img.size, bg_color[:3])
+                bg.paste(img, (0, 0))
+                img = bg
+            return ImageTk.PhotoImage(img)
+
+        # Profile tab images
+        self.profile_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/ProfileTabButtonDeactive.png"))
+        self.profile_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/ProfileTabButton.png"))
+
+        # Discord tab images
+        self.discord_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/DiscordTabButtonDeactive.png"))
+        self.discord_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/DiscordTabButton.png"))
+
+        # Add tabs with images, remove border/padding
+        notebook.add(profile_frame, text="", image=self.profile_tab_img_normal, compound=tk.CENTER, padding=0)
+        notebook.add(discord_frame, text="", image=self.discord_tab_img_normal, compound=tk.CENTER, padding=0)
+
+        # Remove tab border/highlight (like other buttons)
+        style = ttk.Style()
+        style.layout("TNotebook.Tab", [
+            ('Notebook.tab', {'sticky': 'nswe', 'children': [
+            ('Notebook.padding', {'side': 'top', 'sticky': 'nswe', 'children': [
+                ('Notebook.focus', {'side': 'top', 'sticky': 'nswe', 'children': [
+                ('Notebook.image', {'side': 'left', 'sticky': ''}),
+                ]}),
+            ]}),
+            ]}),
+        ])
+        style.configure("TNotebook.Tab", borderwidth=0, highlightthickness=0, padding=0)
+        style.map("TNotebook.Tab", background=[("selected", DEFAULT_THEME["."]["configure"]["background"]), ("!selected", DEFAULT_THEME["."]["configure"]["background"])])
+
+        def update_tab_images(event=None):
+            selected = notebook.index(notebook.select())
+            if selected == 0:
+                notebook.tab(0, image=self.profile_tab_img_selected)
+                notebook.tab(1, image=self.discord_tab_img_normal)
+            else:
+                notebook.tab(0, image=self.profile_tab_img_normal)
+                notebook.tab(1, image=self.discord_tab_img_selected)
+
+        notebook.bind("<<NotebookTabChanged>>", update_tab_images)
+        notebook.tab(0, sticky="nsew")
+        notebook.tab(1, sticky="nsew")
+        # Set initial images
+        update_tab_images()
+
+        # Font system: Try to use Insignia font if available, fallback to Arial
+        try:
+            self.fs_sinclair_font = tkfont.Font(family="Insignia", size=14, weight="bold")
+        except Exception:
+            self.fs_sinclair_font = None
+        font_to_use = self.fs_sinclair_font if self.fs_sinclair_font is not None else tkfont.Font(family="Arial", size=14, weight="bold")
+
+        # Identity section (profile tab)
+        identity_label = ttk.Label(profile_frame, text="Identity", font=font_to_use)
         identity_lf = ttk.LabelFrame(profile_frame, labelwidget=identity_label, padding=10)
         identity_lf.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=10)
         identity_lf.columnconfigure(1, weight=1)
@@ -144,17 +222,14 @@ class SettingsPage(tk.Tk):
         self.ship2_combo.grid(row=1, column=2, sticky=tk.W, padx=(3,0), pady=5)
 
         # Preview section
-        preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=("Arial", 12, "bold"))
+        preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=self.fs_sinclair_font)
         preview_lf = ttk.LabelFrame(profile_frame, labelwidget=preview_label, padding=10)
         preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=5)
         ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W)
         ttk.Label(preview_lf, textvariable=self.full_ship_name_var).grid(row=0, column=1, sticky=tk.W, padx=5)
-
-        # Discord tab
-        discord_frame = ttk.Frame(notebook, padding="10")
-        notebook.add(discord_frame, text="Discord")
+        
         # Account section
-        account_label = ttk.Label(discord_frame, text="Account", font=("Arial", 12, "bold"))
+        account_label = ttk.Label(discord_frame, text="Account", font=self.fs_sinclair_font)
         account_lf = ttk.LabelFrame(discord_frame, labelwidget=account_label, padding=10)
         account_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
         account_lf.columnconfigure(1, weight=1)
@@ -164,8 +239,56 @@ class SettingsPage(tk.Tk):
         self.platform_combo = ttk.Combobox(account_lf, textvariable=self.platform_var, values=["Not Selected", "Steam", "PlayStation", "Xbox"], state="readonly", width=20)
         self.platform_combo.grid(row=0, column=3, sticky=tk.W)
 
+# START BADGE PREVIEW
+        # Platform Badges (vertical images on right side, inside Discord tab)
+        platform_badges_frame = ttk.Frame(discord_frame)
+        # Place inside discord_frame, right side, a bit lower
+        platform_badges_frame.place(relx=0.98, rely=0.1, anchor="ne")
+
+        def load_platform_badge(path, size=(100, 100)):
+            img = Image.open(path)
+            img = img.resize(size, Image.LANCZOS)
+            return ImageTk.PhotoImage(img)
+
+        badge_files = {
+            "Steam": ("SteamBadge.png", "SteamBadgeDeactive.png"),
+            "PlayStation": ("PlayStationBadge.png", "PlayStationBadgeDeactive.png"),
+            "Xbox": ("XboxBadge.png", "XboxBadgeDeactive.png"),
+        }
+        platforms = ["Steam", "PlayStation", "Xbox"]
+
+        def get_badge_paths(selected_platform):
+            paths = []
+            for plat in platforms:
+                active, inactive = badge_files[plat]
+                if plat == selected_platform:
+                    paths.append(os.path.join(BASE_DIR, f"./media/SettingsInt/{active}"))
+                else:
+                    paths.append(os.path.join(BASE_DIR, f"./media/SettingsInt/{inactive}"))
+            return paths
+
+        badge_paths = get_badge_paths(self.platform_var.get())
+        self.platform_badge_imgs = [load_platform_badge(p) for p in badge_paths]
+
+        self.platform_badge_labels = []
+        for i, img in enumerate(self.platform_badge_imgs):
+            lbl = tk.Label(platform_badges_frame, image=img, bg=DEFAULT_THEME["."]["configure"]["background"])
+            lbl.image = img
+            lbl.pack(pady=(0, 60))
+            self.platform_badge_labels.append(lbl)
+
+        def update_badges(*args):
+            badge_paths = get_badge_paths(self.platform_var.get())
+            imgs = [load_platform_badge(p) for p in badge_paths]
+            for lbl, img in zip(self.platform_badge_labels, imgs):
+                lbl.configure(image=img)
+                lbl.image = img
+
+        self.platform_var.trace_add("write", update_badges)
+#END BADGE PREVIEW
+
         # Webhooks section
-        hooks_label = ttk.Label(discord_frame, text="Webhooks", font=("Arial", 12, "bold"))
+        hooks_label = ttk.Label(discord_frame, text="Webhooks", font=self.fs_sinclair_font)
         hooks_lf = ttk.LabelFrame(discord_frame, labelwidget=hooks_label, padding=10)
         hooks_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
         hooks_lf.columnconfigure(0, weight=1)
@@ -191,8 +314,84 @@ class SettingsPage(tk.Tk):
         ttk.Entry(log_controls, textvariable=self.new_webhook_label_var_logging, width=20).pack(side=tk.LEFT, padx=5)
         ttk.Label(log_controls, text="URL:").pack(side=tk.LEFT, padx=5)
         ttk.Entry(log_controls, textvariable=self.new_webhook_var_logging, width=40).pack(side=tk.LEFT, padx=5)
-        ttk.Button(log_controls, text="Add", command=self.add_webhook_logging).pack(side=tk.LEFT, padx=5)
-        ttk.Button(log_controls, text="Remove Selected", command=self.remove_webhook_logging).pack(side=tk.LEFT, padx=5)
+        # Load and subsample images for Add button (logging)
+        def load_add_btn_img(path):
+            pil_img = Image.open(path).convert('RGBA')
+            pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
+
+        add_btn_img_tk = load_add_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/AddButton.png"))
+        add_btn_img_hover_tk = load_add_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/AddButtonHover.png"))
+
+        # Image button (borderless label) for Add (logging)
+        self.add_webhook_logging_btn = tk.Label(
+            log_controls,
+            image=add_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.add_webhook_logging_btn.image = add_btn_img_tk  # Prevent garbage collection
+        self.add_webhook_logging_btn.pack(side=tk.LEFT, padx=5)
+        self.add_webhook_logging_btn.bind("<Button-1>", lambda e: self.add_webhook_logging())
+
+        def on_add_btn_enter(e):
+            self.add_webhook_logging_btn.configure(image=add_btn_img_hover_tk)
+            self.add_webhook_logging_btn.image = add_btn_img_hover_tk
+
+        def on_add_btn_leave(e):
+            self.add_webhook_logging_btn.configure(image=add_btn_img_tk)
+            self.add_webhook_logging_btn.image = add_btn_img_tk
+
+        self.add_webhook_logging_btn.bind("<Enter>", on_add_btn_enter)
+        self.add_webhook_logging_btn.bind("<Leave>", on_add_btn_leave)
+        # Remove button with hover effect (logging webhooks)
+        try:
+            def load_remove_btn_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            remove_btn_img_tk = load_remove_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButton.png"))
+            remove_btn_img_hover_tk = load_remove_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButtonHover.png"))
+
+            self.remove_webhook_logging_btn = tk.Label(
+                log_controls,
+                image=remove_btn_img_tk,
+                bd=0,
+                highlightthickness=0,
+                bg=DEFAULT_THEME["."]["configure"]["background"],
+                cursor="hand2"
+            )
+            self.remove_webhook_logging_btn.image = remove_btn_img_tk
+            self.remove_webhook_logging_btn.pack(side=tk.LEFT, padx=5)
+
+            def on_remove_btn_enter(e):
+                self.remove_webhook_logging_btn.configure(image=remove_btn_img_hover_tk)
+                self.remove_webhook_logging_btn.image = remove_btn_img_hover_tk
+
+            def on_remove_btn_leave(e):
+                self.remove_webhook_logging_btn.configure(image=remove_btn_img_tk)
+                self.remove_webhook_logging_btn.image = remove_btn_img_tk
+
+            self.remove_webhook_logging_btn.bind("<Enter>", on_remove_btn_enter)
+            self.remove_webhook_logging_btn.bind("<Leave>", on_remove_btn_leave)
+            self.remove_webhook_logging_btn.bind("<Button-1>", lambda e: self.remove_webhook_logging())
+        except Exception as e:
+            print(f"Failed to load remove button image: {e}")
+            fallback_btn = ttk.Button(
+            log_controls,
+            text="Remove",
+            command=self.remove_webhook_logging
+            )
+            fallback_btn.pack(side=tk.LEFT, padx=5)
 
         # Export webhooks
         ttk.Label(hooks_lf, text="Export (faction data, etc.)", font=("Arial", 10, "bold")).grid(row=4, column=0, sticky=tk.W, pady=(10,0))
@@ -214,17 +413,173 @@ class SettingsPage(tk.Tk):
         ttk.Entry(exp_controls, textvariable=self.new_webhook_label_var_export, width=20).pack(side=tk.LEFT, padx=5)
         ttk.Label(exp_controls, text="URL:").pack(side=tk.LEFT, padx=5)
         ttk.Entry(exp_controls, textvariable=self.new_webhook_var_export, width=40).pack(side=tk.LEFT, padx=5)
-        ttk.Button(exp_controls, text="Add", command=self.add_webhook_export).pack(side=tk.LEFT, padx=5)
-        ttk.Button(exp_controls, text="Remove Selected", command=self.remove_webhook_export).pack(side=tk.LEFT, padx=5)
+        # Load and subsample images for Add button (export) with dark compositing
+        def load_add_btn_img_export(path):
+            pil_img = Image.open(path).convert('RGBA')
+            pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
+
+        add_btn_img_export_tk = load_add_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/AddButton.png"))
+        add_btn_img_export_hover_tk = load_add_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/AddButtonHover.png"))
+
+        self.add_webhook_export_btn = tk.Label(
+            exp_controls,
+            image=add_btn_img_export_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.add_webhook_export_btn.image = add_btn_img_export_tk
+        self.add_webhook_export_btn.pack(side=tk.LEFT, padx=5)
+        self.add_webhook_export_btn.bind("<Button-1>", lambda e: self.add_webhook_export())
+
+        def on_add_btn_export_enter(e):
+            self.add_webhook_export_btn.configure(image=add_btn_img_export_hover_tk)
+            self.add_webhook_export_btn.image = add_btn_img_export_hover_tk
+
+        def on_add_btn_export_leave(e):
+            self.add_webhook_export_btn.configure(image=add_btn_img_export_tk)
+            self.add_webhook_export_btn.image = add_btn_img_export_tk
+
+        self.add_webhook_export_btn.bind("<Enter>", on_add_btn_export_enter)
+        self.add_webhook_export_btn.bind("<Leave>", on_add_btn_export_leave)
+        # Load and subsample images for Remove button (export) with dark compositing
+        def load_remove_btn_img_export(path):
+            pil_img = Image.open(path).convert('RGBA')
+            pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
+
+        remove_btn_img_export_tk = load_remove_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButton.png"))
+        remove_btn_img_export_hover_tk = load_remove_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButtonHover.png"))
+
+        self.remove_webhook_export_btn = tk.Label(
+            exp_controls,
+            image=remove_btn_img_export_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.remove_webhook_export_btn.image = remove_btn_img_export_tk
+        self.remove_webhook_export_btn.pack(side=tk.LEFT, padx=5)
+        self.remove_webhook_export_btn.bind("<Button-1>", lambda e: self.remove_webhook_export())
+
+        def on_remove_btn_export_enter(e):
+            self.remove_webhook_export_btn.configure(image=remove_btn_img_export_hover_tk)
+            self.remove_webhook_export_btn.image = remove_btn_img_export_hover_tk
+
+        def on_remove_btn_export_leave(e):
+            self.remove_webhook_export_btn.configure(image=remove_btn_img_export_tk)
+            self.remove_webhook_export_btn.image = remove_btn_img_export_tk
+
+        self.remove_webhook_export_btn.bind("<Enter>", on_remove_btn_export_enter)
+        self.remove_webhook_export_btn.bind("<Leave>", on_remove_btn_export_leave)
 
         ttk.Checkbutton(hooks_lf, text="Show URLs (otherwise show labels)", variable=self.show_urls_var, command=self.refresh_webhook_listboxes).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, expand=True, pady=10)
-        ttk.Button(button_frame, text="Reset to Defaults", command=self.reset_defaults).pack(side=tk.LEFT)
-        ttk.Button(button_frame, text="Cancel", command=self.cancel).pack(side=tk.RIGHT, padx=5)
-        ttk.Button(button_frame, text="Save Settings", command=self.save_settings).pack(side=tk.RIGHT, padx=5)
+        # Load and subsample images for Reset to Defaults button
+        reset_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/ResetToDefaultButton.png"))
+        reset_btn_img = reset_btn_img.resize((reset_btn_img.width // 2, reset_btn_img.height // 2), Image.LANCZOS)
+        reset_btn_img_tk = ImageTk.PhotoImage(reset_btn_img)
+
+        reset_btn_img_hover = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/ResetToDefaultButtonHover.png"))
+        reset_btn_img_hover = reset_btn_img_hover.resize((reset_btn_img_hover.width // 2, reset_btn_img_hover.height // 2), Image.LANCZOS)
+        reset_btn_img_hover_tk = ImageTk.PhotoImage(reset_btn_img_hover)
+
+        self.reset_defaults_btn = tk.Label(
+            button_frame,
+            image=reset_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.reset_defaults_btn.image = reset_btn_img_tk
+        self.reset_defaults_btn.pack(side=tk.LEFT)
+        self.reset_defaults_btn.bind("<Button-1>", lambda e: self.reset_defaults())
+
+        def on_reset_btn_enter(e):
+            self.reset_defaults_btn.configure(image=reset_btn_img_hover_tk)
+            self.reset_defaults_btn.image = reset_btn_img_hover_tk
+
+        def on_reset_btn_leave(e):
+            self.reset_defaults_btn.configure(image=reset_btn_img_tk)
+            self.reset_defaults_btn.image = reset_btn_img_tk
+
+        self.reset_defaults_btn.bind("<Enter>", on_reset_btn_enter)
+        self.reset_defaults_btn.bind("<Leave>", on_reset_btn_leave)
+        # Load and subsample images for Cancel button
+        cancel_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/CancelButton.png"))
+        cancel_btn_img = cancel_btn_img.resize((cancel_btn_img.width // 2, cancel_btn_img.height // 2), Image.LANCZOS)
+        cancel_btn_img_tk = ImageTk.PhotoImage(cancel_btn_img)
+
+        cancel_btn_img_hover = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/CancelButtonHover.png"))
+        cancel_btn_img_hover = cancel_btn_img_hover.resize((cancel_btn_img_hover.width // 2, cancel_btn_img_hover.height // 2), Image.LANCZOS)
+        cancel_btn_img_hover_tk = ImageTk.PhotoImage(cancel_btn_img_hover)
+
+        self.cancel_btn = tk.Label(
+            button_frame,
+            image=cancel_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.cancel_btn.image = cancel_btn_img_tk
+        self.cancel_btn.pack(side=tk.RIGHT, padx=5)
+        self.cancel_btn.bind("<Button-1>", lambda e: self.cancel())
+
+        def on_cancel_btn_enter(e):
+            self.cancel_btn.configure(image=cancel_btn_img_hover_tk)
+            self.cancel_btn.image = cancel_btn_img_hover_tk
+
+        def on_cancel_btn_leave(e):
+            self.cancel_btn.configure(image=cancel_btn_img_tk)
+            self.cancel_btn.image = cancel_btn_img_tk
+
+        self.cancel_btn.bind("<Enter>", on_cancel_btn_enter)
+        self.cancel_btn.bind("<Leave>", on_cancel_btn_leave)
+        # Load and subsample images for Save Settings button
+        save_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/SaveSettingsButton.png"))
+        save_btn_img = save_btn_img.resize((save_btn_img.width // 2, save_btn_img.height // 2), Image.LANCZOS)
+        save_btn_img_tk = ImageTk.PhotoImage(save_btn_img)
+
+        save_btn_img_hover = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/SaveSettingsButtonHover.png"))
+        save_btn_img_hover = save_btn_img_hover.resize((save_btn_img_hover.width // 2, save_btn_img_hover.height // 2), Image.LANCZOS)
+        save_btn_img_hover_tk = ImageTk.PhotoImage(save_btn_img_hover)
+
+        self.save_settings_btn = tk.Label(
+            button_frame,
+            image=save_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.save_settings_btn.image = save_btn_img_tk
+        self.save_settings_btn.pack(side=tk.RIGHT, padx=5)
+        self.save_settings_btn.bind("<Button-1>", lambda e: self.save_settings())
+
+        def on_save_btn_enter(e):
+            self.save_settings_btn.configure(image=save_btn_img_hover_tk)
+            self.save_settings_btn.image = save_btn_img_hover_tk
+
+        def on_save_btn_leave(e):
+            self.save_settings_btn.configure(image=save_btn_img_tk)
+            self.save_settings_btn.image = save_btn_img_tk
+
+        self.save_settings_btn.bind("<Enter>", on_save_btn_enter)
+        self.save_settings_btn.bind("<Leave>", on_save_btn_leave)
 
         # Populate webhook listboxes
         self.refresh_webhook_listboxes()
@@ -434,4 +789,4 @@ if __name__ == "__main__":
     except Exception as e:
         print("Fatal error in settings.py:")
         traceback.print_exc()
-        sys.exit(1)
+        #sys.exit(1)
