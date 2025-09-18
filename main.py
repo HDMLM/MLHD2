@@ -800,7 +800,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Mega City:").grid(row=2, column=0, sticky=tk.W, pady=5)
         mega_cities_combo = ttk.Combobox(mission_frame, textvariable=self.mega_cities, state='readonly', width=27)
-        mega_cities_combo.grid(row=2, column=1, sticky=tk.E, padx=5, pady=5)
+        mega_cities_combo.grid(row=2, column=1, sticky=tk.W, padx=(8,0), pady=5)
         self.mega_cities_combo = mega_cities_combo
 
 
@@ -1385,7 +1385,7 @@ class MissionLogGUI:
 
             # Pad left side by increasing padx
             self.export_gui_label = tk.Label(export_frame, image=self.export_gui_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
-            self.export_gui_label.grid(row=4, column=0, pady=15, padx=(60,0))  # <-- Increased left padding here
+            self.export_gui_label.grid(row=4, column=0, pady=15, padx=(20,0))  # <-- Increased left padding here
 
             def on_export_gui_enter(e):
                 self.export_gui_label.configure(image=self.export_gui_img_hover)
@@ -1397,7 +1397,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load Export GUI button image: {e}")
             GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=lambda: subprocess.run(['python', 'exportGUI.py'], shell=False), padding=(6,5), width=14)
-            GUIbutton.grid(row=4, column=0, pady=15, padx=(60,0))  # <-- Increased left padding here
+            GUIbutton.grid(row=4, column=0, pady=15, padx=(20,0))  # <-- Increased left padding here
 
     # Planet aggregation export (with image and hover effect)
         try:
@@ -1413,7 +1413,7 @@ class MissionLogGUI:
             self.export_planet_img_hover = load_export_planet_img("./media/SyInt/ExportPlanetButtonHover.png")
 
             self.export_planet_label = tk.Label(export_frame, image=self.export_planet_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
-            self.export_planet_label.grid(row=4, column=1, padx=(40,0), pady=15)
+            self.export_planet_label.grid(row=4, column=1, padx=(20,0), pady=15)
 
             def on_export_planet_enter(e):
                 self.export_planet_label.configure(image=self.export_planet_img_hover)
@@ -1425,7 +1425,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load Export Planet button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
-            export_button.grid(row=4, column=1, padx=(40,0), pady=15)
+            export_button.grid(row=4, column=1, padx=(20,0), pady=15)
 
     # Faction aggregation export (with image and hover effect)
         # Faction aggregation export (with image and hover effect)
@@ -1442,7 +1442,7 @@ class MissionLogGUI:
             self.export_faction_img_hover = load_export_faction_img("./media/SyInt/ExportFactionButtonHover.png")
 
             self.export_faction_label = tk.Label(export_frame, image=self.export_faction_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
-            self.export_faction_label.grid(row=4, column=2, padx=(40,0), pady=15)
+            self.export_faction_label.grid(row=4, column=2, padx=(20,0), pady=15)
 
             def on_export_faction_enter(e):
                 self.export_faction_label.configure(image=self.export_faction_img_hover)
@@ -1454,7 +1454,37 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load Export Faction button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
-            export_button.grid(row=4, column=2, padx=(40,0), pady=15)
+            export_button.grid(row=4, column=2, padx=(20,0), pady=15)
+
+        # Prior 7 days aggregation export (with image and hover effect)
+        try:
+            def load_export_7days_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.export_7days_img_default = load_export_7days_img("./media/SyInt/Export7DaysButton.png")
+            self.export_7days_img_hover = load_export_7days_img("./media/SyInt/Export7DaysButtonHover.png")
+
+            self.export_7days_label = tk.Label(export_frame, image=self.export_7days_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+            self.export_7days_label.grid(row=4, column=3, padx=(20,0), pady=15)
+
+            def on_export_7days_enter(e):
+                self.export_7days_label.configure(image=self.export_7days_img_hover)
+            def on_export_7days_leave(e):
+                self.export_7days_label.configure(image=self.export_7days_img_default)
+
+            self.export_7days_label.bind("<Enter>", on_export_7days_enter)
+            self.export_7days_label.bind("<Leave>", on_export_7days_leave)
+            self.export_7days_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'expWeek.py'], shell=False))
+
+        except Exception as e:
+            logging.error(f"Failed to load Export 7 Days button image: {e}")
+            export_button = ttk.Button(export_frame, text="Export Last 7 Days\n       Data to\n     Webhook", command=lambda: subprocess.run(['python', '7days.py']), padding=(6,5), width=16)
+            export_button.grid(row=4, column=3, padx=(20,0), pady=15)
 
         # Favourite aggregation export (with image and hover effect)
         try:
@@ -1470,7 +1500,7 @@ class MissionLogGUI:
             self.export_favourites_img_hover = load_export_favourites_img("./media/SyInt/ExportFavouritesButtonHover.png")
 
             self.export_favourites_label = tk.Label(export_frame, image=self.export_favourites_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
-            self.export_favourites_label.grid(row=4, column=3, padx=(40,0), pady=15)
+            self.export_favourites_label.grid(row=4, column=4, padx=(20,0), pady=15)
 
             def on_export_favourites_enter(e):
                 self.export_favourites_label.configure(image=self.export_favourites_img_hover)
@@ -1483,7 +1513,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load Export Favourites button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'favourites.py']), padding=(6,5), width=16)
-            export_button.grid(row=4, column=3, padx=(40,0), pady=15)
+            export_button.grid(row=4, column=4, padx=(20,0), pady=15)
 
         image_button_frame = ttk.Frame(mission_frame)
         image_button_frame.grid(row=5, column=4, padx=5, pady=5)
@@ -1502,9 +1532,9 @@ class MissionLogGUI:
             self.export_achievements_img_hover = load_export_achievements_img("./media/SyInt/ExportAchievementsButtonHover.png")
 
             self.export_achievements_label = tk.Label(export_frame, image=self.export_achievements_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
-           
+            self.export_achievements_label.grid(row=4, column=5, padx=(20,0), pady=15)
 
-            self.export_achievements_label.grid(row=4, column=4, padx=(40,0), pady=15)
+            self.export_achievements_label.grid(row=4, column=5, padx=(20,0), pady=15)
 
             def on_export_achievements_enter(e):
                 self.export_achievements_label.configure(image=self.export_achievements_img_hover)
@@ -1517,7 +1547,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load Export Achievements button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'achievements.py']), padding=(6,5), width=16)
-            export_button.grid(row=4, column=4, padx=(40,0), pady=15)
+            export_button.grid(row=4, column=5, padx=(20,0), pady=15)
 
         # --- Tooltips Section ---
 
