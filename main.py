@@ -46,7 +46,7 @@ GWDay = "Day: 587"
 GWDate = "Date: 17/09/2025"
 VERSION = "1.6.001"
 DEV_RELEASE = "-dev"
-RPC_UPDATE_INTERVAL = 15  # seconds, this is in seconds
+RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Load config

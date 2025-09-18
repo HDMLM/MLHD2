@@ -128,7 +128,7 @@ class SettingsPage(tk.Tk):
         # Profile tab (Username + Ship Name)
         profile_frame = ttk.Frame(notebook, padding="10")
         notebook.add(profile_frame, text="Profile")
-    # Identity section
+        # Identity section
         identity_label = ttk.Label(profile_frame, text="Identity", font=("Arial", 12, "bold"))
         identity_lf = ttk.LabelFrame(profile_frame, labelwidget=identity_label, padding=10)
         identity_lf.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=10)
