@@ -288,7 +288,7 @@ class MissionLogGUI:
         widget.bind("<Enter>", enter)
 
 
-    def __init__(self, root: tk.Tk) -> None:
+    def __init__(self, *args, **kwargs):
         # Initialize the GUI application.
         style = ttk.Style()
         apply_theme(style, DEFAULT_THEME)
@@ -331,6 +331,11 @@ class MissionLogGUI:
         self._setup_ui()
         self.root.after(100, self.load_settings)
         self.root.after(2000, self._periodic_rpc_update)
+        # Save settings on window close
+        try:
+            self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        except Exception as e:
+            logging.error(f"Failed to bind WM_DELETE_WINDOW handler: {e}")
 
     def _periodic_rpc_update(self) -> None:
         try:
@@ -507,7 +512,7 @@ class MissionLogGUI:
             self.sectors_data = sectors_data
             sector_list = list(sectors_data.keys())
 
-    # --- Mission Info Grid ---
+        # --- Mission Info Grid ---
         # Load ship name selections and Helldiver username from settings.json
         try:
             with open(self.settings_file, 'r') as f:
@@ -524,6 +529,10 @@ class MissionLogGUI:
             self.shipname1_default = shipName1_default
             self.shipname2_default = shipName2_default
             self.helldiver_default = ""
+
+        # Seed the Helldiver field from settings.json if it's empty/unset
+        if not self.Helldivers.get():
+            self.Helldivers.set(self.helldiver_default or "")
 
         ttk.Label(mission_frame, text="Level:").grid(row=0, column=2, sticky=tk.W, padx=0, pady=5)
         ttk.Entry(mission_frame, textvariable=self.level, width=35).grid(row=0, column=2, sticky=tk.W, padx=(45,0), pady=5)
@@ -1105,10 +1114,13 @@ class MissionLogGUI:
 
         def update_subfactions(*args):
             enemy = self.enemy_type.get()
+            subfactions = []
             if enemy in missions_data:
                 subfactions = list(missions_data[enemy].keys())
-                logging.info(f"Available subfactions for {enemy}: {subfactions}")  # Add logging
+                logging.info(f"Available subfactions for {enemy}: {subfactions}")
                 subfaction_combo['values'] = subfactions
+            else:
+                subfaction_combo['values'] = []
             if subfactions:
                 subfaction_combo.set(subfactions[0])
                 update_mission_categories()
@@ -1163,9 +1175,12 @@ class MissionLogGUI:
         def update_mission_categories(*args):
             enemy = self.enemy_type.get()
             subfaction = self.subfaction_type.get()
+            categories = []
             if enemy in missions_data and subfaction in missions_data[enemy]:
                 categories = list(missions_data[enemy][subfaction].keys())
                 mission_cat_combo['values'] = categories
+            else:
+                mission_cat_combo['values'] = []
             if categories:
                 mission_cat_combo.set(categories[0])
                 update_mission_types()
@@ -1221,6 +1236,13 @@ class MissionLogGUI:
 
         # Set enemy type first, then update subfactions and mission categories
         enemy_combo.set("Observing")
+        # Prime dependent dropdowns on initial load so they are not blank
+        try:
+            update_subfactions()
+            update_mission_categories()
+            update_mission_types()
+        except Exception as e:
+            logging.error(f"Failed to initialize dependent dropdowns: {e}")
 
     # --- Stats + Note ---
         stats_note_container = ttk.Frame(content)
@@ -1340,11 +1362,11 @@ class MissionLogGUI:
             logging.error(f"Failed to load submission overlay image: {e}")
 
 
-    # Export + Style sections
+        # Export + Style sections
         bottom_frame = ttk.LabelFrame(content, text="Report Style and Export", padding=10)
         bottom_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
-    # Export buttons / integrations
+        # Export buttons / integrations
         export_frame = ttk.LabelFrame(content, text="Exporting", padding=10)
         export_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
@@ -1480,6 +1502,8 @@ class MissionLogGUI:
             self.export_achievements_img_hover = load_export_achievements_img("./media/SyInt/ExportAchievementsButtonHover.png")
 
             self.export_achievements_label = tk.Label(export_frame, image=self.export_achievements_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
+           
+
             self.export_achievements_label.grid(row=4, column=4, padx=(40,0), pady=15)
 
             def on_export_achievements_enter(e):
@@ -1496,9 +1520,6 @@ class MissionLogGUI:
             export_button.grid(row=4, column=4, padx=(40,0), pady=15)
 
         # --- Tooltips Section ---
-        # Tooltips must be attached to widgets after they are created and packed/grid'ed.
-        # For widgets that are assigned to variables, use those variables directly.
-        # For widgets that are not assigned, you must assign them to a variable first.
 
         # Tooltip for level entry
         self.create_tooltip(self.root.nametowidget(mission_frame.grid_slaves(row=0, column=2)[0]), "Enter your Helldiver's current level (1-150)")
@@ -1651,30 +1672,38 @@ class MissionLogGUI:
         threading.Thread(target=load, daemon=True).start()
 
     def save_settings(self) -> None:
-    # Save current settings to file.
-        # Save all values to persistent.json
+        # Persist commonly edited selections between sessions
         settings = {
-            'helldiver': self.helldiver_default,
-            'level': self.level.get(),
-            'title': self.title.get(),
+            'profile_picture': self.profile_picture.get(),
             'sector': self.sector.get(),
             'planet': self.planet.get(),
+            'mega_cities': self.mega_cities.get(),
+            'level': int(self.level.get() or 0),
+            'title': self.title.get(),
             'difficulty': self.difficulty.get(),
             'mission': self.mission_type.get(),
-            'DSS': self.DSS.get(),
-            'DSSMod': self.DSSMod.get(),
             'campaign': self.mission_category.get(),
             'subfaction': self.subfaction_type.get(),
-            'hvt': self.hvt_type.get(),
-            'shipName1': self.shipname1_default,
-            'shipName2': self.shipname2_default,
-            'profile_picture': self.profile_picture.get(),
+            'DSS': bool(self.DSS.get()),
+            'DSSMod': self.DSSMod.get() or 'Inactive',
         }
         try:
             with open(PERSISTENCE_FILE, 'w') as f:
                 json.dump(settings, f, indent=4)
         except Exception as e:
             self._show_error(f"Error saving persistent settings: {e}")
+    
+    def _on_close(self) -> None:
+        # Save current selections before closing the app
+        try:
+            self.save_settings()
+        except Exception as e:
+            logging.error(f"Error during save on close: {e}")
+        finally:
+            try:
+                self.root.destroy()
+            except Exception:
+                os._exit(0)
 
     def submit_data(self) -> None:
         with open('./JSON/DCord.json', 'r') as f:
@@ -1836,7 +1865,7 @@ class MissionLogGUI:
             note_value = (self.note.get() or "").strip()
 
         return {
-            'Super Destroyer': f"{self.shipName1.get()} {self.shipName2.get()}".strip(),
+            'Super Destroyer': self.shipname1_default +" "+ self.shipname2_default,
             'Helldivers': self.helldiver_default,
             'Level': self.level.get(),
             'Title': self.title.get(),
@@ -2177,33 +2206,84 @@ class MissionLogGUI:
             self._show_error(f"Export failed: {e}")
 
     def _apply_settings(self, settings: dict) -> None:
-    # Apply loaded settings to the GUI variables.
-        # Only set if key exists to avoid KeyError
-        self.Helldivers.set(settings.get('helldiver', ''))
-        self.level.set(settings.get('level', 1))
-        self.title.set(settings.get('title', ''))
-        self.sector.set(settings.get('sector', ''))
-        self.planet.set(settings.get('planet', ''))
-        self.difficulty.set(settings.get('difficulty', ''))
-        self.mission_type.set(settings.get('mission', ''))
-        self.DSS.set(settings.get('DSS', False))
-        self.DSSMod.set(settings.get('DSSMod', 'Inactive'))
-        self.mission_category.set(settings.get('campaign', ''))
-        self.subfaction_type.set(settings.get('subfaction', ''))
-        self.shipName1.set(settings.get('shipName1', ''))
-        self.shipName2.set(settings.get('shipName2', ''))
-        self.profile_picture.set(settings.get('profile_picture', ''))
+        lvl = settings.get('level')
+        if isinstance(lvl, int) and lvl > 0:
+            self.level.set(lvl)
+
+        val = settings.get('title')
+        if val:
+            self.title.set(val)
+
+        val = settings.get('sector')
+        if val:
+            self.sector.set(val)
+
+        val = settings.get('planet')
+        if val:
+            self.planet.set(val)
+
+        val = settings.get('difficulty')
+        if val:
+            self.difficulty.set(val)
+
+        val = settings.get('mission')
+        if val:
+            self.mission_type.set(val)
+
+        if 'DSS' in settings:
+            # Respect explicit False; only skip if key missing
+            self.DSS.set(bool(settings.get('DSS')))
+
+        val = settings.get('DSSMod')
+        if val:
+            self.DSSMod.set(val)
+
+        val = settings.get('campaign')
+        if val:
+            self.mission_category.set(val)
+
+        val = settings.get('subfaction')
+        if val:
+            self.subfaction_type.set(val)
+        # Mega city
+        val = settings.get('mega_cities')
+        if val:
+            self.mega_cities.set(val)
+        self.shipName1.set(getattr(self, 'shipname1_default', 'SES Adjudicator'))
+        self.shipName2.set(getattr(self, 'shipname2_default', 'of Allegiance'))
+        val = settings.get('profile_picture')
+        if val:
+            try:
+                # Only apply if the value exists in the available options to avoid blanking a readonly combobox
+                options = getattr(self, 'profile_pictures', [])
+                if val in options:
+                    self.profile_picture.set(val)
+                    if hasattr(self, 'profile_picture_combo'):
+                        self.profile_picture_combo.set(val)
+                else:
+                    logging.warning(f"Persisted profile_picture '{val}' not found in available options; keeping current selection.")
+            except Exception as e:
+                logging.error(f"Failed applying persisted profile_picture '{val}': {e}")
+
         # After loading saved sector/planet ensure dependent dropdowns refresh
         try:
-            # Re-run planet population with current sector.
             if hasattr(self, 'sectors_data') and self.sector.get() in self.sectors_data:
                 planets = self.sectors_data[self.sector.get()]['planets']
                 self.planet_combo['values'] = planets
                 if self.planet.get() not in planets and planets:
                     self.planet.set(planets[0])
-            # Trigger mega city refresh by generating a virtual event - is this hacky? this feels hacky...
+            # Trigger dependent refreshes
             if hasattr(self, 'planet_combo'):
                 self.planet_combo.event_generate('<<ComboboxSelected>>')
+            try:
+                if callable(locals().get('update_subfactions', None)):
+                    locals()['update_subfactions']()
+                if callable(locals().get('update_mission_categories', None)):
+                    locals()['update_mission_categories']()
+                if callable(locals().get('update_mission_types', None)):
+                    locals()['update_mission_types']()
+            except Exception:
+                pass
         except Exception as e:
             logging.error(f"Failed to refresh planet / mega city lists after settings load: {e}")
 

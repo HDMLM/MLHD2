@@ -254,19 +254,19 @@ sector_counts = df['Sector'].value_counts()
 
 # First Place
 search_mission = mission_counts.index[0]
-MissionCount = mission_counts[0]
+MissionCount = mission_counts.iloc[0]
 search_campaign = campaign_counts.index[0]
-CampaignCount = campaign_counts[0]
+CampaignCount = campaign_counts.iloc[0]
 search_faction = faction_counts.index[0]
-FactionCount = faction_counts[0]
+FactionCount = faction_counts.iloc[0]
 search_subfaction = subfaction_counts.index[0]
-SubfactionCount = subfaction_counts[0]
+SubfactionCount = subfaction_counts.iloc[0]
 search_difficulty = difficulty_counts.index[0]
-DifficultyCount = difficulty_counts[0]
+DifficultyCount = difficulty_counts.iloc[0]
 search_planet = planet_counts.index[0]
-PlanetCount = planet_counts[0]
+PlanetCount = planet_counts.iloc[0]
 search_sector = sector_counts.index[0]
-SectorCount = sector_counts[0]
+SectorCount = sector_counts.iloc[0]
 
 # Second Place - Remove first place from counts
 mission_counts_2 = mission_counts.drop(search_mission)
@@ -278,19 +278,19 @@ planet_counts_2 = planet_counts.drop(search_planet)
 sector_counts_2 = sector_counts.drop(search_sector)
 
 search_mission2 = mission_counts_2.index[0] if len(mission_counts_2) > 0 else "None"
-MissionCount2 = mission_counts_2[0] if len(mission_counts_2) > 0 else 0
+MissionCount2 = mission_counts_2.iloc[0] if len(mission_counts_2) > 0 else 0
 search_campaign2 = campaign_counts_2.index[0] if len(campaign_counts_2) > 0 else "None"
-CampaignCount2 = campaign_counts_2[0] if len(campaign_counts_2) > 0 else 0
+CampaignCount2 = campaign_counts_2.iloc[0] if len(campaign_counts_2) > 0 else 0
 search_faction2 = faction_counts_2.index[0] if len(faction_counts_2) > 0 else "None"
-FactionCount2 = faction_counts_2[0] if len(faction_counts_2) > 0 else 0
+FactionCount2 = faction_counts_2.iloc[0] if len(faction_counts_2) > 0 else 0
 search_subfaction2 = subfaction_counts_2.index[0] if len(subfaction_counts_2) > 0 else "None"
-SubfactionCount2 = subfaction_counts_2[0] if len(subfaction_counts_2) > 0 else 0
+SubfactionCount2 = subfaction_counts_2.iloc[0] if len(subfaction_counts_2) > 0 else 0
 search_difficulty2 = difficulty_counts_2.index[0] if len(difficulty_counts_2) > 0 else "None"
-DifficultyCount2 = difficulty_counts_2[0] if len(difficulty_counts_2) > 0 else 0
+DifficultyCount2 = difficulty_counts_2.iloc[0] if len(difficulty_counts_2) > 0 else 0
 search_planet2 = planet_counts_2.index[0] if len(planet_counts_2) > 0 else "None"
-PlanetCount2 = planet_counts_2[0] if len(planet_counts_2) > 0 else 0
+PlanetCount2 = planet_counts_2.iloc[0] if len(planet_counts_2) > 0 else 0
 search_sector2 = sector_counts_2.index[0] if len(sector_counts_2) > 0 else "None"
-SectorCount2 = sector_counts_2[0] if len(sector_counts_2) > 0 else 0
+SectorCount2 = sector_counts_2.iloc[0] if len(sector_counts_2) > 0 else 0
 
 # Third Place - Remove second place from remaining counts
 mission_counts_3 = mission_counts_2.drop(search_mission2) if search_mission2 != "None" else mission_counts_2
@@ -302,19 +302,19 @@ planet_counts_3 = planet_counts_2.drop(search_planet2) if search_planet2 != "Non
 sector_counts_3 = sector_counts_2.drop(search_sector2) if search_sector2 != "None" else sector_counts_2
 
 search_mission3 = mission_counts_3.index[0] if len(mission_counts_3) > 0 else "None"
-MissionCount3 = mission_counts_3[0] if len(mission_counts_3) > 0 else 0
+MissionCount3 = mission_counts_3.iloc[0] if len(mission_counts_3) > 0 else 0
 search_campaign3 = campaign_counts_3.index[0] if len(campaign_counts_3) > 0 else "None"
-CampaignCount3 = campaign_counts_3[0] if len(campaign_counts_3) > 0 else 0
+CampaignCount3 = campaign_counts_3.iloc[0] if len(campaign_counts_3) > 0 else 0
 search_faction3 = faction_counts_3.index[0] if len(faction_counts_3) > 0 else "None"
-FactionCount3 = faction_counts_3[0] if len(faction_counts_3) > 0 else 0
+FactionCount3 = faction_counts_3.iloc[0] if len(faction_counts_3) > 0 else 0
 search_subfaction3 = subfaction_counts_3.index[0] if len(subfaction_counts_3) > 0 else "None"
-SubfactionCount3 = subfaction_counts_3[0] if len(subfaction_counts_3) > 0 else 0
+SubfactionCount3 = subfaction_counts_3.iloc[0] if len(subfaction_counts_3) > 0 else 0
 search_difficulty3 = difficulty_counts_3.index[0] if len(difficulty_counts_3) > 0 else "None"
-DifficultyCount3 = difficulty_counts_3[0] if len(difficulty_counts_3) > 0 else 0
+DifficultyCount3 = difficulty_counts_3.iloc[0] if len(difficulty_counts_3) > 0 else 0
 search_planet3 = planet_counts_3.index[0] if len(planet_counts_3) > 0 else "None"
-PlanetCount3 = planet_counts_3[0] if len(planet_counts_3) > 0 else 0
+PlanetCount3 = planet_counts_3.iloc[0] if len(planet_counts_3) > 0 else 0
 search_sector3 = sector_counts_3.index[0] if len(sector_counts_3) > 0 else "None"
-SectorCount3 = sector_counts_3[0] if len(sector_counts_3) > 0 else 0
+SectorCount3 = sector_counts_3.iloc[0] if len(sector_counts_3) > 0 else 0
 
 # Get discord_uid from DCord.json
 with open('./JSON/DCord.json', 'r') as f:
@@ -368,14 +368,14 @@ embed_data = {
     "embeds": [
         {
             "title": "",  # Empty title, will be set below
-            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Your Top Favourites <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" +   
-                        f"> Mission - {df['Mission Type'].mode()[0]} {MISSION_ICONS.get(df['Mission Type'].mode()[0], '')} (x{MissionCount})\n" +
-                        f"> Campaign - {df['Mission Category'].mode()[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode()[0], '')} (x{CampaignCount})\n" +
-                        f"> Faction - {df['Enemy Type'].mode()[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode()[0], '')} (x{FactionCount})\n" +
-                        f"> Subfaction - {df['Enemy Subfaction'].mode()[0]} {SUBFACTION_ICONS.get(df['Enemy Subfaction'].mode()[0], '')} (x{SubfactionCount})\n"
-                        f"> Difficulty - {df['Difficulty'].mode()[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode()[0], '')} (x{DifficultyCount})\n" +
-                        f"> Planet - {df['Planet'].mode()[0]} {PLANET_ICONS.get(df['Planet'].mode()[0], '')} (x{PlanetCount})\n" +
-                        f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n\n" +
+            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode().iloc[0], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Your Top Favourites <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" +   
+                        f"> Mission - {df['Mission Type'].mode().iloc[0]} {MISSION_ICONS.get(df['Mission Type'].mode().iloc[0], '')} (x{MissionCount})\n" +
+                        f"> Campaign - {df['Mission Category'].mode().iloc[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode().iloc[0], '')} (x{CampaignCount})\n" +
+                        f"> Faction - {df['Enemy Type'].mode().iloc[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode().iloc[0], '')} (x{FactionCount})\n" +
+                        f"> Subfaction - {df['Enemy Subfaction'].mode().iloc[0]} {SUBFACTION_ICONS.get(df['Enemy Subfaction'].mode().iloc[0], '')} (x{SubfactionCount})\n"
+                        f"> Difficulty - {df['Difficulty'].mode().iloc[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode().iloc[0], '')} (x{DifficultyCount})\n" +
+                        f"> Planet - {df['Planet'].mode().iloc[0]} {PLANET_ICONS.get(df['Planet'].mode().iloc[0], '')} (x{PlanetCount})\n" +
+                        f"> Sector - {df['Sector'].mode().iloc[0]} (x{SectorCount})\n\n" +
                         f"<a:easyshine1:1349110651829747773> <a:sil:1414376620378034196> Strong Contenders <a:sil:1414376620378034196> <a:easyshine3:1349110648528699422>\n" +
                         f"> Mission - {search_mission2} {MISSION_ICONS.get(search_mission2, '')} (x{MissionCount2})\n" +
                         f"> Campaign - {search_campaign2} {CAMPAIGN_ICONS.get(search_campaign2, '')} (x{CampaignCount2})\n" +

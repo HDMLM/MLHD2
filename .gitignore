@@ -2,3 +2,5 @@
 mission_log_test.xlsx
 mission_log.xlsx
 app.log
+__pycache__
+.vscode

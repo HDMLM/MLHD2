@@ -829,8 +829,8 @@ embed_data = {
     "content": None,
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}",  # Empty title, will be set below
-            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}**\n\n\"{latest_note}\"\n\nTotal Completion: {achievement_percentage}%\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Achievements <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" + 
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}",
+            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\nTotal Completion: {achievement_percentage}%\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Achievements <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" + 
                         f"> {globals()['CmdFavourite1_title']}\n" +
                         f"> *{globals()['CmdFavourite1_message']}*\n" +
                         f"> \n" +

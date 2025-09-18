@@ -303,7 +303,7 @@ def _build_primary_embed_description() -> str:
     mega_city_count = df[df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
 
     return (
-        f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}**\n\n"
+        f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n"
         f"\"{latest_note}\"\n\n"
         f"<a:easyshine1:1349110651829747773>  <a:easyshine2:1349110649753698305> Combat Statistics <a:easyshine2:1349110649753698305> <a:easyshine3:1349110648528699422>\n"
         f"> Kills - {df['Kills'].sum()}\n"
@@ -315,18 +315,18 @@ def _build_primary_embed_description() -> str:
         f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n"
         f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n"
         f"> Mega City Deployments - {mega_city_count}\n"
-        f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode()[0])}\n"
+    f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode().iloc[0])}\n"
         f"\n<a:easyshine1:1349110651829747773>  <a:easyskullgold:1232018045791375360> Performance Statistics <a:easyskullgold:1232018045791375360> <a:easyshine3:1349110648528699422>\n"
         f"> Rating - {Rating} | {int(Rating_Percentage)}%\n"
         f"> Highest Streak - {highest_streak} Missions\n"
         f"\n<a:easyshine1:1349110651829747773>  <:goldstar:1337818552094163034> Favourites <:goldstar:1337818552094163034> <a:easyshine3:1349110648528699422>\n"
-        f"> Mission - {df['Mission Type'].mode()[0]} {MISSION_ICONS.get(df['Mission Type'].mode()[0], '')} (x{MissionCount})\n"
-        f"> Campaign - {df['Mission Category'].mode()[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode()[0], '')} (x{CampaignCount})\n"
-        f"> Faction - {df['Enemy Type'].mode()[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode()[0], '')} (x{FactionCount})\n"
-        f"> Subfaction - {df['Enemy Subfaction'].mode()[0]} {SUBFACTION_ICONS.get(df['Enemy Subfaction'].mode()[0], '')} (x{SubfactionCount})\n"
-        f"> Difficulty - {df['Difficulty'].mode()[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode()[0], '')} (x{DifficultyCount})\n"
-        f"> Planet - {df['Planet'].mode()[0]} {PLANET_ICONS.get(df['Planet'].mode()[0], '')} (x{PlanetCount})\n"
-        f"> Sector - {df['Sector'].mode()[0]} (x{SectorCount})\n"
+    f"> Mission - {df['Mission Type'].mode().iloc[0]} {MISSION_ICONS.get(df['Mission Type'].mode().iloc[0], '')} (x{MissionCount})\n"
+    f"> Campaign - {df['Mission Category'].mode().iloc[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode().iloc[0], '')} (x{CampaignCount})\n"
+    f"> Faction - {df['Enemy Type'].mode().iloc[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode().iloc[0], '')} (x{FactionCount})\n"
+    f"> Subfaction - {df['Enemy Subfaction'].mode().iloc[0]} {SUBFACTION_ICONS.get(df['Enemy Subfaction'].mode().iloc[0], '')} (x{SubfactionCount})\n"
+    f"> Difficulty - {df['Difficulty'].mode().iloc[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode().iloc[0], '')} (x{DifficultyCount})\n"
+    f"> Planet - {df['Planet'].mode().iloc[0]} {PLANET_ICONS.get(df['Planet'].mode().iloc[0], '')} (x{PlanetCount})\n"
+    f"> Sector - {df['Sector'].mode().iloc[0]} (x{SectorCount})\n"
     )
 
 primary_description = _build_primary_embed_description()
@@ -341,7 +341,7 @@ embed_data = {
             "color": 7257043,
             "author": {"name": "SEAF Battle Record"},
             "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
-            "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode()[0], '')}"},
+            "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode().iloc[0], '')}"},
             "thumbnail": {"url": f"{profile_picture}"}
         }
     ],
@@ -586,7 +586,7 @@ embed_data_contingency = {
             "color": 7257043,
             "fields": [
                 {
-                    "name": f"Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode()[0], '')}",
+                    "name": f"Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode().iloc[0], '')}",
                     "value": "\n\nINITIAL TRANSMISSION FAILURE - CONTINGENCY PROTOCOL ACTIVATED\n\nAttention Helldiver,\n\nYour SEAF Battle Record failed to reach your terminal via our Super Earth Command database through the standard uplink procedure, whether due to xeno interference, bureaucratic lag, the amount of data attempting to upload or simple operator inadequacy is irrelevant.\n\nAs per Protocol MLHD2-E2 \"Compliance is Victory\", a SHTML fallback file has been auto-generated to ensure your mission data is preserved and viewable.\n\nReview the document locally and stand by for reclassification procedures.\n\nFor Super Earth. For Democracy. Upload Again.\n\n- Ministry of Intelligence | Automated Systems Division\nSuper Earth Uplink Command"
                 }
             ],
