@@ -16,9 +16,9 @@ config.read('config.config')
 # Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
-SETTINGS_FILE = './JSON/persistance.json'
+SETTINGS_FILE = './JSON/persistence.json'
 
-# Dropdown values as constants
+
 
 # Redesigned exportGUI.py to match main.py/settings.py GUI style
 import os
@@ -31,12 +31,6 @@ import logging
 import pandas as pd
 from logging_config import setup_logging
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS
-
-# Read configuration from config.config
-config = configparser.ConfigParser()
-config.read('config.config')
-DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
-setup_logging(DEBUG)
 
 # Theme system (copied from main.py/settings.py)
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
@@ -137,9 +131,53 @@ def main():
     notebook = ttk.Notebook(main_frame)
     notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-    # Export tab
+    # Export tab (with image, styled like settings.py)
     export_frame = ttk.Frame(notebook, padding="10")
-    notebook.add(export_frame, text="Export Viewer")
+
+    def load_tab_image(path):
+        img = Image.open(path)
+        w, h = img.size
+        img = img.resize((w // 3, h // 3), Image.LANCZOS)
+        # Remove alpha by compositing onto a dark background (like other buttons)
+        bg_color = (37, 37, 38, 255)
+        if img.mode == "RGBA":
+            bg = Image.new("RGBA", img.size, bg_color)
+            img = Image.alpha_composite(bg, img)
+            img = img.convert("RGB")
+        else:
+            bg = Image.new("RGB", img.size, bg_color[:3])
+            bg.paste(img, (0, 0))
+            img = bg
+        return ImageTk.PhotoImage(img)
+
+    # Tab image (only one state)
+    try:
+        export_tab_img = load_tab_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExportViewerTabButton.png"))
+        notebook.add(export_frame, text="", image=export_tab_img, compound=tk.CENTER, padding=0)
+        notebook._export_tab_img = export_tab_img
+    except Exception as e:
+        notebook.add(export_frame, text="Export Viewer")
+
+    # Remove tab border/highlight (like settings.py)
+    style.layout("TNotebook.Tab", [
+        ('Notebook.tab', {'sticky': 'nswe', 'children': [
+        ('Notebook.padding', {'side': 'top', 'sticky': 'nswe', 'children': [
+            ('Notebook.focus', {'side': 'top', 'sticky': 'nswe', 'children': [
+            ('Notebook.image', {'side': 'left', 'sticky': ''}),
+            ]}),
+        ]}),
+        ]}),
+    ])
+    style.configure("TNotebook.Tab", borderwidth=0, highlightthickness=0, padding=0)
+    style.map("TNotebook.Tab", background=[("selected", DEFAULT_THEME["."]["configure"]["background"]), ("!selected", DEFAULT_THEME["."]["configure"]["background"])])
+
+    def update_tab_image(event=None):
+        # Only one tab, always selected
+        notebook.tab(0, image=notebook._export_tab_img)
+
+    notebook.bind("<<NotebookTabChanged>>", update_tab_image)
+    notebook.tab(0, sticky="nsew")
+    update_tab_image()
 
     # Table section
     table_lf = ttk.LabelFrame(export_frame, labelwidget=ttk.Label(export_frame, text="Mission Log Data", font=fs_sinclair_font), padding=10)
@@ -174,8 +212,54 @@ def main():
         sector_var.set("All")
         planet_var.set("All")
 
-    reset_btn = ttk.Button(button_frame, text="Clear All Filters", command=lambda: None)
+    # Load button images
+
+    def load_button_image(path, box=(160, 48), preserve_aspect=True, pad_to_box=True):
+        # Keeps image aspect ratio; pads to a consistent box so hover/static sizes match
+        from PIL import Image, ImageTk
+        img = Image.open(path)
+        if preserve_aspect:
+            # Downscale to fit within box while preserving aspect
+            img.thumbnail(box, Image.LANCZOS)
+            if pad_to_box:
+                # Create transparent canvas and center the image
+                canvas = Image.new("RGBA", box, (0, 0, 0, 0))
+                x = (box[0] - img.width) // 2
+                y = (box[1] - img.height) // 2
+                # If source has alpha, use it as mask to preserve edges
+                canvas.paste(img, (x, y), img if img.mode in ("RGBA", "LA") else None)
+                img = canvas
+        else:
+            img = img.resize(box, Image.LANCZOS)
+        return ImageTk.PhotoImage(img)
+
+    clear_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ClearFiltersButton.png"))
+    clear_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ClearFiltersButtonHover.png"))
+
+    reset_btn = tk.Label(
+        button_frame,
+        image=clear_btn_img,
+        cursor="hand2",
+        bd=0,
+        highlightthickness=0,
+        borderwidth=0,
+        relief="flat",
+        background=DEFAULT_THEME["."]["configure"]["background"]
+    )
+    reset_btn.image = clear_btn_img  # Prevent garbage collection
     reset_btn.pack(side=tk.LEFT, padx=5)
+
+    def on_enter(event):
+        reset_btn.configure(image=clear_btn_img_hover)
+        reset_btn.image = clear_btn_img_hover
+
+    def on_leave(event):
+        reset_btn.configure(image=clear_btn_img)
+        reset_btn.image = clear_btn_img
+
+    reset_btn.bind("<Enter>", on_enter)
+    reset_btn.bind("<Leave>", on_leave)
+    reset_btn.bind("<Button-1>", lambda e: clear_all_filters())
 
     # Refresh button
     def refresh_table():
@@ -183,8 +267,34 @@ def main():
         full_df = load_table()
         filter_table()
 
-    refresh_btn = ttk.Button(button_frame, text="Refresh", command=refresh_table)
+    # Load refresh button images
+    refresh_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/RefreshButton.png"))
+    refresh_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/RefreshButtonHover.png"))
+
+    refresh_btn = tk.Label(
+        button_frame,
+        image=refresh_btn_img,
+        cursor="hand2",
+        bd=0,
+        highlightthickness=0,
+        borderwidth=0,
+        relief="flat",
+        background=DEFAULT_THEME["."]["configure"]["background"]
+    )
+    refresh_btn.image = refresh_btn_img  # Prevent garbage collection
     refresh_btn.pack(side=tk.LEFT, padx=5)
+
+    def on_refresh_enter(event):
+        refresh_btn.configure(image=refresh_btn_img_hover)
+        refresh_btn.image = refresh_btn_img_hover
+
+    def on_refresh_leave(event):
+        refresh_btn.configure(image=refresh_btn_img)
+        refresh_btn.image = refresh_btn_img
+
+    refresh_btn.bind("<Enter>", on_refresh_enter)
+    refresh_btn.bind("<Leave>", on_refresh_leave)
+    refresh_btn.bind("<Button-1>", lambda e: refresh_table())
 
     # Removed Preview Embed feature as requested
 
@@ -460,41 +570,63 @@ def main():
 
         threading.Thread(target=worker, daemon=True).start()
 
-    export_btn = ttk.Button(button_frame, text="Export to Discord", command=export_to_discord)
+    # Load Export to Discord button images
+    extract_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExtractToDiscordButton.png"))
+    extract_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExtractToDiscordButtonHover.png"))
+
+    export_btn = tk.Label(
+        button_frame,
+        image=extract_btn_img,
+        cursor="hand2",
+        bd=0,
+        highlightthickness=0,
+        borderwidth=0,
+        relief="flat",
+        background=DEFAULT_THEME["."]["configure"]["background"]
+    )
+    export_btn.image = extract_btn_img  # Prevent garbage collection
     export_btn.pack(side=tk.LEFT, padx=5)
 
-    # Exit button
-    exit_btn = ttk.Button(button_frame, text="Exit", command=root.quit)
+    def on_export_enter(event):
+        export_btn.configure(image=extract_btn_img_hover)
+        export_btn.image = extract_btn_img_hover
+
+    def on_export_leave(event):
+        export_btn.configure(image=extract_btn_img)
+        export_btn.image = extract_btn_img
+
+    export_btn.bind("<Enter>", on_export_enter)
+    export_btn.bind("<Leave>", on_export_leave)
+    export_btn.bind("<Button-1>", lambda e: export_to_discord())
+
+    # Exit button as image button (styled like other image buttons)
+    exit_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExitButton.png"))
+    exit_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExitButtonHover.png"))
+
+    exit_btn = tk.Label(
+        button_frame,
+        image=exit_btn_img,
+        cursor="hand2",
+        bd=0,
+        highlightthickness=0,
+        borderwidth=0,
+        relief="flat",
+        background=DEFAULT_THEME["."]["configure"]["background"]
+    )
+    exit_btn.image = exit_btn_img  # Prevent garbage collection
     exit_btn.pack(side=tk.RIGHT, padx=5)
 
-    # Lightweight tooltip helper
-    def attach_tooltip(widget, text: str):
-        tip_window = {"win": None}
+    def on_exit_enter(event):
+        exit_btn.configure(image=exit_btn_img_hover)
+        exit_btn.image = exit_btn_img_hover
 
-        def show_tip(event=None):
-            if tip_window["win"] or not text:
-                return
-            x = widget.winfo_rootx() + 20
-            y = widget.winfo_rooty() + widget.winfo_height() + 10
-            tw = tk.Toplevel(widget)
-            tw.wm_overrideredirect(True)
-            tw.configure(bg="#2b2b2b")
-            lbl = tk.Label(tw, text=text, bg="#2b2b2b", fg="#ffffff", padx=8, pady=5, relief=tk.SOLID, bd=1)
-            lbl.pack()
-            tw.wm_geometry(f"+{x}+{y}")
-            tip_window["win"] = tw
+    def on_exit_leave(event):
+        exit_btn.configure(image=exit_btn_img)
+        exit_btn.image = exit_btn_img
 
-        def hide_tip(event=None):
-            tw = tip_window.get("win")
-            if tw:
-                tw.destroy()
-                tip_window["win"] = None
-
-        widget.bind("<Enter>", show_tip)
-        widget.bind("<Leave>", hide_tip)
-
-    # Clarify Clear All Filters behavior with a tooltip
-    attach_tooltip(reset_btn, "Clears dropdown filters and any right-click excludes")
+    exit_btn.bind("<Enter>", on_exit_enter)
+    exit_btn.bind("<Leave>", on_exit_leave)
+    exit_btn.bind("<Button-1>", lambda e: root.quit())
 
     # Alternating row colors for Treeview
     def set_alternating_row_colors():

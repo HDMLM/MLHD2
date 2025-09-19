@@ -647,7 +647,7 @@ class SettingsPage(tk.Tk):
         combo['values'] = options
         var.set(options[idx])
         combo.current(idx)
-#comment here
+
     def sync_comboboxes_from_vars(self):
         self.select_combobox_value(self.ship1_combo, self.shipName1s, self.shipName1_var.get(), self.shipName1_var)
         self.select_combobox_value(self.ship2_combo, self.shipName2s, self.shipName2_var.get(), self.shipName2_var)

@@ -11,7 +11,7 @@
 
 
 # Times i've wished we didn't use Excel - 22
-# Times we should move away from discord - 1
+# Times we should move away from discord - 2
 # Time we really shouldn't have used Python - 3
 
 import tkinter as tk
@@ -33,7 +33,26 @@ import random
 import re
 import webbrowser
 import discordrpc
+
+def _verify_discordrpc():
+    try:
+        import logging
+        path = getattr(discordrpc, "__file__", "N/A")
+        logging.info(f"discordrpc loaded from: {path}")
+        if not hasattr(discordrpc, "RPC"):
+            try:
+                import discord_rpc as alt
+                logging.info(f"Also found discord_rpc at: {getattr(alt, '__file__', 'N/A')}")
+            except Exception:
+                pass
+            raise AttributeError(f"discordrpc has no attribute RPC (module path: {path})")
+    except Exception as e:
+        # Surface early and clearly
+        raise
+_verify_discordrpc()
+
 from tkinter import font as tkfont
+
 
 # Ensure Pillow debug output is disabled before importing PIL
 os.environ["PILLOW_DEBUG"] = "0"
@@ -2318,33 +2337,6 @@ class MissionLogGUI:
             logging.error(f"Failed to refresh planet / mega city lists after settings load: {e}")
 
 if __name__ == "__main__":
-    try:
-        with open('./JSON/DCord.json', 'r') as f:
-            settings_data = json.load(f)
-            discord_uid = settings_data.get('discord_uid', '0')
-            if not (re.match(r'^\d{17,19}$', discord_uid) or (DEBUG and discord_uid == '0')):
-                logging.error("Please set a valid Discord ID in the settings.py file")
-                messagebox.showerror("Error", "Please set a valid Discord ID in the settings.py file")
-                subprocess.run(['python', 'settings.py'])
-                os._exit(1)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logging.error(f"Error loading settings.json: {e}")
-        messagebox.showerror("Error", f"Error loading settings.json: {e}")
-        os._exit(1)
-    try:
-        with open('./JSON/DCord.json', 'r') as f:
-            settings_data = json.load(f)
-            platform = settings_data.get('platform', "Not Selected")
-            if platform == "Not Selected":
-                logging.error("Please set a valid Platform in settings.py") 
-                messagebox.showerror("Error", "Please set a valid Platform in settings.py")
-                subprocess.run(['python', 'settings.py'])
-                os._exit(1)
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        logging.error(f"Error loading DCord.json: {e}")
-        messagebox.showerror("Error", f"Error loading DCord.json: {e}")
-        os._exit(1)
-
     root = tk.Tk()
     app = MissionLogGUI(root)
     root.mainloop()

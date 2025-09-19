@@ -15,6 +15,19 @@ import threading
 import time
 import zipfile
 from typing import Any, Dict, List, Optional, Tuple, Callable
+import webbrowser
+
+
+#Manual Constants
+GameUpdateTitle = "INTO THE UNJUST"
+
+# NEW: imports for font detection/installation
+import ctypes
+try:
+    import winreg  # Windows only
+except Exception:
+    winreg = None
+import tkinter.font as tkfont
 
 # Python 3.10.6 enforcement and bootstrap
 REQUIRED_PYTHON_VERSION = (3, 10, 6)
@@ -73,6 +86,11 @@ BACKUP_DIR_ROOT = "backup"
 
 REQUEST_TIMEOUT_RELEASES = 10
 REQUEST_TIMEOUT_ZIP = 30
+
+# NEW: font install settings
+FONT_FILE = "Insignia.ttf"
+FONT_FAMILY_NAME = "Insignia"
+FIRST_LAUNCH_MARKER = ".first_launch_done"
 
 # Exclusion globs / prefixes relative to repo root
 # We don't want to overwrite user data since even if it's outdated the program should update the JSON as required, though we could add the option
@@ -160,6 +178,17 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
 
 def safe_zip_update(include_prerelease: bool = False) -> str:
     # Perform safe update via zip archive with backup of changed files
+
+    #check if current version is higher than latest version if so skip update
+    local_version = get_local_version()
+    latest = get_latest_github_version(include_prerelease=include_prerelease)
+    if not local_version or not isinstance(latest, str):
+        return f"Could not determine version. Local: {local_version}, GitHub: {latest}"
+    cmp_result = _compare_versions(local_version, latest)
+    if cmp_result > 0:
+        return "Local version is ahead of GitHub release (development build). No update applied."
+
+
     tag, content, err = download_release_zip(include_prerelease=include_prerelease)
     if err:
         return ("Safe update failed: " + err +
@@ -293,6 +322,9 @@ def _compare_versions(a: str, b: str) -> int:
             return -1
     return 0
 
+def _canon_name(name: str) -> str:
+    # PEP 503 canonicalization: collapse -, _, . to - and lowercase
+    return re.sub(r'[-_.]+', '-', name).lower()
 
 def check_version(include_prerelease: bool = False) -> str:
     # Return formatted version + patch notes using semantic comparison
@@ -315,12 +347,20 @@ def check_version(include_prerelease: bool = False) -> str:
         f"Latest GitHub version: {latest_version}{' (pre-release)' if is_pr else ''}\n"
         f"{status_line}\n\nPatch Notes:\n{notes}"
     )
-def check_requirements() -> str:
-    # Ensure packages in requirements.txt are installed
+def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> str:
+    # Ensure packages in requirements.txt are installed and report per-package status
     output: List[str] = []
 
+    def log(line: str) -> None:
+        # Word wrap at 80 chars for better display
+        import textwrap
+        wrapped = textwrap.fill(line, width=80)
+        output.append(wrapped)
+        if log_callback:
+            log_callback(wrapped + "\n")
+
     def read_requirements_lines(path: str) -> List[str]:
-        # Read requirements file with multiple encoding fallbacks because people don't name packages like normal humans
+        # Read requirements file with multiple encoding fallbacks
         encodings = ["utf-8", "utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "latin-1"]
         last_err: Optional[Exception] = None
         for enc in encodings:
@@ -345,71 +385,122 @@ def check_requirements() -> str:
         python_exe = PYTHON3106_EXE or sys.executable
         try:
             data = subprocess.check_output(
-                [python_exe, "-m", "pip", "list", "--format", "json"],
+                [python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
                 stderr=subprocess.DEVNULL,
             )
             import json
             pkgs = json.loads(data.decode("utf-8", errors="replace"))
-            return {p["name"].lower(): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
+            return {_canon_name(p["name"]): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
         except Exception:
             return {}
 
-    MGMT_PACKAGES = {"pip", "setuptools", "wheel"}  # skip managing these as they are part of pip's own operation... i think
+    def install_or_update(pkg: str, target: Optional[str]) -> Tuple[bool, str]:
+        # Install or update a package; target is exact version string or None
+        python_exe = PYTHON3106_EXE or sys.executable
+        spec = f"{pkg}=={target}" if target else pkg
+        try:
+            subprocess.check_call(
+                [python_exe, "-m", "pip", "install", spec, "--disable-pip-version-check", "--no-input"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.STDOUT,
+            )
+            return True, ""
+        except subprocess.CalledProcessError as e:
+            return False, f"pip exit code {e.returncode}"
+        except Exception as e:
+            return False, str(e)
+
+    MGMT_PACKAGES = {"pip", "setuptools", "wheel"}  # skip these
+
+    failures: List[str] = []
+    updated_count = 0
+    installed_count = 0
 
     try:
         requirements = read_requirements_lines(REQUIREMENTS_FILE)
         if not requirements:
-            output.append("No requirements found (file empty or unreadable).")
+            log("No requirements found (file empty or unreadable).")
         installed = get_installed_packages()
+
+        # Normalize requirements into (name, pinned_version|None)
+        parsed_reqs: List[Tuple[str, Optional[str]]] = []
         for req in requirements:
-            # Support package==version or just package
             if '==' in req:
                 pkg, pinned_version = req.split('==', 1)
-                pinned_version = pinned_version.strip()
+                parsed_reqs.append((pkg.strip(), pinned_version.strip()))
             else:
-                pkg, pinned_version = req, ''
-            pkg = pkg.strip()
+                parsed_reqs.append((req.strip(), None))
+
+        total = len(parsed_reqs)
+        for idx, (pkg, pinned) in enumerate(parsed_reqs, start=1):
             if not pkg:
                 continue
-            low_pkg = pkg.lower()
-            if low_pkg in MGMT_PACKAGES:
-                output.append(f"Skipping management package {pkg} (handled externally).")
+            key = _canon_name(pkg)
+            if key in MGMT_PACKAGES:
+                log(f"[{idx}/{total}] {pkg}: Skipping (management package).")
                 continue
-            output.append(f"Checking {pkg} ...")
-            python_exe = PYTHON3106_EXE or sys.executable
-            if low_pkg in installed:
-                current_v = installed[low_pkg]
-                if pinned_version and current_v != pinned_version:
-                    output.append(f"{pkg}: Version {current_v} != required {pinned_version} - updating...")
-                    try:
-                        subprocess.check_call([python_exe, "-m", "pip", "install", f"{pkg}=={pinned_version}"])
-                        output.append(f"{pkg}: UPDATED to {pinned_version}")
-                    except subprocess.CalledProcessError as e:
-                        output.append(f"{pkg}: UPDATE FAILED ({e})")
-                else:
-                    output.append(f"{pkg}: OK ({current_v})")
-            else:
-                output.append(f"{pkg}: MISSING - Installing...")
-                install_target = f"{pkg}=={pinned_version}" if pinned_version else pkg
-                try:
-                    subprocess.check_call([python_exe, "-m", "pip", "install", install_target])
-                    output.append(f"{pkg}: INSTALLED")
-                except subprocess.CalledProcessError as e:
-                    output.append(f"{pkg}: INSTALL FAILED ({e})")
-    except Exception as e:
-        output.append(f"Error reading requirements: {e}")
 
-    # Derive summary
-    missing = [line for line in output if 'MISSING' in line or 'INSTALL FAILED' in line]
-    if not output:
-        output.append("No requirements processed.")
-    if missing:
-        output.append("")
-        output.append(f"Summary: {len(missing)} package(s) missing - issued install commands.")
+            log(f"[{idx}/{total}] Checking {pkg} ...")
+            installed = get_installed_packages()  # refresh snapshot
+            if key in installed:
+                current_v = installed[key]
+                if pinned and _compare_versions(current_v, pinned) != 0:
+                    log(f"  - Found {pkg} {current_v}; requires {pinned}. Updating...")
+                    ok, err = install_or_update(pkg, pinned)
+                    if ok:
+                        installed = get_installed_packages()
+                        final_v = installed.get(key, "")
+                        if final_v and _compare_versions(final_v, pinned) == 0:
+                            updated_count += 1
+                            log(f"  - UPDATED to {pinned}")
+                        else:
+                            msg = f"{pkg}: UPDATE FAILED (wanted {pinned}, now {final_v or 'not installed'})"
+                            log(f"  - {msg}")
+                            failures.append(msg)
+                    else:
+                        msg = f"{pkg}: UPDATE FAILED ({err})"
+                        log(f"  - {msg}")
+                        failures.append(msg)
+                else:
+                    log(f"  - OK ({current_v})")
+            else:
+                target_desc = pinned if pinned else "latest"
+                log(f"  - Not installed. Installing ({target_desc})...")
+                ok, err = install_or_update(pkg, pinned)
+                if ok:
+                    installed = get_installed_packages()
+                    final_v = installed.get(key, "")
+                    if final_v and (not pinned or _compare_versions(final_v, pinned) == 0):
+                        installed_count += 1
+                        log(f"  - INSTALLED ({final_v})")
+                    else:
+                        msg = f"{pkg}: INSTALL VERIFIED FAILED (wanted {pinned or 'any'}, now {final_v or 'missing'})"
+                        log(f"  - {msg}")
+                        failures.append(msg)
+                else:
+                    msg = f"{pkg}: INSTALL FAILED ({err})"
+                    log(f"  - {msg}")
+                    failures.append(msg)
+    except Exception as e:
+        log(f"Error reading requirements: {e}")
+
+    # Summary
+    if output and output[-1] != "":
+        log("")
+    if failures:
+        log(f"Summary: {len(failures)} issue(s) detected.")
+        for f in failures:
+            log(f" - {f}")
     else:
-        output.append("")
-        output.append("Summary: All requirements satisfied.")
-    return "\n".join(output)
+        log("Summary: All requirements satisfied.")
+    if updated_count or installed_count:
+        log(f"Actions: {installed_count} installed, {updated_count} updated.")
+    # Only return the summary for the version box, not the full log
+    summary_lines = []
+    for line in output:
+        if line.startswith("Summary:") or line.startswith("Actions:") or line.startswith("Error reading requirements:"):
+            summary_lines.append(line)
+    return "\n".join(summary_lines) if summary_lines else "\n".join(output[-10:])
 
 def launch_program_detached() -> Optional[subprocess.Popen]:
     # Start the main program process and return the Popen or None on failure
@@ -421,21 +512,82 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
         return subprocess.Popen([python_exe, MAIN_PROGRAM])
     except Exception as e:
         messagebox.showerror("Launch Error", str(e))
-        return None
 
-def threaded_action(action: Callable[[], str], text_widget: scrolledtext.ScrolledText) -> None:
+        
+def threaded_action(action: Callable[..., str], text_widget: scrolledtext.ScrolledText) -> None:
+    def log_callback(line: str) -> None:
+        text_widget.config(state="normal")
+        text_widget.insert(tk.END, line)
+        text_widget.see(tk.END)
+        text_widget.update()
+        text_widget.config(state="disabled")
+
     def run():
         try:
             text_widget.config(state="normal")
             text_widget.insert(tk.END, f"{action.__name__.replace('_', ' ').title()}...\n")
+            text_widget.see(tk.END)
             text_widget.update()
-            result = action()
-            text_widget.insert(tk.END, result + "\n")
+            text_widget.config(state="disabled")
+            if action.__name__ == "check_requirements":
+                action(log_callback)
+            else:
+                result = action()
+                text_widget.config(state="normal")
+                text_widget.insert(tk.END, result + "\n")
+                text_widget.see(tk.END)
+                text_widget.config(state="disabled")
         finally:
             text_widget.config(state="disabled")
+
     t = threading.Thread(target=run, daemon=True)
     t.start()
 
+# NEW: font helpers
+def _is_font_available(font_family: str) -> bool:
+    try:
+        families = set(f.lower() for f in tkfont.families())
+        return font_family.lower() in families
+    except Exception:
+        return False
+
+def _install_font_per_user_windows(font_path: str, font_family: str) -> Tuple[bool, str]:
+    if os.name != "nt":
+        return False, "Not Windows."
+    try:
+        local_app = os.environ.get("LOCALAPPDATA")
+        if not local_app:
+            return False, "LOCALAPPDATA not set."
+        user_fonts = os.path.join(local_app, "Microsoft", "Windows", "Fonts")
+        os.makedirs(user_fonts, exist_ok=True)
+        dest_path = os.path.join(user_fonts, os.path.basename(font_path))
+        if os.path.abspath(font_path) != os.path.abspath(dest_path):
+            shutil.copy2(font_path, dest_path)
+
+        # Registry entry so Windows enumerates the font for this user
+        if not winreg:
+            return False, "winreg unavailable."
+        key_path = r"Software\Microsoft\Windows NT\CurrentVersion\Fonts"
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, key_path, 0, winreg.KEY_SET_VALUE) as key:
+            value_name = f"{font_family} (TrueType)"
+            winreg.SetValueEx(key, value_name, 0, winreg.REG_SZ, os.path.basename(dest_path))
+
+        # Load into current session and notify apps
+        try:
+            AddFontResourceExW = ctypes.windll.gdi32.AddFontResourceExW
+            SendMessageTimeoutW = ctypes.windll.user32.SendMessageTimeoutW
+            res = AddFontResourceExW(dest_path, 0, 0)
+            HWND_BROADCAST = 0xFFFF
+            WM_FONTCHANGE = 0x001D
+            SMTO_ABORTIFHUNG = 0x0002
+            SendMessageTimeoutW(HWND_BROADCAST, WM_FONTCHANGE, 0, 0, SMTO_ABORTIFHUNG, 1000, None)
+        except Exception:
+            # Non-fatal; font will appear after restart
+            pass
+
+        return True, "Installed."
+    except Exception as e:
+        return False, str(e)
 
 class InstallerGUI(tk.Tk):
     def __init__(self) -> None:
@@ -444,7 +596,13 @@ class InstallerGUI(tk.Tk):
         self.geometry("1280x720")
         self.resizable(False, False)
 
-    # Load placeholder background image with error handling
+        # Try to use Insignia font if available, fallback to Arial
+        try:
+            insignia_font = tkfont.Font(family="Insignia", size=18, weight="bold", slant="italic")
+        except Exception:
+            insignia_font = tkfont.Font(family="Arial", size=18, weight="bold", slant="italic")
+
+        # Load placeholder background image with error handling
         try:
             from PIL import Image, ImageTk
         except ImportError:
@@ -468,7 +626,7 @@ class InstallerGUI(tk.Tk):
                     tk.messagebox.showerror("Image Error", f"Failed to load background image: {e}")
                     self.bg_photo = None
 
-    # Canvas for background
+        # Canvas for background
         self.canvas = tk.Canvas(self, width=1280, height=720, highlightthickness=0, bd=0)
         self.canvas.pack(fill="both", expand=True)
         if self.bg_photo:
@@ -476,31 +634,90 @@ class InstallerGUI(tk.Tk):
         else:
             self.canvas.create_rectangle(0, 0, 1280, 720, fill="#252526", outline="")
 
-    # Sidebar
+        # Sidebar
         self.sidebar = tk.Frame(self.canvas, bg="#252526", width=80, height=600)
         self.sidebar.place(x=0, y=0)
-        sidebar_icons = ["🏠", "📰", "⚙️", "❓"]
-        for i, icon in enumerate(sidebar_icons):
-            lbl = tk.Label(self.sidebar, text=icon, bg="#252526", fg="white", font=("Arial", 28, "bold"))
-            lbl.place(x=20, y=40 + i*90, width=40, height=40)
 
-    # Banner area
+        # Sidebar button image paths and icons
+        sidebar_btn_info = [
+            (os.path.join(".\\LaunchMedia", "GitHubButton.png"), os.path.join(".\\LaunchMedia", "GitHubButtonHover.png"), "🏠"),
+            (os.path.join(".\\LaunchMedia", "DiscordButton.png"), os.path.join(".\\LaunchMedia", "DiscordButtonHover.png"), "📰"),
+            (os.path.join(".\\LaunchMedia", "SettingsButton.png"), os.path.join(".\\LaunchMedia", "SettingsButtonHover.png"), "⚙️"),
+            (os.path.join(".\\LaunchMedia", "HelpButton.png"), os.path.join(".\\LaunchMedia", "HelpButtonHover.png"), "❓"),
+        ]
+        self.sidebar_buttons = []
+        self.sidebar_btn_photos = []
+        self.sidebar_btn_hover_photos = []
+
+        # Sidebar button actions
+        def open_url(url):
+            webbrowser.open(url)
+
+        def open_settings():
+            python_exe = PYTHON3106_EXE or sys.executable
+            settings_path = os.path.join(os.getcwd(), "settings.py")
+            try:
+                subprocess.Popen([python_exe, settings_path])
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not open settings: {e}")
+
+        sidebar_btn_actions = [
+            lambda: open_url("https://github.com/HDMLM/MLHD2"),  # GitHub
+            lambda: open_url("https://discord.gg/U6ydgwFKZG"),  # Discord (same link as requested)
+            open_settings,                                        # Settings
+            lambda: open_url("https://github.com/HDMLM/MLHD2/blob/main/README.md"),  # Help
+        ]
+
+        for i, (img, hover_img, fallback_icon) in enumerate(sidebar_btn_info):
+            try:
+                btn_img = Image.open(img).convert("RGBA").resize((40, 40), Image.Resampling.LANCZOS)
+                btn_hover_img = Image.open(hover_img).convert("RGBA").resize((40, 40), Image.Resampling.LANCZOS)
+                btn_photo = ImageTk.PhotoImage(btn_img)
+                btn_hover_photo = ImageTk.PhotoImage(btn_hover_img)
+            except Exception:
+                btn_photo = None
+                btn_hover_photo = None
+
+            btn = tk.Button(
+            self.sidebar,
+            image=btn_photo if btn_photo else None,
+            text=fallback_icon if not btn_photo else "",
+            bg="#252526",
+            fg="white",
+            font=("Arial", 28, "bold"),
+            borderwidth=0,
+            relief="flat",
+            activebackground="#353535",
+            highlightthickness=0,
+            compound="center",
+            command=sidebar_btn_actions[i]
+            )
+            btn.place(x=20, y=40 + i * 90, width=40, height=40)
+            if btn_photo and btn_hover_photo:
+                btn.bind("<Enter>", lambda e, b=btn, h=btn_hover_photo: b.config(image=h))
+                btn.bind("<Leave>", lambda e, b=btn, n=btn_photo: b.config(image=n))
+            self.sidebar_buttons.append(btn)
+            self.sidebar_btn_photos.append(btn_photo)
+            self.sidebar_btn_hover_photos.append(btn_hover_photo)
+
+        # Banner area
         self.banner_frame = tk.Frame(self.canvas, bg="#252526", width=920, height=110)
         self.banner_frame.place(x=80, y=0)
-        self.banner_label = tk.Label(self.banner_frame, text="HD2 Mission Logger", bg="#252526", fg="white", font=("Arial", 28, "bold"))
+        self.banner_label = tk.Label(self.banner_frame, text="HD2 MISSION LOGGER", bg="#252526", fg="white", font=(insignia_font.actual("family"), 30))
         self.banner_label.place(x=30, y=18)
         latest_version = get_latest_github_version(include_prerelease=True)
+
         self.version_label = tk.Label(
             self.banner_frame,
-            text=f"Latest Version: {latest_version}" if isinstance(latest_version, str) else "Drop Into Hell...",
+            text=f"Latest Version: {latest_version} - {GameUpdateTitle}" if isinstance(latest_version, str) else "Drop Into Hell...",
             bg="#252526",
             fg="#AEE2FF",
-            font=("Arial", 18, "italic")
+            font=insignia_font
         )
         self.version_label.place(x=30, y=60)
 
 
-    # Main content area
+        # Main content area
         self.content_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=320)
         self.content_frame.place(x=120, y=140)
         self.content_frame.update()
@@ -512,38 +729,211 @@ class InstallerGUI(tk.Tk):
         self.text = scrolledtext.ScrolledText(self.content_frame, state="disabled", width=46, height=10, font=("Arial", 12), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
         self.text.place(x=10, y=10)
 
-    # Patch notes box
+        # Patch notes box
         self.patch_notes_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=100)
         self.patch_notes_frame.place(x=120, y=470)
         self.patch_notes_frame.config(highlightbackground="#252526", highlightthickness=2)
         self.patch_notes_box = scrolledtext.ScrolledText(self.patch_notes_frame, state="disabled", width=46, height=5, font=("Arial", 11, "italic"), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
         self.patch_notes_box.place(x=10, y=10)
 
-    # Button row
+        # Button row
 
         button_y = 670
         button_x_start = 40
         button_w = 160
         button_h = 38
         button_pad = 20
-        self.check_btn = tk.Button(self.canvas, text="Check Requirements", bg="#E0E0E0", fg="black", font=("Arial", 12), command=lambda: threaded_action(check_requirements, self.text), borderwidth=0)
-        self.check_btn.place(x=button_x_start, y=button_y, width=button_w, height=button_h)
+        # Button image loading helper
+        def load_button_images(base_path, normal_name, hover_name, size):
+            try:
+                normal_img = Image.open(os.path.join(base_path, normal_name)).convert("RGBA")
+                hover_img = Image.open(os.path.join(base_path, hover_name)).convert("RGBA")
+                normal_img = normal_img.resize(size, Image.Resampling.LANCZOS)
+                hover_img = hover_img.resize(size, Image.Resampling.LANCZOS)
+                return ImageTk.PhotoImage(normal_img), ImageTk.PhotoImage(hover_img)
+            except Exception:
+                return None, None
 
-        self.update_btn = tk.Button(self.canvas, text="Update to Latest", bg="#E0E0E0", fg="black", font=("Arial", 12), command=lambda: threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text), borderwidth=0)
-        self.update_btn.place(x=button_x_start + button_w + button_pad, y=button_y, width=button_w, height=button_h)
+        button_h_tall = 60
+        button_w_wide = button_w + 30
+        button_img_size = (button_w_wide, button_h_tall)
+        button_img_pad = 30  # Padding between buttons
+        button_bottom_pad = 45  # Padding from bottom
 
-        self.version_btn = tk.Button(self.canvas, text="Check Version", bg="#E0E0E0", fg="black", font=("Arial", 12), command=self.display_version_info, borderwidth=0)
-        self.version_btn.place(x=button_x_start + 2*(button_w + button_pad), y=button_y, width=button_w, height=button_h)
+        # Calculate new y position with bottom padding
+        button_y_padded = button_y - button_bottom_pad
+
+        # Verify button images
+        self.verify_photo, self.verify_photo_hover = load_button_images(
+            ".\\LaunchMedia", "VerifyIntegrityButton.png", "VerifyIntegrityButtonHover.png", button_img_size
+        )
+        self.check_btn = tk.Button(
+            self.canvas,
+            image=self.verify_photo if self.verify_photo else None,
+            text="" if self.verify_photo else "Check Requirements",
+            bg="#4C4C4C",
+            fg="white",
+            font=("Arial", 12),
+            command=lambda: threaded_action(check_requirements, self.text),
+            borderwidth=0,
+            compound="center",
+            highlightthickness=0,
+            activebackground="#4C4C4C"
+        )
+        self.check_btn.place(x=button_x_start, y=button_y_padded, width=button_w_wide, height=button_h_tall)
+
+        if self.verify_photo and self.verify_photo_hover:
+            self.check_btn.bind("<Enter>", lambda e: self.check_btn.config(image=self.verify_photo_hover))
+            self.check_btn.bind("<Leave>", lambda e: self.check_btn.config(image=self.verify_photo))
+
+        # Update button images
+        self.update_photo, self.update_photo_hover = load_button_images(
+            ".\\LaunchMedia", "UpdateToLatestButton.png", "UpdateToLatestButtonHover.png", button_img_size
+        )
+        update_x = button_x_start + button_w_wide + button_img_pad
+        self.update_btn = tk.Button(
+            self.canvas,
+            image=self.update_photo if self.update_photo else None,
+            text="" if self.update_photo else "Update to Latest",
+            bg="#4C4C4C",
+            fg="white",
+            font=("Arial", 12),
+            command=lambda: threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text),
+            borderwidth=0,
+            compound="center",
+            highlightthickness=0,
+            activebackground="#4C4C4C"
+        )
+        self.update_btn.place(x=update_x, y=button_y_padded, width=button_w_wide, height=button_h_tall)
+
+        if self.update_photo and self.update_photo_hover:
+            self.update_btn.bind("<Enter>", lambda e: self.update_btn.config(image=self.update_photo_hover))
+            self.update_btn.bind("<Leave>", lambda e: self.update_btn.config(image=self.update_photo))
 
     # Always include pre-releases by default, originally a checkbox but im too lazy to refactor the code to remove it so we just set it true
         self.include_prerelease = tk.BooleanVar(value=True)
 
-    # Place Start Game button at the absolute bottom right
-        self.launch_btn = tk.Button(self.canvas, text="▶ Start Game", bg="#FFD600", fg="black", font=("Arial", 18, "bold"), command=self.launch_and_monitor, borderwidth=0, relief="flat", activebackground="#FFEA70")
-        self.launch_btn.place(x=1080, y=630, width=180, height=55)
+    # Place Start Game button at the absolute bottom right using image button
+        start_btn_img_path = ".\\LaunchMedia\\StartLoggerButton.png"
+        start_btn_hover_img_path = ".\\LaunchMedia\\StartLoggerButtonHover.png"
+        start_btn_clicked_img_path = ".\\LaunchMedia\\StartLoggerButtonActive.png"
+        btn_width = 200
+        btn_height = 65  # Increased height from 55 to 65
+        try:
+            start_btn_img = Image.open(start_btn_img_path).convert("RGBA").resize((btn_width, btn_height), Image.Resampling.LANCZOS)
+            start_btn_hover_img = Image.open(start_btn_hover_img_path).convert("RGBA").resize((btn_width, btn_height), Image.Resampling.LANCZOS)
+            start_btn_clicked_img = Image.open(start_btn_clicked_img_path).convert("RGBA").resize((btn_width, btn_height), Image.Resampling.LANCZOS)
+            self.start_btn_photo = ImageTk.PhotoImage(start_btn_img)
+            self.start_btn_hover_photo = ImageTk.PhotoImage(start_btn_hover_img)
+            self.start_btn_clicked_photo = ImageTk.PhotoImage(start_btn_clicked_img)
+        except Exception:
+            self.start_btn_photo = None
+            self.start_btn_hover_photo = None
+            self.start_btn_clicked_photo = None
+
+        self.launch_btn = tk.Button(
+            self.canvas,
+            image=self.start_btn_photo if self.start_btn_photo else None,
+            text="" if self.start_btn_photo else "▶ Launch Logger",
+            bg="#FFD600",
+            fg="black",
+            font=("Arial", 18, "bold"),
+            command=self.launch_and_monitor,
+            borderwidth=0,
+            relief="flat",
+            activebackground="#FFEA70",
+            width=25
+        )
+        self.launch_btn.place(x=1060, y=630, width=btn_width, height=btn_height)
+
+        # State management for normal, hover, and clicked
+        def set_normal(e=None):
+            if self.start_btn_photo:
+                self.launch_btn.config(image=self.start_btn_photo)
+
+        def set_hover(e=None):
+            if self.start_btn_hover_photo:
+                self.launch_btn.config(image=self.start_btn_hover_photo)
+
+        def set_clicked(e=None):
+            if self.start_btn_clicked_photo:
+                self.launch_btn.config(image=self.start_btn_clicked_photo)
+
+        if self.start_btn_photo and self.start_btn_hover_photo and self.start_btn_clicked_photo:
+            self.launch_btn.bind("<Enter>", set_hover)
+            self.launch_btn.bind("<Leave>", set_normal)
+            self.launch_btn.bind("<ButtonPress-1>", set_clicked)
+            self.launch_btn.bind("<ButtonRelease-1>", set_hover)
+        elif self.start_btn_photo and self.start_btn_hover_photo:
+            self.launch_btn.bind("<Enter>", set_hover)
+            self.launch_btn.bind("<Leave>", set_normal)
 
     # Initial display
         self.display_version_info()
+
+        # NEW: prompt once on first launch to install Insignia.ttf
+        self.after(200, self.maybe_prompt_font_install)
+
+    # NEW: first-launch font prompt
+    def maybe_prompt_font_install(self) -> None:
+        try:
+            if os.path.exists(FIRST_LAUNCH_MARKER):
+                return
+
+            # Only relevant on Windows
+            if os.name != "nt":
+                with open(FIRST_LAUNCH_MARKER, "w", encoding="utf-8") as _:
+                    _.write("ok")
+                return
+
+            if _is_font_available(FONT_FAMILY_NAME):
+                with open(FIRST_LAUNCH_MARKER, "w", encoding="utf-8") as _:
+                    _.write("ok")
+                return
+
+            font_path = os.path.abspath(FONT_FILE)
+            if not os.path.exists(font_path):
+                if messagebox.askyesno(
+                    "Optional Font",
+                    f"The '{FONT_FAMILY_NAME}' font improves visuals.\n"
+                    f"The font file '{FONT_FILE}' was not found.\nOpen the app folder to install it manually?"
+                ):
+                    try:
+                        os.startfile(os.getcwd())
+                    except Exception:
+                        pass
+                with open(FIRST_LAUNCH_MARKER, "w", encoding="utf-8") as _:
+                    _.write("asked")
+                return
+
+            if messagebox.askyesno(
+                "Install Font",
+                f"The '{FONT_FAMILY_NAME}' font is recommended.\nInstall it now for this Windows user?"
+            ):
+                ok, err = _install_font_per_user_windows(font_path, FONT_FAMILY_NAME)
+                if ok:
+                    messagebox.showinfo(
+                        "Font Installed",
+                        f"'{FONT_FAMILY_NAME}' installed.\nYou may need to restart the launcher to see it."
+                    )
+                else:
+                    messagebox.showerror(
+                        "Font Install Failed",
+                        f"Automatic install failed:\n{err}\nOpening the font file; click 'Install' in the viewer."
+                    )
+                    try:
+                        os.startfile(font_path)  # Opens font viewer for manual install
+                    except Exception:
+                        pass
+
+            with open(FIRST_LAUNCH_MARKER, "w", encoding="utf-8") as _:
+                _.write("asked")
+        except Exception:
+            try:
+                with open(FIRST_LAUNCH_MARKER, "w", encoding="utf-8") as _:
+                    _.write("asked")
+            except Exception:
+                pass
 
     def display_version_info(self) -> None:
         info = check_version(include_prerelease=self.include_prerelease.get())
@@ -581,7 +971,6 @@ class InstallerGUI(tk.Tk):
                 self.deiconify()
                 self.launch_btn.config(state='normal')
                 self.text.config(state='normal')
-                self.text.insert(tk.END, f"Main program exited with code {exit_code}\n")
                 self.text.config(state='disabled')
             try:
                 self.after(0, restore)
