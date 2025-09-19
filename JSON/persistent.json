@@ -1,17 +1,14 @@
 {
-    "helldiver": "Helldiver",
+    "profile_picture": "B-01 Tactical",
+    "sector": "Sol System",
+    "planet": "Mars",
+    "mega_cities": "Planet Surface",
     "level": 0,
     "title": "CADET",
-    "sector": "Sol System",
-    "planet": "Super Earth",
     "difficulty": "1 - TRIVIAL",
-    "mission": "Cleanse Infested District",
+    "mission": "Observing Galactic War",
+    "campaign": "Observation",
+    "subfaction": "No Faction",
     "DSS": false,
-    "DSSMod": "Inactive",
-    "campaign": "Defense",
-    "subfaction": "Terminid Horde",
-    "hvt": "No HVTs",
-    "shipName1": "SES Adjudicator",
-    "shipName2": "of Battle",
-    "profile_picture": "B-01 Tactical"
+    "DSSMod": "Inactive"
 }

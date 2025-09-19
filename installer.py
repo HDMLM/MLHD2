@@ -16,6 +16,8 @@ import time
 import zipfile
 from typing import Any, Dict, List, Optional, Tuple, Callable
 import webbrowser
+from pathlib import Path
+from ast import literal_eval
 
 
 #Manual Constants
@@ -32,44 +34,67 @@ import tkinter.font as tkfont
 # Python 3.10.6 enforcement and bootstrap
 REQUIRED_PYTHON_VERSION = (3, 10, 6)
 
-def find_python3106_executable() -> Optional[str]:
-    candidates = [
-        sys.executable,
-        "python3.10",
-        "python3.10.6",
-        "py -3.10",
-        r"C:\\Python310\\python.exe",
-        r"C:\\Python3.10.6\\python.exe",
-    ]
-    for exe in candidates:
+def _is_frozen() -> bool:
+    return getattr(sys, "frozen", False) is True
+
+# Paths: distinguish between the real app folder (read/write) and bundled resources
+APP_DIR = Path(os.path.dirname(sys.executable) if _is_frozen() else os.path.dirname(__file__)).resolve()
+BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
+
+def app_path(*parts: str) -> str:
+    return str(APP_DIR.joinpath(*parts))
+
+def resource_path(*parts: str) -> str:
+    return str(BUNDLE_DIR.joinpath(*parts))
+
+def find_python3106_executable() -> Optional[List[str]]:
+    # In frozen mode, sys.executable points to the EXE; skip that candidate
+    candidates: List[List[str]] = []
+    if not _is_frozen():
+        candidates.append([sys.executable])
+    candidates.extend([
+        ["python3.10"],
+        ["python3.10.6"],
+        ["py", "-3.10"],  # Windows Python launcher
+        [r"C:\\Python310\\python.exe"],
+        [r"C:\\Python3.10.6\\python.exe"],
+    ])
+    for exe_argv in candidates:
         try:
-            out = subprocess.check_output([
-                exe, "-c", "import sys; print(sys.version_info[:3])"
-            ], stderr=subprocess.DEVNULL)
-            ver = eval(out.decode().strip())
+            out = subprocess.check_output(
+                [*exe_argv, "-c", "import sys; print(tuple(sys.version_info[:3]))"],
+                stderr=subprocess.DEVNULL,
+            )
+            ver = literal_eval(out.decode().strip())
             if tuple(ver) == REQUIRED_PYTHON_VERSION:
-                return exe
+                return exe_argv
         except Exception:
             continue
     return None
 
-PYTHON3106_EXE = find_python3106_executable()
+PYTHON3106_CMD = find_python3106_executable()
+
+def _py_cmd() -> List[str]:
+    return PYTHON3106_CMD or [sys.executable]
 
 
 def ensure_python_version():
+    # When frozen (PyInstaller), don't enforce embedded interpreter version strictly.
+    # External Python 3.10.6 is only required for running main.py and pip.
+    if _is_frozen():
+        return
     # Thanks to Jesse's testing we know that the version needs to be exactly 3.10.6
-    # Since some packages refuse to work, im looking at you Requests...
     if sys.version_info[:3] != REQUIRED_PYTHON_VERSION:
         msg = (
             f"ERROR: This program requires Python {REQUIRED_PYTHON_VERSION[0]}.{REQUIRED_PYTHON_VERSION[1]}.{REQUIRED_PYTHON_VERSION[2]}.\n"
             f"Current version: {sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}\n"
         )
-        if not PYTHON3106_EXE:
+        if not PYTHON3106_CMD:
             msg += "Python 3.10.6 not found. Please install it and re-run this installer."
             print(msg)
             sys.exit(1)
         else:
-            msg += f"Attempting to use Python 3.10.6 at: {PYTHON3106_EXE}\n"
+            msg += f"Attempting to use Python 3.10.6 at: {' '.join(PYTHON3106_CMD)}\n"
             print(msg)
 ensure_python_version()
 
@@ -80,25 +105,25 @@ from tkinter import messagebox, scrolledtext
 GITHUB_API_REPO = "HDMLM/MLHD2"
 GITHUB_REPO = "https://github.com/HDMLM/MLHD2"
 GITHUB_API_BASE = f"https://api.github.com/repos/{GITHUB_API_REPO}"
-REQUIREMENTS_FILE = "requirements.txt"
-MAIN_PROGRAM = "main.py"
-BACKUP_DIR_ROOT = "backup"
+REQUIREMENTS_FILE = app_path("requirements.txt")
+MAIN_PROGRAM = app_path("main.py")
+BACKUP_DIR_ROOT = app_path("backup")
 
 REQUEST_TIMEOUT_RELEASES = 10
 REQUEST_TIMEOUT_ZIP = 30
 
 # NEW: font install settings
-FONT_FILE = "Insignia.ttf"
 FONT_FAMILY_NAME = "Insignia"
-FIRST_LAUNCH_MARKER = ".first_launch_done"
+FONT_FILE_NAME = "Insignia.ttf"
+FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
 
-# Exclusion globs / prefixes relative to repo root
+# Exclusion globs / prefixes relative to repo root (from inside the ZIP)
 # We don't want to overwrite user data since even if it's outdated the program should update the JSON as required, though we could add the option
 # to clear the JSON's if the user wants to reset their data or we make a change that requires it. for future consideration i guess
 EXCLUDE_PATH_PREFIXES = (
     "JSON/persistent",  # user persistent data variants
     "JSON/settings",    # user settings variants
-    BACKUP_DIR_ROOT,    # avoid recursing into previous backups
+    "backup",           # avoid recursing into previous backups
     ".git",             # git internals
     "venv",             # local virtual env
 )
@@ -221,7 +246,8 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
                 if _is_excluded(rel_path):
                     excluded += 1
                     continue
-                dest_path = os.path.join('.', rel_path.replace('/', os.sep))
+                # Always write updates into the application directory
+                dest_path = os.path.join(str(APP_DIR), rel_path.replace('/', os.sep))
                 dest_dir = os.path.dirname(dest_path)
                 try:
                     os.makedirs(dest_dir, exist_ok=True)
@@ -382,10 +408,10 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
 
     def get_installed_packages() -> Dict[str, str]:
         # Return mapping of installed package -> version using single pip list call
-        python_exe = PYTHON3106_EXE or sys.executable
+        python_exe = _py_cmd()
         try:
             data = subprocess.check_output(
-                [python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
+                [*python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
                 stderr=subprocess.DEVNULL,
             )
             import json
@@ -396,14 +422,17 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
 
     def install_or_update(pkg: str, target: Optional[str]) -> Tuple[bool, str]:
         # Install or update a package; target is exact version string or None
-        python_exe = PYTHON3106_EXE or sys.executable
+        python_exe = _py_cmd()
         spec = f"{pkg}=={target}" if target else pkg
+        # Show real pip output when debugging to aid troubleshooting
+        DEBUG_MODE = bool(sys.gettrace()) or os.environ.get("MLHD2_DEBUG_PIP")
         try:
-            subprocess.check_call(
-                [python_exe, "-m", "pip", "install", spec, "--disable-pip-version-check", "--no-input"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.STDOUT,
-            )
+            cmd = [*python_exe, "-m", "pip", "install", spec, "--disable-pip-version-check", "--no-input"]
+            if DEBUG_MODE:
+                # Don't redirect so errors are visible in the console
+                subprocess.check_call(cmd)
+            else:
+                subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             return True, ""
         except subprocess.CalledProcessError as e:
             return False, f"pip exit code {e.returncode}"
@@ -417,7 +446,20 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
     installed_count = 0
 
     try:
-        requirements = read_requirements_lines(REQUIREMENTS_FILE)
+        if _is_frozen() and not PYTHON3106_CMD:
+            log("Python 3.10.6 not found. Cannot verify or install requirements from the bundled launcher.")
+            log("Please install Python 3.10.6 and run 'Check Requirements' again, or run 'pip install -r requirements.txt' manually.")
+            return "Summary: Skipped (Python 3.10.6 missing)"
+        # In frozen mode, REQUIREMENTS_FILE might not exist next to the EXE; look in app dir specifically
+        if not os.path.exists(REQUIREMENTS_FILE):
+            alt_req = app_path("requirements.txt")
+            if os.path.exists(alt_req):
+                req_path = alt_req
+            else:
+                req_path = REQUIREMENTS_FILE
+        else:
+            req_path = REQUIREMENTS_FILE
+        requirements = read_requirements_lines(req_path)
         if not requirements:
             log("No requirements found (file empty or unreadable).")
         installed = get_installed_packages()
@@ -504,12 +546,15 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
 
 def launch_program_detached() -> Optional[subprocess.Popen]:
     # Start the main program process and return the Popen or None on failure
-    python_exe = PYTHON3106_EXE or sys.executable
+    python_exe = _py_cmd()
     if not os.path.exists(MAIN_PROGRAM):
-        messagebox.showerror("Launch Error", f"Main program '{MAIN_PROGRAM}' not found.")
+        messagebox.showerror("Launch Error", f"Main program not found at: {MAIN_PROGRAM}")
+        return None
+    if not PYTHON3106_CMD and _is_frozen():
+        messagebox.showerror("Launch Error", "Python 3.10.6 is required to run the logger. Please install Python 3.10.6 and try again.")
         return None
     try:
-        return subprocess.Popen([python_exe, MAIN_PROGRAM])
+        return subprocess.Popen([*python_exe, MAIN_PROGRAM])
     except Exception as e:
         messagebox.showerror("Launch Error", str(e))
 
@@ -596,6 +641,63 @@ class InstallerGUI(tk.Tk):
         self.geometry("1280x720")
         self.resizable(False, False)
 
+        # Optional: set window icon from LaunchMedia/app.ico if present
+        try:
+            ico_path = resource_path("LaunchMedia", "app.ico")
+            if not os.path.exists(ico_path):
+                ico_path = app_path("LaunchMedia", "app.ico")
+            if os.path.exists(ico_path):
+                # On Windows, Tk expects .ico
+                self.iconbitmap(default=ico_path)
+        except Exception:
+            pass
+
+        # Optional: show a splash screen image if LaunchMedia/splash.png exists
+        # Splash will appear centered and close automatically shortly after startup
+        self.withdraw()  # hide main window until splash completes
+        try:
+            splash_path = resource_path("LaunchMedia", "splash.png")
+            if not os.path.exists(splash_path):
+                splash_path = app_path("LaunchMedia", "splash.png")
+            if os.path.exists(splash_path):
+                splash = tk.Toplevel()
+                splash.overrideredirect(True)
+                splash.attributes("-topmost", True)
+                try:
+                    # Use Tk's PhotoImage (supports PNG with Tk 8.6+)
+                    self._splash_img = tk.PhotoImage(file=splash_path)
+                except Exception:
+                    self._splash_img = None
+                w = self._splash_img.width() if self._splash_img else 600
+                h = self._splash_img.height() if self._splash_img else 300
+                sw = splash.winfo_screenwidth()
+                sh = splash.winfo_screenheight()
+                x = (sw // 2) - (w // 2)
+                y = (sh // 2) - (h // 2)
+                splash.geometry(f"{w}x{h}+{x}+{y}")
+                if self._splash_img:
+                    lbl = tk.Label(splash, image=self._splash_img, borderwidth=0, highlightthickness=0)
+                else:
+                    lbl = tk.Label(splash, text="MLHD2", font=("Arial", 24, "bold"), bg="#252526", fg="white")
+                lbl.pack(fill="both", expand=True)
+
+                # Close splash after delay and show main window
+                def _close_splash():
+                    try:
+                        splash.destroy()
+                    except Exception:
+                        pass
+                    self.deiconify()
+
+                # 1.2s splash; adjust as needed
+                self.after(1200, _close_splash)
+            else:
+                # No splash image; show window immediately
+                self.deiconify()
+        except Exception:
+            # On any error, just show window
+            self.deiconify()
+
         # Try to use Insignia font if available, fallback to Arial
         try:
             insignia_font = tkfont.Font(family="Insignia", size=18, weight="bold", slant="italic")
@@ -606,12 +708,15 @@ class InstallerGUI(tk.Tk):
         try:
             from PIL import Image, ImageTk
         except ImportError:
-            tk.messagebox.showerror("Missing Dependency", "Pillow (PIL) is not installed. Please run 'pip install pillow' and restart the launcher.")
+            messagebox.showerror("Missing Dependency", "Pillow (PIL) is not installed. Please run 'pip install pillow' and restart the launcher.")
             self.bg_photo = None
         else:
-            bg_path = os.path.join("media", "UnusedAssets", "SpacePlaceholder.png")
+            bg_path = resource_path("LaunchMedia", "SpacePlaceholder.png")
             if not os.path.exists(bg_path):
-                tk.messagebox.showerror("Missing Image", f"Background image not found: {bg_path}")
+                # try app dir fallback in dev
+                bg_path = app_path("LaunchMedia", "SpacePlaceholder.png")
+            if not os.path.exists(bg_path):
+                messagebox.showerror("Missing Image", f"Background image not found: {bg_path}")
                 self.bg_photo = None
             else:
                 try:
@@ -623,7 +728,7 @@ class InstallerGUI(tk.Tk):
                     bg_img = bg_img.resize((1280, 720), resample)
                     self.bg_photo = ImageTk.PhotoImage(bg_img)
                 except Exception as e:
-                    tk.messagebox.showerror("Image Error", f"Failed to load background image: {e}")
+                    messagebox.showerror("Image Error", f"Failed to load background image: {e}")
                     self.bg_photo = None
 
         # Canvas for background
@@ -640,10 +745,10 @@ class InstallerGUI(tk.Tk):
 
         # Sidebar button image paths and icons
         sidebar_btn_info = [
-            (os.path.join(".\\LaunchMedia", "GitHubButton.png"), os.path.join(".\\LaunchMedia", "GitHubButtonHover.png"), "🏠"),
-            (os.path.join(".\\LaunchMedia", "DiscordButton.png"), os.path.join(".\\LaunchMedia", "DiscordButtonHover.png"), "📰"),
-            (os.path.join(".\\LaunchMedia", "SettingsButton.png"), os.path.join(".\\LaunchMedia", "SettingsButtonHover.png"), "⚙️"),
-            (os.path.join(".\\LaunchMedia", "HelpButton.png"), os.path.join(".\\LaunchMedia", "HelpButtonHover.png"), "❓"),
+            (resource_path("LaunchMedia", "GitHubButton.png"), resource_path("LaunchMedia", "GitHubButtonHover.png"), "🏠"),
+            (resource_path("LaunchMedia", "DiscordButton.png"), resource_path("LaunchMedia", "DiscordButtonHover.png"), "📰"),
+            (resource_path("LaunchMedia", "SettingsButton.png"), resource_path("LaunchMedia", "SettingsButtonHover.png"), "⚙️"),
+            (resource_path("LaunchMedia", "HelpButton.png"), resource_path("LaunchMedia", "HelpButtonHover.png"), "❓"),
         ]
         self.sidebar_buttons = []
         self.sidebar_btn_photos = []
@@ -654,10 +759,10 @@ class InstallerGUI(tk.Tk):
             webbrowser.open(url)
 
         def open_settings():
-            python_exe = PYTHON3106_EXE or sys.executable
-            settings_path = os.path.join(os.getcwd(), "settings.py")
+            python_exe = _py_cmd()
+            settings_path = app_path("settings.py")
             try:
-                subprocess.Popen([python_exe, settings_path])
+                subprocess.Popen([*python_exe, settings_path])
             except Exception as e:
                 messagebox.showerror("Error", f"Could not open settings: {e}")
 
@@ -670,8 +775,17 @@ class InstallerGUI(tk.Tk):
 
         for i, (img, hover_img, fallback_icon) in enumerate(sidebar_btn_info):
             try:
-                btn_img = Image.open(img).convert("RGBA").resize((40, 40), Image.Resampling.LANCZOS)
-                btn_hover_img = Image.open(hover_img).convert("RGBA").resize((40, 40), Image.Resampling.LANCZOS)
+                if not os.path.exists(img):
+                    img = app_path("LaunchMedia", os.path.basename(img))
+                if not os.path.exists(hover_img):
+                    hover_img = app_path("LaunchMedia", os.path.basename(hover_img))
+                # Pillow compatibility for older versions
+                try:
+                    resample_algo = Image.Resampling.LANCZOS
+                except Exception:
+                    resample_algo = Image.ANTIALIAS
+                btn_img = Image.open(img).convert("RGBA").resize((40, 40), resample_algo)
+                btn_hover_img = Image.open(hover_img).convert("RGBA").resize((40, 40), resample_algo)
                 btn_photo = ImageTk.PhotoImage(btn_img)
                 btn_hover_photo = ImageTk.PhotoImage(btn_hover_img)
             except Exception:
@@ -746,10 +860,20 @@ class InstallerGUI(tk.Tk):
         # Button image loading helper
         def load_button_images(base_path, normal_name, hover_name, size):
             try:
-                normal_img = Image.open(os.path.join(base_path, normal_name)).convert("RGBA")
-                hover_img = Image.open(os.path.join(base_path, hover_name)).convert("RGBA")
-                normal_img = normal_img.resize(size, Image.Resampling.LANCZOS)
-                hover_img = hover_img.resize(size, Image.Resampling.LANCZOS)
+                npath = resource_path(base_path, normal_name)
+                hpath = resource_path(base_path, hover_name)
+                if not os.path.exists(npath):
+                    npath = app_path(base_path, normal_name)
+                if not os.path.exists(hpath):
+                    hpath = app_path(base_path, hover_name)
+                try:
+                    resample_algo = Image.Resampling.LANCZOS
+                except Exception:
+                    resample_algo = Image.ANTIALIAS
+                normal_img = Image.open(npath).convert("RGBA")
+                hover_img = Image.open(hpath).convert("RGBA")
+                normal_img = normal_img.resize(size, resample_algo)
+                hover_img = hover_img.resize(size, resample_algo)
                 return ImageTk.PhotoImage(normal_img), ImageTk.PhotoImage(hover_img)
             except Exception:
                 return None, None
@@ -765,7 +889,7 @@ class InstallerGUI(tk.Tk):
 
         # Verify button images
         self.verify_photo, self.verify_photo_hover = load_button_images(
-            ".\\LaunchMedia", "VerifyIntegrityButton.png", "VerifyIntegrityButtonHover.png", button_img_size
+            "LaunchMedia", "VerifyIntegrityButton.png", "VerifyIntegrityButtonHover.png", button_img_size
         )
         self.check_btn = tk.Button(
             self.canvas,
@@ -788,7 +912,7 @@ class InstallerGUI(tk.Tk):
 
         # Update button images
         self.update_photo, self.update_photo_hover = load_button_images(
-            ".\\LaunchMedia", "UpdateToLatestButton.png", "UpdateToLatestButtonHover.png", button_img_size
+            "LaunchMedia", "UpdateToLatestButton.png", "UpdateToLatestButtonHover.png", button_img_size
         )
         update_x = button_x_start + button_w_wide + button_img_pad
         self.update_btn = tk.Button(
@@ -814,15 +938,25 @@ class InstallerGUI(tk.Tk):
         self.include_prerelease = tk.BooleanVar(value=True)
 
     # Place Start Game button at the absolute bottom right using image button
-        start_btn_img_path = ".\\LaunchMedia\\StartLoggerButton.png"
-        start_btn_hover_img_path = ".\\LaunchMedia\\StartLoggerButtonHover.png"
-        start_btn_clicked_img_path = ".\\LaunchMedia\\StartLoggerButtonActive.png"
+        start_btn_img_path = resource_path("LaunchMedia", "StartLoggerButton.png")
+        start_btn_hover_img_path = resource_path("LaunchMedia", "StartLoggerButtonHover.png")
+        start_btn_clicked_img_path = resource_path("LaunchMedia", "StartLoggerButtonActive.png")
+        if not os.path.exists(start_btn_img_path):
+            start_btn_img_path = app_path("LaunchMedia", "StartLoggerButton.png")
+        if not os.path.exists(start_btn_hover_img_path):
+            start_btn_hover_img_path = app_path("LaunchMedia", "StartLoggerButtonHover.png")
+        if not os.path.exists(start_btn_clicked_img_path):
+            start_btn_clicked_img_path = app_path("LaunchMedia", "StartLoggerButtonActive.png")
         btn_width = 200
         btn_height = 65  # Increased height from 55 to 65
         try:
-            start_btn_img = Image.open(start_btn_img_path).convert("RGBA").resize((btn_width, btn_height), Image.Resampling.LANCZOS)
-            start_btn_hover_img = Image.open(start_btn_hover_img_path).convert("RGBA").resize((btn_width, btn_height), Image.Resampling.LANCZOS)
-            start_btn_clicked_img = Image.open(start_btn_clicked_img_path).convert("RGBA").resize((btn_width, btn_height), Image.Resampling.LANCZOS)
+            try:
+                resample_algo = Image.Resampling.LANCZOS
+            except Exception:
+                resample_algo = Image.ANTIALIAS
+            start_btn_img = Image.open(start_btn_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
+            start_btn_hover_img = Image.open(start_btn_hover_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
+            start_btn_clicked_img = Image.open(start_btn_clicked_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
             self.start_btn_photo = ImageTk.PhotoImage(start_btn_img)
             self.start_btn_hover_photo = ImageTk.PhotoImage(start_btn_hover_img)
             self.start_btn_clicked_photo = ImageTk.PhotoImage(start_btn_clicked_img)
@@ -891,15 +1025,23 @@ class InstallerGUI(tk.Tk):
                     _.write("ok")
                 return
 
-            font_path = os.path.abspath(FONT_FILE)
-            if not os.path.exists(font_path):
+            # Prefer font from LaunchMedia; fall back to app or root if present
+            candidates = [
+                resource_path("LaunchMedia", FONT_FILE_NAME),
+                app_path("LaunchMedia", FONT_FILE_NAME),
+                resource_path(FONT_FILE_NAME),
+                app_path(FONT_FILE_NAME),
+            ]
+            font_path = next((p for p in candidates if os.path.exists(p)), "")
+
+            if not font_path:
                 if messagebox.askyesno(
                     "Optional Font",
                     f"The '{FONT_FAMILY_NAME}' font improves visuals.\n"
-                    f"The font file '{FONT_FILE}' was not found.\nOpen the app folder to install it manually?"
+                    f"The font file '{FONT_FILE_NAME}' was not found.\nOpen the app folder to install it manually?"
                 ):
                     try:
-                        os.startfile(os.getcwd())
+                        os.startfile(str(APP_DIR))
                     except Exception:
                         pass
                 with open(FIRST_LAUNCH_MARKER, "w", encoding="utf-8") as _:
