@@ -21,6 +21,8 @@ def norm(s: str) -> str:
     s = str(s).replace("\xa0", " ")
     return " ".join(s.strip().split()).casefold()
 
+
+
 # ---------- Theme ----------
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
     return {
@@ -68,11 +70,21 @@ SHIP2_OPTIONS = [
 
 # ---------- Settings Page ----------
 class SettingsPage(tk.Tk):
+    def load_preview_image(self, image_path):
+        """Load and display a preview image in the profile tab."""
+        try:
+            img = Image.open(image_path)
+            img = img.resize((200, 200), Image.LANCZOS)
+            self.preview_img = ImageTk.PhotoImage(img)
+            self.preview_image_label.config(image=self.preview_img)
+        except Exception as e:
+            print(f"[settings] Failed to load preview image: {e}")
+            self.preview_image_label.config(image='')
     def __init__(self):
         print("[settings] SettingsPage.__init__ start")
         super().__init__()
         self.title("Discord Settings")
-        self.geometry("900x800")
+        self.geometry("900x900")
         self.resizable(False, False)
         style = ttk.Style()
         self.apply_theme(style, DEFAULT_THEME)
@@ -222,12 +234,38 @@ class SettingsPage(tk.Tk):
         self.ship2_combo.grid(row=1, column=2, sticky=tk.W, padx=(3,0), pady=5)
 
         # Preview section
-        preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=self.fs_sinclair_font)
+        preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=font_to_use)
         preview_lf = ttk.LabelFrame(profile_frame, labelwidget=preview_label, padding=10)
         preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=5)
         ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W)
-        ttk.Label(preview_lf, textvariable=self.full_ship_name_var).grid(row=0, column=1, sticky=tk.W, padx=5)
-        
+        ttk.Label(preview_lf, textvariable=self.full_ship_name_var, font=(font_to_use.actual("family"), 24, "bold")).grid(row=0, column=1, sticky=tk.W, padx=(0, 5), pady=5)
+
+        # Load transparent png for preview (inside profile tab)
+        # Make preview image larger (e.g., 400x400)
+        self.preview_image_label = ttk.Label(preview_lf)
+        self.preview_image_label.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(10,0))
+        preview_lf.rowconfigure(1, weight=1)
+        preview_lf.columnconfigure(0, weight=1)
+        preview_lf.columnconfigure(1, weight=1)
+        preview_lf.columnconfigure(2, weight=1)
+        # Use a larger size for preview image
+        def load_large_preview_image(image_path, size=(700, 400)):
+            try:
+                img = Image.open(image_path)
+                img = img.resize(size, Image.LANCZOS)
+                return ImageTk.PhotoImage(img)
+            except Exception as e:
+                print(f"[settings] Failed to load preview image: {e}")
+                return None
+
+        preview_img = load_large_preview_image(os.path.join(BASE_DIR, "./media/SettingsInt/SuperDestroyerWF.png"))
+        if preview_img:
+            self.preview_image_label.config(image=preview_img)
+            self.preview_image_label.image = preview_img
+        else:
+            self.preview_image_label.config(image='')
+
+
         # Account section
         account_label = ttk.Label(discord_frame, text="Account", font=self.fs_sinclair_font)
         account_lf = ttk.LabelFrame(discord_frame, labelwidget=account_label, padding=10)
@@ -711,11 +749,22 @@ class SettingsPage(tk.Tk):
         def _display(w):
             return w.get("url") if self.show_urls_var.get() or not w.get("label") else w.get("label")
         self.webhooks_listbox_logging.delete(0, tk.END)
-        for w in self.webhooks_logging:
+        for idx, w in enumerate(self.webhooks_logging):
             self.webhooks_listbox_logging.insert(tk.END, _display(w))
+            # Alternate row color
+            bg = "#232323" if idx % 2 == 0 else "#1e1e1e"
+            try:
+                self.webhooks_listbox_logging.itemconfig(idx, bg=bg)
+            except Exception:
+                pass
         self.webhooks_listbox_export.delete(0, tk.END)
-        for w in self.webhooks_export:
+        for idx, w in enumerate(self.webhooks_export):
             self.webhooks_listbox_export.insert(tk.END, _display(w))
+            bg = "#232323" if idx % 2 == 0 else "#1e1e1e"
+            try:
+                self.webhooks_listbox_export.itemconfig(idx, bg=bg)
+            except Exception:
+                pass
 
     def add_webhook_logging(self):
         url = self.new_webhook_var_logging.get().strip()

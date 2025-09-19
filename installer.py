@@ -1,5 +1,10 @@
-from __future__ import annotations
+# Main launcher and installer. Handles checking for updates, applying updates, managing dependencies, and launching the main program.
+# id rather this be a minimal import file but sadly python says no
+# I wonder if it's possible to package them alongside the launcher in a zip or something, preferably without needing to unzip them so the user doesn't have to deal with it.
+# I think this is something we'll need to look into for distribution, i think pyinstaller can do it but im not sure how well it works with the dynamic imports we need for the version checking in the Main.py
+# im curious actually if this requires requests to be installed to run the launcher, if so that kinda sucks, i think we'll have to find out via Jesse's testing
 
+from __future__ import annotations
 import io
 import os
 import re
@@ -11,32 +16,77 @@ import time
 import zipfile
 from typing import Any, Dict, List, Optional, Tuple, Callable
 
+# Python 3.10.6 enforcement and bootstrap
+REQUIRED_PYTHON_VERSION = (3, 10, 6)
+
+def find_python3106_executable() -> Optional[str]:
+    candidates = [
+        sys.executable,
+        "python3.10",
+        "python3.10.6",
+        "py -3.10",
+        r"C:\\Python310\\python.exe",
+        r"C:\\Python3.10.6\\python.exe",
+    ]
+    for exe in candidates:
+        try:
+            out = subprocess.check_output([
+                exe, "-c", "import sys; print(sys.version_info[:3])"
+            ], stderr=subprocess.DEVNULL)
+            ver = eval(out.decode().strip())
+            if tuple(ver) == REQUIRED_PYTHON_VERSION:
+                return exe
+        except Exception:
+            continue
+    return None
+
+PYTHON3106_EXE = find_python3106_executable()
+
+
+def ensure_python_version():
+    # Thanks to Jesse's testing we know that the version needs to be exactly 3.10.6
+    # Since some packages refuse to work, im looking at you Requests...
+    if sys.version_info[:3] != REQUIRED_PYTHON_VERSION:
+        msg = (
+            f"ERROR: This program requires Python {REQUIRED_PYTHON_VERSION[0]}.{REQUIRED_PYTHON_VERSION[1]}.{REQUIRED_PYTHON_VERSION[2]}.\n"
+            f"Current version: {sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}\n"
+        )
+        if not PYTHON3106_EXE:
+            msg += "Python 3.10.6 not found. Please install it and re-run this installer."
+            print(msg)
+            sys.exit(1)
+        else:
+            msg += f"Attempting to use Python 3.10.6 at: {PYTHON3106_EXE}\n"
+            print(msg)
+ensure_python_version()
+
 import requests
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
 
-GITHUB_API_REPO = "HDMLM/MLHD2" 
+GITHUB_API_REPO = "HDMLM/MLHD2"
 GITHUB_REPO = "https://github.com/HDMLM/MLHD2"
 GITHUB_API_BASE = f"https://api.github.com/repos/{GITHUB_API_REPO}"
 REQUIREMENTS_FILE = "requirements.txt"
 MAIN_PROGRAM = "main.py"
 BACKUP_DIR_ROOT = "backup"
 
-# Request / network tuning
 REQUEST_TIMEOUT_RELEASES = 10
 REQUEST_TIMEOUT_ZIP = 30
 
 # Exclusion globs / prefixes relative to repo root
+# We don't want to overwrite user data since even if it's outdated the program should update the JSON as required, though we could add the option
+# to clear the JSON's if the user wants to reset their data or we make a change that requires it. for future consideration i guess
 EXCLUDE_PATH_PREFIXES = (
     "JSON/persistent",  # user persistent data variants
     "JSON/settings",    # user settings variants
-    BACKUP_DIR_ROOT,     # do not recurse into previous backups
+    BACKUP_DIR_ROOT,    # avoid recursing into previous backups
     ".git",             # git internals
     "venv",             # local virtual env
 )
 
 def _is_excluded(rel_path: str) -> bool:
-    # Return True if a relative path should be skipped during update.
+    # Return True if a relative path should be skipped during update
     normalized = rel_path.replace("\\", "/").lstrip("./")
     return any(normalized.startswith(pref) for pref in EXCLUDE_PATH_PREFIXES)
 
@@ -44,7 +94,7 @@ _VERSION_REGEX = re.compile(r'^\s*VERSION\s*=\s*["\']([^"\']+)["\']')
 
 
 def get_local_version() -> Optional[str]:
-    # Extract version string from main program (line starting with VERSION = "...").
+    # Extract version string from Main.py (VERSION = "...")
     try:
         with open(MAIN_PROGRAM, "r", encoding="utf-8") as f:
             for line in f:
@@ -56,7 +106,7 @@ def get_local_version() -> Optional[str]:
     return None
 
 def _github_headers() -> Dict[str, str]:
-    # Build headers for GitHub API calls (optionally using a token).
+    # Build headers for GitHub API calls
     token = os.getenv("GITHUB_TOKEN")
     headers = {"Accept": "application/vnd.github+json"}
     if token:
@@ -65,7 +115,7 @@ def _github_headers() -> Dict[str, str]:
 
 
 def _github_get(path: str, timeout: int = REQUEST_TIMEOUT_RELEASES) -> Optional[Any]:
-    # Perform a GET to the GitHub API returning JSON or None on failure.
+    # Perform a GET to the GitHub API returning JSON or None on failure
     url = f"{GITHUB_API_BASE}/{path.lstrip('/')}"
     try:
         r = requests.get(url, headers=_github_headers(), timeout=timeout)
@@ -76,14 +126,14 @@ def _github_get(path: str, timeout: int = REQUEST_TIMEOUT_RELEASES) -> Optional[
     return None
 
 def fetch_releases() -> List[Dict[str, Any]]:
-    # Return non-draft releases (may include prereleases) newest first.
+    # Return non-draft releases newest first
     data = _github_get("releases")
     if not isinstance(data, list):
         return []
     return [r for r in data if not r.get("draft")]
 
 def pick_latest_release(include_prerelease: bool) -> Optional[Dict[str, Any]]:
-    # Return the most recent release respecting prerelease filter.
+    # Return the most recent release
     releases = fetch_releases()
     if not releases:
         return None
@@ -92,7 +142,7 @@ def pick_latest_release(include_prerelease: bool) -> Optional[Dict[str, Any]]:
     return next((r for r in releases if not r.get("prerelease")), None)
 
 def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optional[bytes], str]:
-    # Download selected release zipball. Returns (tag, bytes, error_message).
+    # Download selected release zipball. Returns (tag, bytes, error_message)
     rel = pick_latest_release(include_prerelease=include_prerelease)
     if not rel:
         return None, None, "No release metadata available"
@@ -109,7 +159,7 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
         return None, None, f"Download error: {e}"
 
 def safe_zip_update(include_prerelease: bool = False) -> str:
-    # Perform safe update via zip archive with backup of changed files.
+    # Perform safe update via zip archive with backup of changed files
     tag, content, err = download_release_zip(include_prerelease=include_prerelease)
     if err:
         return ("Safe update failed: " + err +
@@ -155,7 +205,7 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
                                 if existing.read() == data:
                                     skipped += 1
                                     continue
-                        except Exception:  # pragma: no cover - best effort
+                        except Exception:
                             pass
                         # Backup then overwrite
                         backup_path = os.path.join(backup_root, rel_path.replace('/', os.sep))
@@ -190,7 +240,7 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
                 "Ensure disk space and that existing files are not locked by another process.")
 
 def get_latest_github_version(full: bool = False, include_prerelease: bool = False) -> Any:
-    # Return latest release metadata or just tag (error string on failure).
+    # Return latest release metadata or just tag (error string on failure)
     rel = pick_latest_release(include_prerelease=include_prerelease)
     if not rel:
         return "Could not fetch releases (possible rate limit or network issue)."
@@ -204,7 +254,7 @@ def get_latest_github_version(full: bool = False, include_prerelease: bool = Fal
     return tag
 
 def _parse_version(v: str) -> List[int]:
-        # Parse dotted version string into list of ints; strip leading v and non-digit tails.
+    # Parse dotted version string into list of ints; strip leading v and non-digit tails
     if not v:
         return []
     v = v.strip()
@@ -223,14 +273,14 @@ def _parse_version(v: str) -> List[int]:
             else:
                 break
         parts.append(int(num) if num else 0)
-    # Trim trailing zeros for normalization
+    # Trim trailing zeros
     while parts and parts[-1] == 0:
         parts.pop()
     return parts
 
 
 def _compare_versions(a: str, b: str) -> int:
-    # Compare two version strings a vs b; return 1, -1, or 0.
+    # Compare two version strings a vs b; return 1, -1, or 0
     pa = _parse_version(a)
     pb = _parse_version(b)
     max_len = max(len(pa), len(pb))
@@ -245,7 +295,7 @@ def _compare_versions(a: str, b: str) -> int:
 
 
 def check_version(include_prerelease: bool = False) -> str:
-    # Return formatted version + patch notes using semantic comparison.
+    # Return formatted version + patch notes using semantic comparison
     local_version = get_local_version()
     latest = get_latest_github_version(full=True, include_prerelease=include_prerelease)
     if not local_version or not isinstance(latest, dict):
@@ -266,11 +316,11 @@ def check_version(include_prerelease: bool = False) -> str:
         f"{status_line}\n\nPatch Notes:\n{notes}"
     )
 def check_requirements() -> str:
-    # Ensure packages in requirements.txt are installed (bulk pip list optimization).
+    # Ensure packages in requirements.txt are installed
     output: List[str] = []
 
     def read_requirements_lines(path: str) -> List[str]:
-        # Read requirements file with multiple encoding fallbacks.
+        # Read requirements file with multiple encoding fallbacks because people don't name packages like normal humans
         encodings = ["utf-8", "utf-8-sig", "utf-16", "utf-16-le", "utf-16-be", "latin-1"]
         last_err: Optional[Exception] = None
         for enc in encodings:
@@ -291,20 +341,20 @@ def check_requirements() -> str:
         return []
 
     def get_installed_packages() -> Dict[str, str]:
-        # Return mapping of installed package -> version using single pip list call.
+        # Return mapping of installed package -> version using single pip list call
+        python_exe = PYTHON3106_EXE or sys.executable
         try:
             data = subprocess.check_output(
-                [sys.executable, "-m", "pip", "list", "--format", "json"],
+                [python_exe, "-m", "pip", "list", "--format", "json"],
                 stderr=subprocess.DEVNULL,
             )
             import json
-
             pkgs = json.loads(data.decode("utf-8", errors="replace"))
             return {p["name"].lower(): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
         except Exception:
             return {}
 
-    MGMT_PACKAGES = {"pip", "setuptools", "wheel"}  # skip managing these here
+    MGMT_PACKAGES = {"pip", "setuptools", "wheel"}  # skip managing these as they are part of pip's own operation... i think
 
     try:
         requirements = read_requirements_lines(REQUIREMENTS_FILE)
@@ -312,7 +362,7 @@ def check_requirements() -> str:
             output.append("No requirements found (file empty or unreadable).")
         installed = get_installed_packages()
         for req in requirements:
-            # Support forms like package==version or just package
+            # Support package==version or just package
             if '==' in req:
                 pkg, pinned_version = req.split('==', 1)
                 pinned_version = pinned_version.strip()
@@ -326,12 +376,13 @@ def check_requirements() -> str:
                 output.append(f"Skipping management package {pkg} (handled externally).")
                 continue
             output.append(f"Checking {pkg} ...")
+            python_exe = PYTHON3106_EXE or sys.executable
             if low_pkg in installed:
                 current_v = installed[low_pkg]
                 if pinned_version and current_v != pinned_version:
                     output.append(f"{pkg}: Version {current_v} != required {pinned_version} - updating...")
                     try:
-                        subprocess.check_call([sys.executable, "-m", "pip", "install", f"{pkg}=={pinned_version}"])
+                        subprocess.check_call([python_exe, "-m", "pip", "install", f"{pkg}=={pinned_version}"])
                         output.append(f"{pkg}: UPDATED to {pinned_version}")
                     except subprocess.CalledProcessError as e:
                         output.append(f"{pkg}: UPDATE FAILED ({e})")
@@ -341,7 +392,7 @@ def check_requirements() -> str:
                 output.append(f"{pkg}: MISSING - Installing...")
                 install_target = f"{pkg}=={pinned_version}" if pinned_version else pkg
                 try:
-                    subprocess.check_call([sys.executable, "-m", "pip", "install", install_target])
+                    subprocess.check_call([python_exe, "-m", "pip", "install", install_target])
                     output.append(f"{pkg}: INSTALLED")
                 except subprocess.CalledProcessError as e:
                     output.append(f"{pkg}: INSTALL FAILED ({e})")
@@ -361,18 +412,18 @@ def check_requirements() -> str:
     return "\n".join(output)
 
 def launch_program_detached() -> Optional[subprocess.Popen]:
-    # Start the main program process and return the Popen or None on failure.
+    # Start the main program process and return the Popen or None on failure
+    python_exe = PYTHON3106_EXE or sys.executable
     if not os.path.exists(MAIN_PROGRAM):
         messagebox.showerror("Launch Error", f"Main program '{MAIN_PROGRAM}' not found.")
         return None
     try:
-        return subprocess.Popen([sys.executable, MAIN_PROGRAM])
+        return subprocess.Popen([python_exe, MAIN_PROGRAM])
     except Exception as e:
         messagebox.showerror("Launch Error", str(e))
         return None
 
 def threaded_action(action: Callable[[], str], text_widget: scrolledtext.ScrolledText) -> None:
-
     def run():
         try:
             text_widget.config(state="normal")
@@ -382,66 +433,116 @@ def threaded_action(action: Callable[[], str], text_widget: scrolledtext.Scrolle
             text_widget.insert(tk.END, result + "\n")
         finally:
             text_widget.config(state="disabled")
-
     t = threading.Thread(target=run, daemon=True)
     t.start()
 
-class InstallerGUI(tk.Tk):
-    # Tkinter-based installer / updater user interface.
 
+class InstallerGUI(tk.Tk):
     def __init__(self) -> None:
         super().__init__()
         self.title("MLHD2 Launcher")
-        self.geometry("700x500")
+        self.geometry("1280x720")
         self.resizable(False, False)
 
-        self.text = scrolledtext.ScrolledText(self, state="disabled", width=85, height=15)
-        self.text.pack(pady=10)
+    # Load placeholder background image with error handling
+        try:
+            from PIL import Image, ImageTk
+        except ImportError:
+            tk.messagebox.showerror("Missing Dependency", "Pillow (PIL) is not installed. Please run 'pip install pillow' and restart the launcher.")
+            self.bg_photo = None
+        else:
+            bg_path = os.path.join("media", "UnusedAssets", "SpacePlaceholder.png")
+            if not os.path.exists(bg_path):
+                tk.messagebox.showerror("Missing Image", f"Background image not found: {bg_path}")
+                self.bg_photo = None
+            else:
+                try:
+                    bg_img = Image.open(bg_path)
+                    try:
+                        resample = Image.Resampling.LANCZOS
+                    except AttributeError:
+                        resample = Image.ANTIALIAS
+                    bg_img = bg_img.resize((1280, 720), resample)
+                    self.bg_photo = ImageTk.PhotoImage(bg_img)
+                except Exception as e:
+                    tk.messagebox.showerror("Image Error", f"Failed to load background image: {e}")
+                    self.bg_photo = None
 
-        # Patch notes box
-        tk.Label(self, text="Latest Patch Notes:", font=("Arial", 10, "bold")).pack(pady=(0, 2))
-        self.patch_notes_box = scrolledtext.ScrolledText(self, state="disabled", width=85, height=8)
-        self.patch_notes_box.pack(pady=(0, 10))
+    # Canvas for background
+        self.canvas = tk.Canvas(self, width=1280, height=720, highlightthickness=0, bd=0)
+        self.canvas.pack(fill="both", expand=True)
+        if self.bg_photo:
+            self.canvas.create_image(0, 0, anchor="nw", image=self.bg_photo)
+        else:
+            self.canvas.create_rectangle(0, 0, 1280, 720, fill="#252526", outline="")
 
-        btn_frame = tk.Frame(self)
-        btn_frame.pack(pady=10)
+    # Sidebar
+        self.sidebar = tk.Frame(self.canvas, bg="#252526", width=80, height=600)
+        self.sidebar.place(x=0, y=0)
+        sidebar_icons = ["🏠", "📰", "⚙️", "❓"]
+        for i, icon in enumerate(sidebar_icons):
+            lbl = tk.Label(self.sidebar, text=icon, bg="#252526", fg="white", font=("Arial", 28, "bold"))
+            lbl.place(x=20, y=40 + i*90, width=40, height=40)
 
-        tk.Button(
-            btn_frame,
-            text="Check Requirements",
-            width=20,
-            command=lambda: threaded_action(check_requirements, self.text),
-        ).grid(row=0, column=0, padx=5)
-
-        tk.Button(
-            btn_frame,
-            text="Update to Latest",
-            width=20,
-            command=lambda: threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text),
-        ).grid(row=0, column=1, padx=5)
-
-        self.launch_btn = tk.Button(
-            btn_frame,
-            text="Launch Program",
-            width=20,
-            command=self.launch_and_monitor,
+    # Banner area
+        self.banner_frame = tk.Frame(self.canvas, bg="#252526", width=920, height=110)
+        self.banner_frame.place(x=80, y=0)
+        self.banner_label = tk.Label(self.banner_frame, text="HD2 Mission Logger", bg="#252526", fg="white", font=("Arial", 28, "bold"))
+        self.banner_label.place(x=30, y=18)
+        latest_version = get_latest_github_version(include_prerelease=True)
+        self.version_label = tk.Label(
+            self.banner_frame,
+            text=f"Latest Version: {latest_version}" if isinstance(latest_version, str) else "Drop Into Hell...",
+            bg="#252526",
+            fg="#AEE2FF",
+            font=("Arial", 18, "italic")
         )
-        self.launch_btn.grid(row=0, column=2, padx=5)
+        self.version_label.place(x=30, y=60)
 
-        self.version_btn = tk.Button(
-            btn_frame, text="Check Version", width=20, command=self.display_version_info
-        )
-        self.version_btn.grid(row=1, column=1, pady=5)
 
-        self.include_prerelease = tk.BooleanVar(value=False)
-        tk.Checkbutton(
-            btn_frame,
-            text="Include pre-releases",
-            variable=self.include_prerelease,
-            command=self.display_version_info,
-        ).grid(row=1, column=0, padx=5, pady=5, sticky="w")
+    # Main content area
+        self.content_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=320)
+        self.content_frame.place(x=120, y=140)
+        self.content_frame.update()
+        self.content_frame.config(highlightbackground="#B0BEC5", highlightthickness=2)
+        self.shadow = tk.Frame(self.canvas, bg="#252526", width=410, height=330)
+        self.shadow.place(x=115, y=135)
+        self.content_frame.lift(self.shadow)
 
-        # Initial display
+        self.text = scrolledtext.ScrolledText(self.content_frame, state="disabled", width=46, height=10, font=("Arial", 12), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
+        self.text.place(x=10, y=10)
+
+    # Patch notes box
+        self.patch_notes_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=100)
+        self.patch_notes_frame.place(x=120, y=470)
+        self.patch_notes_frame.config(highlightbackground="#252526", highlightthickness=2)
+        self.patch_notes_box = scrolledtext.ScrolledText(self.patch_notes_frame, state="disabled", width=46, height=5, font=("Arial", 11, "italic"), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
+        self.patch_notes_box.place(x=10, y=10)
+
+    # Button row
+
+        button_y = 670
+        button_x_start = 40
+        button_w = 160
+        button_h = 38
+        button_pad = 20
+        self.check_btn = tk.Button(self.canvas, text="Check Requirements", bg="#E0E0E0", fg="black", font=("Arial", 12), command=lambda: threaded_action(check_requirements, self.text), borderwidth=0)
+        self.check_btn.place(x=button_x_start, y=button_y, width=button_w, height=button_h)
+
+        self.update_btn = tk.Button(self.canvas, text="Update to Latest", bg="#E0E0E0", fg="black", font=("Arial", 12), command=lambda: threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text), borderwidth=0)
+        self.update_btn.place(x=button_x_start + button_w + button_pad, y=button_y, width=button_w, height=button_h)
+
+        self.version_btn = tk.Button(self.canvas, text="Check Version", bg="#E0E0E0", fg="black", font=("Arial", 12), command=self.display_version_info, borderwidth=0)
+        self.version_btn.place(x=button_x_start + 2*(button_w + button_pad), y=button_y, width=button_w, height=button_h)
+
+    # Always include pre-releases by default, originally a checkbox but im too lazy to refactor the code to remove it so we just set it true
+        self.include_prerelease = tk.BooleanVar(value=True)
+
+    # Place Start Game button at the absolute bottom right
+        self.launch_btn = tk.Button(self.canvas, text="▶ Start Game", bg="#FFD600", fg="black", font=("Arial", 18, "bold"), command=self.launch_and_monitor, borderwidth=0, relief="flat", activebackground="#FFEA70")
+        self.launch_btn.place(x=1080, y=630, width=180, height=55)
+
+    # Initial display
         self.display_version_info()
 
     def display_version_info(self) -> None:
@@ -459,9 +560,9 @@ class InstallerGUI(tk.Tk):
         self.patch_notes_box.insert(tk.END, notes.strip())
         self.patch_notes_box.config(state="disabled")
 
-    # --- Launch / monitor logic ---
+    # Launch / monitor logic
     def launch_and_monitor(self) -> None:
-        # Hide launcher while main program runs; restore on exit.
+    # Hide launcher while main program runs; restore on exit
         if getattr(self, '_proc', None) and self._proc.poll() is None:
             messagebox.showinfo("Already Running", "Main program is already running.")
             return

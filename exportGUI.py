@@ -19,51 +19,31 @@ setup_logging(DEBUG)
 SETTINGS_FILE = './JSON/persistance.json'
 
 # Dropdown values as constants
-ENEMY_TYPES = ['All', 'Automatons', 'Illuminate', 'Terminids']
-SUBFACTIONS = [
-    'All', 'Terminid Horde', 'Predator Strain', 'Spore Burst Strain', 
-    'Automaton Legion', 'Jet Brigade', 'Incineration Corps', 
-    'Jet Brigade & Incineration Corps', 'Illuminate Cult', 'The Great Host'
-]
-SECTORS = [
-    'All', 'Akira Sector', 'Alstrad Sector', 'Altus Sector', 'Andromeda Sector', 'Arturion Sector', 'Barnard Sector', 'Borgus Sector', 'Cancri Sector', 'Cantolus Sector', 'Celeste Sector', 'Draco Sector', 'Falstaff Sector', 'Farsight Sector', 'Ferris Sector', 'Gallux Sector',
-    'Gellert Sector', 'Gothmar Sector', 'Guang Sector', 'Hanzo Sector', 'Hawking Sector', 'Hydra Sector', 'Idun Sector', 'Iptus Sector', 'Jin Xi Sector', 'Kelvin Sector', 'Korpus Sector', "L'estrade Sector", 'Lacaille Sector', 'Leo Sector', 'Marspira Sector', 'Meridian Sector',
-    'Mirin Sector', 'Morgon Sector', 'Nanos Sector', 'Omega Sector', 'Orion Sector', 'Quintus Sector', 'Rictus Sector', 'Rigel Sector', 'Sagan Sector', 'Saleria Sector', 'Severin Sector', 'Sol System', 'Sten Sector', 'Talus Sector', 'Tanis Sector', 'Tarragon Sector', 'Theseus Sector',
-    'Trigon Sector', 'Umlaut Sector', 'Ursa Sector', 'Valdis Sector', 'Xi Tauri Sector', 'Xzar Sector', 'Ymir Sector'
-]
-PLANETS = [
-    'All','Alaraph', 'Alathfar XI', 'Andar', 'Asperoth Prime', 'Keid', 'Kneth Port', 'Klaka 5', 'Kraz', 'Pathfinder V', 'Klen Dahth II', "Widow's Harbor", 'New Haven', 'Pilen V', 'Charbal-VII', 'Charon Prime', 'Martale', 'Marfark', 'Matar Bay', 'Mortax Prime', 'Kirrik', 'Wilford Station', 'Arkturus',
-    'Pioneer II', 'Electra Bay', 'Deneb Secundus', 'Fornskogur II', 'Veil', 'Marre IV', 'Midasburg', 'Darrowsport', 'Hydrofall Prime', 'Ursica XI', 'Achird III', 'Achernar Secundus', 'Darius II', 'Prosperity Falls', 'Cerberus IIIc', 'Effluvia', 'Seyshel Beach', 'Fort Sanctuary', 'Kelvinor', "Martyr's Bay",
-    'Freedom Peak', 'Viridia Prime', 'Obari', 'Sulfura', 'Nublaria I', 'Krakatwo', 'Ivis', 'Slif', 'Moradesh', 'Meridia', 'Crimsica', 'Estanu', 'Fori Prime', 'Bore Rock', 'Esker', 'Socorro III', 'Erson Sands', 'Prasa', 'Pollux 31', 'Polaris Prime', 'Pherkad Secundus', 'Grand Errant', 'Hadar', 'Haldus', 'Zea Rugosia',
-    'Herthon Secundus', 'Kharst', 'Bashyr', 'Rasp', 'Acubens Prime', 'Adhara', 'Afoyay Bay', 'Minchir', 'Mintoria', 'Blistica', 'Zzaniah Prime', 'Zosma', 'Okul VI', 'Solghast', 'Diluvia', 'Elysian Meadows', 'Alderidge Cove', 'Bellatrix', 'Botein', 'Khandark', 'Heze Bay', 'Alairt III', 'Alamak VII', 'New Stockholm', 'Ain-5',
-    'Mordia 9', 'Euphoria III', 'Skitter', 'Kuma', 'Aesir Pass', 'Vernen Wells', 'Menkent', 'Wraith', 'Atrama', 'Myradesh', 'Maw', 'Providence', 'Primordia', 'Krakabos', 'Iridica', 'Valgaard', 'Ratch', 'Acamar IV', 'Pandion-XXIV', 'Gacrux', 'Phact Bay', 'Gar Haren', 'Gatria', 'Zegema Paradise', 'Fort Justice', 'New Kiruna',
-    'Igla', 'Emeria', 'Crucible', 'Volterra', 'Caramoor', 'Alta V', 'Inari', 'Navi VII', 'Omicron', 'Nabatea Secundus', 'Gemstone Bluffs', 'Epsilon Phoencis VI', 'Enuliale', 'Disapora X', 'Lesath', 'Penta', 'Chort Bay', 'Choohe', 'Ras Algethi', 'Propus', 'Halies Port', 'Haka', 'Curia', 'Barabos', 'Fenmire', 'Tarsh', 'Mastia',
-    'Emorath', 'Ilduna Prime', 'Baldrick Prime', 'Liberty Ridge', 'Hellmire', 'Nivel 43', 'Zagon Prime', 'Oshaune', 'Myrium', 'Eukoria', 'Regnus', 'Mog', 'Dolph', 'Julheim', 'Bekvam III', 'Duma Tyr', 'Setia', 'Senge 23', 'Seasse', 'Hydrobius', 'Karlia', 'Terrek', 'Azterra', 'Fort Union', 'Cirrus', 'Heeth', "Angel's Venture",
-    'Veld', 'Termadon', 'Stor Tha Prime', 'Spherion', 'Stout', 'Leng Secundus', 'Valmox', 'Iro', 'Grafmere', 'Kerth Secundus', 'Parsh', 'Oasis', 'Genesis Prime', 'Rogue 5', 'RD-4', 'Hesoe Prime', 'Hort', 'Rirga Bay', 'Oslo Station', 'Gunvald', 'Borea', 'Calypso', 'Outpost 32', 'Reaf', 'Irulta', 'Maia', 'Malevelon Creek', 'Durgen',
-    'Ubanea', 'Tibit', 'Super Earth', 'Mars', 'Trandor', 'Peacock', 'Partion', 'Overgoe Prime', 'Azur Secundus', 'Shallus', 'Shelt', 'Gaellivare', 'Imber', 'Claorell', 'Vog-Sojoth', 'Clasa', 'Yed Prior', 'Zefia', 'Demiurg', 'East Iridium Trading Bay', 'Brink-2', 'Osupsam', 'Canopus', 'Bunda Secundus', 'The Weir', 'Kuper', 'Caph', 'Castor',
-    'Tien Kwan', 'Lastofe', 'Varylia 5', 'Choepessa IV', 'Ustotu', 'Troost', 'Vandalon IV', 'Erata Prime', 'Fenrir III', 'Turing', 'Skaash', 'Acrab XI', 'Acrux IX', 'Gemma', 'Merga IV', 'Merak', 'Cyberstan', 'Aurora Bay', 'Mekbuda', 'Videmitarix Prime', 'Skat Bay', 'Sirius', 'Siemnot', 'Shete', 'Mort', 'P\u00F6pli IX', 'Ingmar', 'Mantes',
-    'Draupnir', 'Meissa', 'Wasat', 'X-45', 'Vega Bay', 'Wezen'
-]
 
-# Theme system (mirrors main.py)
-def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None, heading_fg=None):
+# Redesigned exportGUI.py to match main.py/settings.py GUI style
+import os
+import tkinter as tk
+from tkinter import ttk, messagebox, font as tkfont
+import urllib.request
+import urllib.error
+import configparser
+import logging
+import pandas as pd
+from logging_config import setup_logging
+from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS
+
+# Read configuration from config.config
+config = configparser.ConfigParser()
+config.read('config.config')
+DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+setup_logging(DEBUG)
+
+# Theme system (copied from main.py/settings.py)
+def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
     return {
         ".": {"configure": {"background": bg, "foreground": fg}},
         "TLabel": {"configure": {"background": bg, "foreground": fg}},
-        "TButton": {
-            "configure": {"background": button_bg or bg, "foreground": button_fg or fg},
-            # Hover/pressed state colors
-            "map": {
-                "background": [
-                    ("pressed", "#2e2e2e"),
-                    ("active", "#3a3a3a"),
-                ],
-                "foreground": [
-                    ("pressed", button_fg or fg),
-                    ("active", button_fg or fg),
-                ],
-            },
-        },
+        "TButton": {"configure": {"background": button_bg or bg, "foreground": button_fg or fg}},
         "TEntry": {"configure": {
             "background": entry_bg or bg,
             "foreground": entry_fg or fg,
@@ -76,91 +56,51 @@ def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=N
             "foreground": entry_fg or fg,
             "fieldbackground": entry_bg or bg,
             "insertcolor": fg,
-            "arrowcolor": fg,
         }},
         "TFrame": {"configure": {"background": frame_bg or bg}},
         "TLabelframe": {"configure": {"background": frame_bg or bg, "foreground": fg}},
         "TLabelframe.Label": {"configure": {"background": frame_bg or bg, "foreground": fg}},
-        "Treeview": {
-            "configure": {
-                "background": frame_bg or bg,
-                "foreground": fg,              
-                "fieldbackground": frame_bg or bg,
-                "rowheight": 22,
-                # The following are respected by 'clam' theme to remove white borders/edges
-                "bordercolor": frame_bg or bg,
-                "lightcolor": frame_bg or bg,
-                "darkcolor": frame_bg or bg,
-                "borderwidth": 0,
-                "focuscolor": frame_bg or bg,
-            },
-            "map": {
-                "background": [("selected", button_bg or bg)],
-                "foreground": [("selected", button_fg or fg)],
-            }
-        },
-        "Treeview.Heading": {
-            "configure": {"background": button_bg or bg, "foreground": heading_fg or fg},
-            "map": {
-                # Ensure header text stays visible on hover/press
-                "foreground": [
-                    ("active", "#000000"),
-                    ("pressed", "#000000"),
-                ],
-            },
-        },
-        "Treeview.empty": {"configure": {"background": frame_bg or bg}},
-        # Explicit scrollbar styling for 'clam' to avoid white troughs
-        "Vertical.TScrollbar": {"configure": {
-            "background": button_bg or bg,
-            "troughcolor": frame_bg or bg,
-            "bordercolor": frame_bg or bg,
-            "lightcolor": frame_bg or bg,
-            "darkcolor": frame_bg or bg,
-            "arrowcolor": fg,
-        }},
-        "Horizontal.TScrollbar": {"configure": {
-            "background": button_bg or bg,
-            "troughcolor": frame_bg or bg,
-            "bordercolor": frame_bg or bg,
-            "lightcolor": frame_bg or bg,
-            "darkcolor": frame_bg or bg,
-            "arrowcolor": fg,
-        }},
+        "TNotebook": {"configure": {"background": bg}},
+        "TNotebook.Tab": {"configure": {"background": button_bg or bg, "foreground": entry_fg or fg}},
     }
 
 DEFAULT_THEME = make_theme(
     bg="#252526",
     fg="#FFFFFF",
     entry_bg="#252526",
-    entry_fg="#FFFFFF",
+    entry_fg="#000000",
     button_bg="#4C4C4C",
-    button_fg="#FFFFFF",
+    button_fg="#000000",
     frame_bg="#252526",
-    heading_fg="#FFFFFF",  # Table header text is black
 )
 
-def apply_theme(style: ttk.Style, theme_dict: dict):
+def apply_theme(style, theme_dict):
     for widget, opts in theme_dict.items():
         for method, cfg in opts.items():
             getattr(style, method)(widget, **cfg)
 
-def create_filter_dropdown(parent, label_text, var, values, on_select, padx=0):
-    label = ttk.Label(parent, text=label_text)
-    label.pack(side=tk.LEFT, padx=(padx, 0))
-    dropdown = ttk.Combobox(parent, textvariable=var, values=values)
-    dropdown.current(0)
-    dropdown.pack(side=tk.LEFT)
-    dropdown.bind("<<ComboboxSelected>>", on_select)
-    return dropdown
-
-
 def main():
-    # Create the main window
     root = tk.Tk()
-    root.title("Excel Data Viewer")
-    root.geometry("1980x1000")
-    root.minsize(1050, 500)
+    root.title("Mission Log Export Viewer")
+    # Autosize window based on current screen resolution, center it, allow resize with min size
+    try:
+        screen_w = max(800, root.winfo_screenwidth())
+        screen_h = max(600, root.winfo_screenheight())
+        min_w, min_h = 1000, 700
+        margin = 100
+        init_w = min(max(int(screen_w * 0.85), min_w), screen_w - margin)
+        init_h = min(max(int(screen_h * 0.80), min_h), screen_h - margin)
+        pos_x = max(0, (screen_w - init_w) // 2)
+        pos_y = max(0, (screen_h - init_h) // 2)
+        root.geometry(f"{init_w}x{init_h}+{pos_x}+{pos_y}")
+        root.minsize(min_w, min_h)
+        root.resizable(True, True)
+    except Exception:
+        root.geometry("1400x900")
+        root.minsize(1000, 700)
+        root.resizable(True, True)
+
+    # Set window icon (SuperEarth.png)
     try:
         icon_path = os.path.join(os.path.dirname(__file__), "SuperEarth.png")
         from PIL import Image, ImageTk
@@ -170,435 +110,821 @@ def main():
     except Exception as e:
         logging.warning(f"Unable to load window icon: {e}")
 
-    # Apply the same theme system as main.py
+    # Apply theme
     style = ttk.Style()
-    # Use a theme that respects fieldbackground for Treeview (per SO solution)
     try:
         style.theme_use("clam")
     except Exception:
-        # Fallback silently if 'clam' isn't available
         pass
+    # Configure tag colors for alternating rows (Stack Overflow pattern)
+    def configure_row_tags():
+        table.tag_configure('oddrow', background='#2d2d2d', foreground='#FFFFFF')
+        table.tag_configure('evenrow', background='#232323', foreground='#FFFFFF')
     apply_theme(style, DEFAULT_THEME)
-    # Ensure the entire tree area uses the styled background (remove white gaps)
-    try:
-        style.layout("Treeview", [("Treeview.treearea", {"sticky": "nswe"})])
-    except Exception:
-        # If layout change isn't supported, ignore
-        pass
-    root.configure(bg=DEFAULT_THEME["."]["configure"]["background"])  # match settings.py
-    
-    # Configure root grid layout
-    root.grid_rowconfigure(0, weight=1)
-    root.grid_columnconfigure(0, weight=1)
-    
-    # Create a frame for the table
-    table_frame = ttk.Frame(root)
-    table_frame.grid(row=0, column=0, padx=10, pady=10, sticky="nsew")
-    
-    # Configure table_frame grid
-    table_frame.grid_rowconfigure(0, weight=1)
-    table_frame.grid_columnconfigure(0, weight=1)
-    
-    # Create the button frame FIRST - before it's referenced
-    button_frame = ttk.Frame(root)
-    button_frame.grid(row=1, column=0, padx=10, pady=10, sticky="ew")
-    
-    # Create the table with ttk.Treeview
-    try:
-        # Determine which file to use
-        if DEBUG:
-            excel_file = "mission_log_test.xlsx"
-        else:
-            excel_file = "mission_log.xlsx"
-        
-        # Create a label to show loading status
-        status_label = ttk.Label(table_frame, text="Loading data...", font=("Arial", 12))
-        status_label.grid(row=0, column=0, sticky="nsew")
-        
-        # Create the table structure (but don't load data yet)
-        table = ttk.Treeview(
-            table_frame,
-            show="headings",
-            selectmode="extended",
-            padding=0
-        )
-        
-        # Variables for virtual scrolling
-        PAGE_SIZE = 50  # Number of rows to load at once
-        current_offset = 0  # Current position in the dataset
-        total_rows = 0  # Total number of rows in the dataset
-        filtered_df = None  # Will hold the filtered dataframe
-        scroll_timer = None  # Timer for debouncing scroll events
-        last_scroll_position = 0  # Track last scroll position
-        
-        # Function to load data in background
-        def load_data():
-            try:
-                # Read only the header first to set up columns
-                df_header = pd.read_excel(excel_file, nrows=0)
-                columns = list(df_header.columns)
-                
-                # Configure columns on the main thread
-                root.after(0, lambda: setup_columns(columns))
-                
-                # Store the dataframe for later use instead of loading all rows
-                global full_data_df
-                full_data_df = pd.read_excel(excel_file)
-                
-                # Set filtered_df to the full dataset initially
-                nonlocal filtered_df, total_rows
-                filtered_df = full_data_df
-                total_rows = len(filtered_df)
-                
-                # Only load the first set of visible rows initially
-                display_rows(0, PAGE_SIZE)
-                
-                # Update row counter
-                update_row_counter()
-                
-                # Hide loading indicator when done with initial load
-                root.after(0, lambda: status_label.grid_forget())
-                    
-            except Exception as e:
-                root.after(0, lambda e=e: show_error(f"Error loading Excel file: {e}"))
+    root.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
 
-        def display_rows(start_idx, count):
-            # Clear existing rows
-            for item in table.get_children():
-                table.delete(item)
-            
-            # Check if we have a filtered dataframe
-            if filtered_df is None or filtered_df.empty:
+    # Font system: Try to use Insignia font if available, fallback to Arial
+    try:
+        fs_sinclair_font = tkfont.Font(family="Insignia", size=14, weight="bold")
+    except Exception:
+        fs_sinclair_font = tkfont.Font(family="Arial", size=14, weight="bold")
+
+    # Main frame
+    main_frame = ttk.Frame(root, padding="20")
+    main_frame.pack(fill=tk.BOTH, expand=True)
+
+    # Notebook for tabs (future extensibility)
+    notebook = ttk.Notebook(main_frame)
+    notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+    # Export tab
+    export_frame = ttk.Frame(notebook, padding="10")
+    notebook.add(export_frame, text="Export Viewer")
+
+    # Table section
+    table_lf = ttk.LabelFrame(export_frame, labelwidget=ttk.Label(export_frame, text="Mission Log Data", font=fs_sinclair_font), padding=10)
+    table_lf.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+
+
+
+    # Table (Treeview) with column headers and filtering
+    # NOTE: Windows ttk themes may ignore tag-based row coloring for Treeview rows.
+    # For true alternation, consider using ttkbootstrap or a custom widget.
+    style.configure("Treeview", background="#232323", foreground="#FFFFFF", fieldbackground="#232323", rowheight=24, bordercolor="#232323", lightcolor="#232323", darkcolor="#232323")
+    style.configure("Treeview.Heading", background="#252526", foreground="#FFFFFF", font=(fs_sinclair_font.actual("family"), 10, "bold"))
+    style.map("Treeview", background=[("selected", "#4C4C4C")], foreground=[("selected", "#FFFFFF")])
+
+    table = ttk.Treeview(table_lf, show="headings", selectmode="extended", style="Treeview")
+    table.pack(fill=tk.BOTH, expand=True)
+    y_scrollbar = ttk.Scrollbar(table_lf, orient=tk.VERTICAL, command=table.yview)
+    x_scrollbar = ttk.Scrollbar(table_lf, orient=tk.HORIZONTAL, command=table.xview)
+    table.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+    y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+    x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
+
+    # Button section (bottom of window)
+    button_frame = ttk.Frame(root)
+    button_frame.pack(side=tk.BOTTOM, fill=tk.X, padx=10, pady=10)
+
+    # Reset filters button
+    def reset_filters():
+        enemy_var.set("All")
+        subfaction_var.set("All")
+        sector_var.set("All")
+        planet_var.set("All")
+
+    reset_btn = ttk.Button(button_frame, text="Clear All Filters", command=lambda: None)
+    reset_btn.pack(side=tk.LEFT, padx=5)
+
+    # Refresh button
+    def refresh_table():
+        nonlocal full_df
+        full_df = load_table()
+        filter_table()
+
+    refresh_btn = ttk.Button(button_frame, text="Refresh", command=refresh_table)
+    refresh_btn.pack(side=tk.LEFT, padx=5)
+
+    # Removed Preview Embed feature as requested
+
+    # Export to Discord (selected or visible rows)
+    def load_export_webhooks():
+        try:
+            dcord_path = os.path.join(os.path.dirname(__file__), 'JSON', 'DCord.json')
+            with open(dcord_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            urls = []
+            if isinstance(data.get('discord_webhooks_export'), list):
+                urls.extend(u for u in data['discord_webhooks_export'] if isinstance(u, str) and u.strip())
+            if not urls and isinstance(data.get('discord_webhooks_export_labeled'), list):
+                for item in data['discord_webhooks_export_labeled']:
+                    if isinstance(item, dict) and item.get('url'):
+                        urls.append(item['url'])
+            # Fallback: generic webhooks key if export-specific is missing
+            if not urls and isinstance(data.get('discord_webhooks'), list):
+                urls.extend(u for u in data['discord_webhooks'] if isinstance(u, str) and u.strip())
+            return urls
+        except Exception as e:
+            logging.error(f"Failed to read export webhooks: {e}")
+            return []
+
+    def load_discord_json():
+        try:
+            dcord_path = os.path.join(os.path.dirname(__file__), 'JSON', 'DCord.json')
+            with open(dcord_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except Exception:
+            return {}
+
+    def load_discord_uid():
+        data = load_discord_json()
+        return str(data.get('discord_uid', ''))
+
+    def post_discord(webhook_url: str, payload: dict, timeout: int = 10):
+        try:
+            data = json.dumps(payload).encode('utf-8')
+            headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'MLHD2-Exporter/1.0 (+https://example.com) Python-urllib'
+            }
+            req = urllib.request.Request(webhook_url, data=data, headers=headers)
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                # Discord often returns 204 No Content on success
+                return resp.status if hasattr(resp, 'status') else 204
+        except urllib.error.HTTPError as he:
+            # Try to extract error body for diagnostics
+            body = None
+            try:
+                body_bytes = he.read()
+                if body_bytes:
+                    body = body_bytes.decode('utf-8', errors='replace')
+            except Exception:
+                body = None
+            # Try to parse Discord error JSON
+            code = None
+            message = None
+            if body:
+                try:
+                    j = json.loads(body)
+                    code = j.get('code')
+                    message = j.get('message')
+                except Exception:
+                    pass
+            if he.code == 404:
+                logging.error("Discord webhook HTTP 404: Unknown Webhook (URL deleted or invalid).")
+            elif he.code == 403:
+                logging.error("Discord webhook HTTP 403: Forbidden (missing permissions or channel/thread restrictions).")
+            else:
+                logging.error(f"Discord webhook HTTP error: {he.code} {he.reason}")
+            if message or code or body:
+                logging.error(f"Discord response details: code={code} message={message} body={body[:300] if body else ''}")
+            return None
+        except Exception as e:
+            logging.error(f"Discord webhook error: {e}")
+            return None
+
+    def _guess_first_value(rows, columns, key):
+        try:
+            if key in columns and rows:
+                idx = columns.index(key)
+                for r in rows:
+                    val = r[idx]
+                    if val not in (None, ""):
+                        return str(val)
+        except Exception:
+            pass
+        return ""
+
+    def _compose_header_embed(rows: list[tuple], columns: list[str]) -> dict:
+        # Build a header/summary embed similar in spirit to sub.py
+        djson = load_discord_json()
+        uid = str(djson.get('discord_uid', ''))
+        # Try to pick representative values for banner and title
+        planet = _guess_first_value(rows, columns, 'Planet')
+        enemy = _guess_first_value(rows, columns, 'Enemy Type') or _guess_first_value(rows, columns, 'Enemy')
+        title_name = _guess_first_value(rows, columns, 'Title')
+        helldiver_name = _guess_first_value(rows, columns, 'Helldivers') or _guess_first_value(rows, columns, 'Helldiver')
+        ship_name = _guess_first_value(rows, columns, 'Super Destroyer')
+
+        banner_url = BIOME_BANNERS.get(planet, '') if planet else ''
+        enemy_emoji = ENEMY_ICONS.get(enemy, '') if enemy else ''
+
+        # Short description with a few quick stats if available
+        total_rows = len(rows)
+        kills_sum = 0
+        deaths_sum = 0
+        try:
+            if 'Kills' in columns:
+                kidx = columns.index('Kills')
+                kills_sum = sum(int(float(r[kidx])) for r in rows if str(r[kidx]).strip() != '')
+            if 'Deaths' in columns:
+                didx = columns.index('Deaths')
+                deaths_sum = sum(int(float(r[didx])) for r in rows if str(r[didx]).strip() != '')
+        except Exception:
+            pass
+        kdr = f"{(kills_sum / deaths_sum):.2f}" if deaths_sum else "-"
+
+        desc_lines = []
+        if title_name or helldiver_name:
+            desc_lines.append(f"**{title_name} {helldiver_name}**")
+        if enemy:
+            desc_lines.append(f"Front: {enemy_emoji} {enemy}")
+        desc_lines.append(f"Deployments in export: {total_rows}")
+        if kills_sum or deaths_sum:
+            desc_lines.append(f"Kills: {kills_sum} | Deaths: {deaths_sum} | KDR: {kdr}")
+
+        header = {
+            "title": f"{ship_name}\nHelldiver: {helldiver_name}" if ship_name or helldiver_name else "Mission Export",
+            "description": "\n".join(desc_lines) if desc_lines else None,
+            "color": 7257043,
+            "author": {"name": "SEAF Battle Record"},
+            "footer": {"text": uid} if uid else None,
+        }
+        if banner_url:
+            header["image"] = {"url": banner_url}
+        # Clean out None fields
+        if not header.get("description"):
+            header.pop("description", None)
+        if not header.get("footer"):
+            header.pop("footer", None)
+        return header
+
+    def _format_entry_block(i: int, columns: list[str], vals: tuple) -> str:
+        # Decorate with icons when known columns are present
+        parts = [f"Deployment {i}"]
+        lookup = {c: v for c, v in zip(columns, vals)}
+        # Topline: Planet with icon, Mission with icon, Difficulty icon
+        planet = str(lookup.get('Planet', '') or '')
+        mission = str(lookup.get('Mission Type', '') or lookup.get('Mission', '') or '')
+        campaign = str(lookup.get('Mission Category', '') or '')
+        diff = str(lookup.get('Difficulty', '') or '')
+        enemy = str(lookup.get('Enemy Type', '') or lookup.get('Enemy', '') or '')
+        time_str = str(lookup.get('Time', '') or '')
+
+        planet_icon = PLANET_ICONS.get(planet, '') if planet else ''
+        mission_icon = MISSION_ICONS.get(mission, '') if mission else ''
+        campaign_icon = CAMPAIGN_ICONS.get(campaign, '') if campaign else ''
+        diff_icon = DIFFICULTY_ICONS.get(diff, '') if diff else ''
+        enemy_icon = ENEMY_ICONS.get(enemy, '') if enemy else ''
+
+        topline = []
+        if planet:
+            topline.append(f"{planet} {planet_icon}")
+        if mission:
+            topline.append(f"{mission} {mission_icon}")
+        if campaign:
+            topline.append(f"{campaign} {campaign_icon}")
+        if diff:
+            topline.append(f"{diff} {diff_icon}")
+        if enemy:
+            topline.append(f"{enemy} {enemy_icon}")
+        if time_str:
+            topline.append(f"{time_str}")
+        if topline:
+            parts.append(" • ".join([p for p in topline if p]))
+
+        # Common stats if present
+        stat_keys = ['Kills', 'Deaths', 'Major Order', 'DSS Active', 'Mega City', 'Sector']
+        stats = []
+        for k in stat_keys:
+            if k in columns:
+                v = lookup.get(k, '')
+                if str(v) != '':
+                    stats.append(f"{k}: {v}")
+        if stats:
+            parts.append("> " + " | ".join(stats))
+
+        # Fallback: include a couple of extra interesting columns if available
+        for extra in ['Helldivers', 'Title', 'Level', 'Super Destroyer']:
+            if extra in columns and str(lookup.get(extra, '')):
+                parts.append(f"> {extra}: {lookup.get(extra)}")
+
+        return "\n".join(parts) + "\n\n"
+
+    def format_embeds_for_rows(rows: list[tuple], columns: list[str]) -> list[dict]:
+        # Construct a leading header embed and then chunked detail embeds
+        all_embeds = []
+        header = _compose_header_embed(rows, columns)
+        if header:
+            all_embeds.append(header)
+
+        desc_builder = ""
+        for i, vals in enumerate(rows, start=1):
+            block = _format_entry_block(i, columns, vals)
+            if len(desc_builder) + len(block) > 3600 and desc_builder:
+                all_embeds.append({
+                    "title": "Mission Log Details",
+                    "description": desc_builder,
+                    "color": 7257043
+                })
+                desc_builder = block
+            else:
+                desc_builder += block
+        if desc_builder:
+            all_embeds.append({
+                "title": "Mission Log Details",
+                "description": desc_builder,
+                "color": 7257043
+            })
+        # Ensure we don't exceed 10 embeds per message; caller sends one embed per message
+        return all_embeds
+
+    def export_to_discord():
+        selected_ids = list(table.selection())
+        use_rows = []
+        columns = list(table["columns"]) if table["columns"] else []
+        if selected_ids:
+            for iid in selected_ids:
+                use_rows.append(tuple(table.item(iid, 'values')))
+        else:
+            # If no selection, ask to export all visible rows
+            if not messagebox.askyesno("Export to Discord", "No rows selected. Export all visible rows?"):
                 return
-                 
-            # Make sure start_idx is within bounds
-            start_idx = max(0, min(start_idx, len(filtered_df) - 1 if len(filtered_df) > 0 else 0))
-            nonlocal current_offset
-            current_offset = start_idx
-            
-            # Load only the visible chunk
-            end_idx = min(start_idx + count, len(filtered_df))
-            visible_df = filtered_df.iloc[start_idx:end_idx]
-            
-            # Insert visible rows
-            for _, row in visible_df.iterrows():
-                values = [str(val) if pd.notna(val) else "" for val in row]
-                table.insert("", tk.END, values=values)
-                
-            # Update the row counter
-            update_row_counter()
-        
-        def setup_columns(columns):
+            # Use last filtered dataframe values in table column order
+            if columns and last_filtered_df is not None:
+                try:
+                    for _, r in last_filtered_df.iterrows():
+                        use_rows.append(tuple(str(r.get(c, "")) if pd.notna(r.get(c, "")) else "" for c in columns))
+                except Exception:
+                    # Fallback to reading from Treeview if DF path fails
+                    for iid in table.get_children():
+                        use_rows.append(tuple(table.item(iid, 'values')))
+            else:
+                for iid in table.get_children():
+                    use_rows.append(tuple(table.item(iid, 'values')))
+
+        if not use_rows:
+            messagebox.showinfo("Export to Discord", "Nothing to export.")
+            return
+
+        webhooks = load_export_webhooks()
+        if not webhooks:
+            messagebox.showerror("Export to Discord", "No export webhooks found in JSON/DCord.json")
+            return
+
+        embeds_list = format_embeds_for_rows(use_rows, columns)
+
+        def worker():
+            ok = 0
+            fail = 0
+            for w in webhooks:
+                # Discord supports up to 10 embeds per message; we send one embed per message here for simplicity
+                for emb in embeds_list:
+                    status = post_discord(w, {"embeds": [emb]})
+                    if status in (200, 201, 202, 204):
+                        ok += 1
+                    else:
+                        fail += 1
+
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    export_btn = ttk.Button(button_frame, text="Export to Discord", command=export_to_discord)
+    export_btn.pack(side=tk.LEFT, padx=5)
+
+    # Exit button
+    exit_btn = ttk.Button(button_frame, text="Exit", command=root.quit)
+    exit_btn.pack(side=tk.RIGHT, padx=5)
+
+    # Lightweight tooltip helper
+    def attach_tooltip(widget, text: str):
+        tip_window = {"win": None}
+
+        def show_tip(event=None):
+            if tip_window["win"] or not text:
+                return
+            x = widget.winfo_rootx() + 20
+            y = widget.winfo_rooty() + widget.winfo_height() + 10
+            tw = tk.Toplevel(widget)
+            tw.wm_overrideredirect(True)
+            tw.configure(bg="#2b2b2b")
+            lbl = tk.Label(tw, text=text, bg="#2b2b2b", fg="#ffffff", padx=8, pady=5, relief=tk.SOLID, bd=1)
+            lbl.pack()
+            tw.wm_geometry(f"+{x}+{y}")
+            tip_window["win"] = tw
+
+        def hide_tip(event=None):
+            tw = tip_window.get("win")
+            if tw:
+                tw.destroy()
+                tip_window["win"] = None
+
+        widget.bind("<Enter>", show_tip)
+        widget.bind("<Leave>", hide_tip)
+
+    # Clarify Clear All Filters behavior with a tooltip
+    attach_tooltip(reset_btn, "Clears dropdown filters and any right-click excludes")
+
+    # Alternating row colors for Treeview
+    def set_alternating_row_colors():
+        for i, item in enumerate(table.get_children()):
+            if i % 2 == 0:
+                table.item(item, tags=("even",))
+            else:
+                table.item(item, tags=("odd",))
+        table.tag_configure("even", background="#232323", foreground="#FFFFFF")
+        table.tag_configure("odd", background="#2d2d2d", foreground="#FFFFFF")
+
+
+    # Filter section
+    filter_lf = ttk.LabelFrame(export_frame, labelwidget=ttk.Label(export_frame, text="Filters", font=fs_sinclair_font), padding=10)
+    filter_lf.pack(fill=tk.X, padx=10, pady=(0,10))
+
+    # Filter variables
+    enemy_var = tk.StringVar(value="All")
+    subfaction_var = tk.StringVar(value="All")
+    sector_var = tk.StringVar(value="All")
+    planet_var = tk.StringVar(value="All")
+
+    # Dropdown values (copied from previous)
+    ENEMY_TYPES = ['All', 'Automatons', 'Illuminate', 'Terminids']
+    SUBFACTIONS = [
+        'All', 'Terminid Horde', 'Predator Strain', 'Spore Burst Strain', 
+        'Automaton Legion', 'Jet Brigade', 'Incineration Corps', 
+        'Jet Brigade & Incineration Corps', 'Illuminate Cult', 'The Great Host'
+    ]
+    SECTORS = [
+        'All', 'Akira Sector', 'Alstrad Sector', 'Altus Sector', 'Andromeda Sector', 'Arturion Sector', 'Barnard Sector', 'Borgus Sector', 'Cancri Sector', 'Cantolus Sector', 'Celeste Sector', 'Draco Sector', 'Falstaff Sector', 'Farsight Sector', 'Ferris Sector', 'Gallux Sector',
+        'Gellert Sector', 'Gothmar Sector', 'Guang Sector', 'Hanzo Sector', 'Hawking Sector', 'Hydra Sector', 'Idun Sector', 'Iptus Sector', 'Jin Xi Sector', 'Kelvin Sector', 'Korpus Sector', "L'estrade Sector", 'Lacaille Sector', 'Leo Sector', 'Marspira Sector', 'Meridian Sector',
+        'Mirin Sector', 'Morgon Sector', 'Nanos Sector', 'Omega Sector', 'Orion Sector', 'Quintus Sector', 'Rictus Sector', 'Rigel Sector', 'Sagan Sector', 'Saleria Sector', 'Severin Sector', 'Sol System', 'Sten Sector', 'Talus Sector', 'Tanis Sector', 'Tarragon Sector', 'Theseus Sector',
+        'Trigon Sector', 'Umlaut Sector', 'Ursa Sector', 'Valdis Sector', 'Xi Tauri Sector', 'Xzar Sector', 'Ymir Sector'
+    ]
+    PLANETS = [
+        'All','Alaraph', 'Alathfar XI', 'Andar', 'Asperoth Prime', 'Keid', 'Kneth Port', 'Klaka 5', 'Kraz', 'Pathfinder V', 'Klen Dahth II', "Widow's Harbor", 'New Haven', 'Pilen V', 'Charbal-VII', 'Charon Prime', 'Martale', 'Marfark', 'Matar Bay', 'Mortax Prime', 'Kirrik', 'Wilford Station', 'Arkturus',
+        'Pioneer II', 'Electra Bay', 'Deneb Secundus', 'Fornskogur II', 'Veil', 'Marre IV', 'Midasburg', 'Darrowsport', 'Hydrofall Prime', 'Ursica XI', 'Achird III', 'Achernar Secundus', 'Darius II', 'Prosperity Falls', 'Cerberus IIIc', 'Effluvia', 'Seyshel Beach', 'Fort Sanctuary', 'Kelvinor', "Martyr's Bay",
+        'Freedom Peak', 'Viridia Prime', 'Obari', 'Sulfura', 'Nublaria I', 'Krakatwo', 'Ivis', 'Slif', 'Moradesh', 'Meridia', 'Crimsica', 'Estanu', 'Fori Prime', 'Bore Rock', 'Esker', 'Socorro III', 'Erson Sands', 'Prasa', 'Pollux 31', 'Polaris Prime', 'Pherkad Secundus', 'Grand Errant', 'Hadar', 'Haldus', 'Zea Rugosia',
+        'Herthon Secundus', 'Kharst', 'Bashyr', 'Rasp', 'Acubens Prime', 'Adhara', 'Afoyay Bay', 'Minchir', 'Mintoria', 'Blistica', 'Zzaniah Prime', 'Zosma', 'Okul VI', 'Solghast', 'Diluvia', 'Elysian Meadows', 'Alderidge Cove', 'Bellatrix', 'Botein', 'Khandark', 'Heze Bay', 'Alairt III', 'Alamak VII', 'New Stockholm', 'Ain-5',
+        'Mordia 9', 'Euphoria III', 'Skitter', 'Kuma', 'Aesir Pass', 'Vernen Wells', 'Menkent', 'Wraith', 'Atrama', 'Myradesh', 'Maw', 'Providence', 'Primordia', 'Krakabos', 'Iridica', 'Valgaard', 'Ratch', 'Acamar IV', 'Pandion-XXIV', 'Gacrux', 'Phact Bay', 'Gar Haren', 'Gatria', 'Zegema Paradise', 'Fort Justice', 'New Kiruna',
+        'Igla', 'Emeria', 'Crucible', 'Volterra', 'Caramoor', 'Alta V', 'Inari', 'Navi VII', 'Omicron', 'Nabatea Secundus', 'Gemstone Bluffs', 'Epsilon Phoencis VI', 'Enuliale', 'Disapora X', 'Lesath', 'Penta', 'Chort Bay', 'Choohe', 'Ras Algethi', 'Propus', 'Halies Port', 'Haka', 'Curia', 'Barabos', 'Fenmire', 'Tarsh', 'Mastia',
+        'Emorath', 'Ilduna Prime', 'Baldrick Prime', 'Liberty Ridge', 'Hellmire', 'Nivel 43', 'Zagon Prime', 'Oshaune', 'Myrium', 'Eukoria', 'Regnus', 'Mog', 'Dolph', 'Julheim', 'Bekvam III', 'Duma Tyr', 'Setia', 'Senge 23', 'Seasse', 'Hydrobius', 'Karlia', 'Terrek', 'Azterra', 'Fort Union', 'Cirrus', 'Heeth', "Angel's Venture",
+        'Veld', 'Termadon', 'Stor Tha Prime', 'Spherion', 'Stout', 'Leng Secundus', 'Valmox', 'Iro', 'Grafmere', 'Kerth Secundus', 'Parsh', 'Oasis', 'Genesis Prime', 'Rogue 5', 'RD-4', 'Hesoe Prime', 'Hort', 'Rirga Bay', 'Oslo Station', 'Gunvald', 'Borea', 'Calypso', 'Outpost 32', 'Reaf', 'Irulta', 'Maia', 'Malevelon Creek', 'Durgen',
+        'Ubanea', 'Tibit', 'Super Earth', 'Mars', 'Trandor', 'Peacock', 'Partion', 'Overgoe Prime', 'Azur Secundus', 'Shallus', 'Shelt', 'Gaellivare', 'Imber', 'Claorell', 'Vog-Sojoth', 'Clasa', 'Yed Prior', 'Zefia', 'Demiurg', 'East Iridium Trading Bay', 'Brink-2', 'Osupsam', 'Canopus', 'Bunda Secundus', 'The Weir', 'Kuper', 'Caph', 'Castor',
+        'Tien Kwan', 'Lastofe', 'Varylia 5', 'Choepessa IV', 'Ustotu', 'Troost', 'Vandalon IV', 'Erata Prime', 'Fenrir III', 'Turing', 'Skaash', 'Acrab XI', 'Acrux IX', 'Gemma', 'Merga IV', 'Merak', 'Cyberstan', 'Aurora Bay', 'Mekbuda', 'Videmitarix Prime', 'Skat Bay', 'Sirius', 'Siemnot', 'Shete', 'Mort', 'P\u00F6pli IX', 'Ingmar', 'Mantes',
+        'Draupnir', 'Meissa', 'Wasat', 'X-45', 'Vega Bay', 'Wezen'
+    ]
+
+    # Filter widgets
+    ttk.Label(filter_lf, text="Enemy:").pack(side=tk.LEFT, padx=5)
+    enemy_combo = ttk.Combobox(filter_lf, textvariable=enemy_var, values=ENEMY_TYPES, state='readonly', width=15)
+    enemy_combo.pack(side=tk.LEFT, padx=5)
+
+    ttk.Label(filter_lf, text="Subfaction:").pack(side=tk.LEFT, padx=5)
+    subfaction_combo = ttk.Combobox(filter_lf, textvariable=subfaction_var, values=SUBFACTIONS, state='readonly', width=20)
+    subfaction_combo.pack(side=tk.LEFT, padx=5)
+
+    ttk.Label(filter_lf, text="Sector:").pack(side=tk.LEFT, padx=5)
+    sector_combo = ttk.Combobox(filter_lf, textvariable=sector_var, values=SECTORS, state='readonly', width=20)
+    sector_combo.pack(side=tk.LEFT, padx=5)
+
+    ttk.Label(filter_lf, text="Planet:").pack(side=tk.LEFT, padx=5)
+    planet_combo = ttk.Combobox(filter_lf, textvariable=planet_var, values=PLANETS, state='readonly', width=20)
+    planet_combo.pack(side=tk.LEFT, padx=5)
+
+    # Load Excel data
+    if DEBUG:
+        excel_file = "mission_log_test.xlsx"
+    else:
+        excel_file = "mission_log.xlsx"
+
+    # Sorting state and helpers for header click sorting
+    # Additional dynamic filtering (exclusions) and sorting state will be defined near filter_table
+    sort_column = None
+    sort_reverse = False
+
+    def update_heading_labels():
+        # Show ▲ for ascending, ▼ for descending on the active sort column
+        current_cols = list(table["columns"]) if table["columns"] else []
+        for col in current_cols:
+            label = col
+            if sort_column == col:
+                label = f"{col} {'▼' if sort_reverse else '▲'}"
+            try:
+                table.heading(col, text=label)
+            except Exception:
+                pass
+
+    def on_heading_click(col_name):
+        # Toggle sort: if clicking same column, reverse; else ascending by default
+        nonlocal sort_column, sort_reverse
+        if sort_column == col_name:
+            sort_reverse = not sort_reverse
+        else:
+            sort_column = col_name
+            sort_reverse = False
+        # Defer to filter refresh (which applies sorting) and update headers
+        filter_table()
+        update_heading_labels()
+
+    def load_table():
+        try:
+            df = pd.read_excel(excel_file)
+            columns = list(df.columns)
             table["columns"] = columns
             for col in columns:
-                table.heading(col, text=col)
-                table.column(col, width=100, anchor=tk.CENTER)
-        
-        def show_error(message):
-            status_label.grid_forget()
-            messagebox.showerror("Error", message)
-            logging.info(message)
-            
-        # Row counter label - now button_frame exists
-        row_counter = ttk.Label(button_frame, text="Showing rows 0-0 of 0")
-        row_counter.pack(side=tk.LEFT, padx=(10, 0))
-        
-        def update_row_counter():
-            end_idx = min(current_offset + PAGE_SIZE, total_rows)
-            row_counter.config(text=f"Showing rows {current_offset+1}-{end_idx} of {total_rows}")
-        
-        # Handle scrollbar movements to implement virtual scrolling with debouncing
-        def on_scroll(*args):
-            # Get the current position of the scrollbar
+                # Make headings clickable for sorting
+                table.heading(col, text=col, command=lambda c=col: on_heading_click(c))
+                table.column(col, width=120, anchor=tk.CENTER)
+            update_heading_labels()
+            return df
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to load Excel file: {e}")
+            return pd.DataFrame()
+
+    full_df = load_table()
+    last_filtered_df = full_df.copy() if isinstance(full_df, pd.DataFrame) else None
+
+    # Filtering logic
+    # Additional dynamic filtering (exclusions) and sorting state
+    exclude_filters = {'Enemy': set(), 'Subfaction': set(), 'Sector': set(), 'Planet': set()}
+
+    def filter_table(*args):
+        nonlocal last_filtered_df
+        df = full_df.copy()
+        if enemy_var.get() != "All":
+            df = df[df['Enemy'] == enemy_var.get()]
+        if subfaction_var.get() != "All":
+            df = df[df['Subfaction'] == subfaction_var.get()]
+        if sector_var.get() != "All":
+            df = df[df['Sector'] == sector_var.get()]
+        if planet_var.get() != "All":
+            df = df[df['Planet'] == planet_var.get()]
+        # Apply exclude filters (values to be excluded per filterable column)
+        for col, values in exclude_filters.items():
+            if values and col in df.columns:
+                try:
+                    df = df[~df[col].isin(list(values))]
+                except Exception:
+                    # Fallback to string comparison if types mismatch
+                    df = df[~df[col].astype(str).isin([str(v) for v in values])]
+
+        # Apply sorting if set
+        if sort_column and sort_column in df.columns:
             try:
-                # Extract the scrollbar position from args (yview returns values 0.0 to 1.0)
-                position = float(args[0])
-                
-                # Store the position for later use
-                nonlocal last_scroll_position
-                last_scroll_position = position
-                
-                # Cancel previous timer if it exists
-                nonlocal scroll_timer
-                if scroll_timer:
-                    root.after_cancel(scroll_timer)
-                
-                # Set a new timer to update the display after scrolling stops
-                scroll_timer = root.after(100, lambda: update_after_scroll(position))
-                
-            except (ValueError, IndexError):
-                pass
-            return True  # Continue normal scrolling behavior
-        
-        # Function to update display after scrolling stops (called by timer)
-        def update_after_scroll(position):
-            # Calculate the corresponding row index based on position
-            if total_rows > 0:
-                row_index = int(position * total_rows)
-                # Only redraw if we've scrolled enough to show a new page
-                if abs(row_index - current_offset) >= PAGE_SIZE / 2:
-                    display_rows(row_index, PAGE_SIZE)
-            
-            # Reset the timer
-            nonlocal scroll_timer
-            scroll_timer = None
-        
-        # Function to handle mousewheel scrolling
-        def on_mousewheel(event):
-            # This helps smooth the mousewheel scrolling experience
-            # Get current position
-            nonlocal current_offset
-            delta = -1 if event.delta > 0 else 1  # Invert for natural scrolling
-            
-            # Adjust the scroll speed
-            scroll_amount = 3 * delta
-            new_offset = current_offset + scroll_amount
-            
-            # Ensure we stay within bounds
-            if 0 <= new_offset < total_rows:
-                # Update the scrollbar position
-                new_position = new_offset / total_rows if total_rows > 0 else 0
-                y_scrollbar.set(new_position, new_position + (PAGE_SIZE / total_rows if total_rows > 0 else 1))
-                
-                # Only redraw if we've moved enough
-                if abs(new_offset - current_offset) >= PAGE_SIZE / 4:
-                    display_rows(new_offset, PAGE_SIZE)
-        
-        # Function to filter data based on all selected filters
-        def filter_data():
-            # Apply filters to the full dataset
-            nonlocal filtered_df, total_rows, current_offset
-            df = full_data_df.copy()
-            
-            # Apply enemy type filter
-            if filters['enemy_type'] != 'All':
-                df = df[df['Enemy Type'] == filters['enemy_type']]
-            
-            # Apply subfaction filter
-            if filters['Enemy Subfaction'] != 'All':
-                df = df[df['Enemy Subfaction'] == filters['Enemy Subfaction']]
-                
-            # Apply sector filter
-            if filters['sector'] != 'All':
-                df = df[df['Sector'] == filters['sector']]
-                
-            # Apply planet filter
-            if filters['planet'] != 'All':
-                df = df[df['Planet'] == filters['planet']]
-            
-            # Update our filtered dataframe
-            filtered_df = df
-            total_rows = len(filtered_df)
-            current_offset = 0
-            
-            # Display the first page
-            display_rows(0, PAGE_SIZE)
-        
-        # Start the loading thread
-        threading.Thread(target=load_data, daemon=True).start()
-            
-    except Exception as e:
-        logging.error(f"Error setting up table: {e}")
-    
-    # Add scrollbars
-    y_scrollbar = ttk.Scrollbar(table_frame, orient=tk.VERTICAL, command=table.yview, style="Vertical.TScrollbar")
-    x_scrollbar = ttk.Scrollbar(table_frame, orient=tk.HORIZONTAL, command=table.xview, style="Horizontal.TScrollbar")
-    table.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
-    
-    # Configure the scrollbar to use our virtual scrolling with improved performance
-    # Use a better method for binding scrolling events
-    def custom_yview(*args):
-        on_scroll(args[1])
-        return table.yview(*args)
-        
-    y_scrollbar.configure(command=custom_yview)
-    
-    # Bind mousewheel for smoother scrolling
-    table.bind("<MouseWheel>", on_mousewheel)
-    
-    # Add keyboard navigation for smoother experience
-    def on_key(event):
-        nonlocal current_offset
-        key = event.keysym
-        
-        if key == "Down":
-            new_offset = current_offset + 1
-            if new_offset < total_rows:
-                if new_offset % PAGE_SIZE == 0:
-                    display_rows(new_offset, PAGE_SIZE)
-                else:
-                    # Just update scrollbar position without redrawing
-                    new_position = new_offset / total_rows if total_rows > 0 else 0
-                    y_scrollbar.set(new_position, new_position + (PAGE_SIZE / total_rows if total_rows > 0 else 1))
-                    current_offset = new_offset
-                    update_row_counter()
-                    
-        elif key == "Up":
-            new_offset = max(0, current_offset - 1)
-            if new_offset % PAGE_SIZE == PAGE_SIZE - 1 or current_offset == 0:
-                display_rows(new_offset, PAGE_SIZE)
-            else:
-                # Just update scrollbar position without redrawing
-                new_position = new_offset / total_rows if total_rows > 0 else 0
-                y_scrollbar.set(new_position, new_position + (PAGE_SIZE / total_rows if total_rows > 0 else 1))
-                current_offset = new_offset
-                update_row_counter()
-                
-        elif key == "Next":  # Page Down
-            new_offset = min(total_rows - 1, current_offset + PAGE_SIZE)
-            display_rows(new_offset, PAGE_SIZE)
-            
-        elif key == "Prior":  # Page Up
-            new_offset = max(0, current_offset - PAGE_SIZE)
-            display_rows(new_offset, PAGE_SIZE)
-            
-        elif key == "Home":
-            display_rows(0, PAGE_SIZE)
-            
-        elif key == "End":
-            display_rows(max(0, total_rows - PAGE_SIZE), PAGE_SIZE)
-    
-    # Bind keyboard navigation
-    table.bind("<Key>", on_key)
-    
-    # Add navigation buttons
-    def next_page():
-        nonlocal current_offset
-        new_offset = current_offset + PAGE_SIZE
-        if new_offset < total_rows:
-            display_rows(new_offset, PAGE_SIZE)
-            
-    def prev_page():
-        nonlocal current_offset
-        new_offset = max(0, current_offset - PAGE_SIZE)
-        display_rows(new_offset, PAGE_SIZE)
-    
-    # Add navigation buttons to button_frame
-    nav_frame = ttk.Frame(button_frame)
-    nav_frame.pack(side=tk.LEFT, padx=(20, 0))
-    
-    prev_button = ttk.Button(nav_frame, text="Previous Page", command=prev_page)
-    prev_button.pack(side=tk.LEFT)
-    
-    next_button = ttk.Button(nav_frame, text="Next Page", command=next_page)
-    next_button.pack(side=tk.LEFT, padx=(5, 0))
-    
-    # Add a slider for adjusting page size
-    page_size_frame = ttk.Frame(button_frame)
-    page_size_frame.pack(side=tk.LEFT, padx=(20, 0))
-    
-    ttk.Label(page_size_frame, text="Rows per page:").pack(side=tk.LEFT)
-    
-    def update_page_size(event=None):
-        nonlocal PAGE_SIZE
+                df = df.sort_values(by=sort_column, ascending=not sort_reverse, kind='mergesort')
+            except Exception:
+                # Fallback to string sort
+                df = df.assign(_sort=df[sort_column].astype(str)).sort_values('_sort', ascending=not sort_reverse, kind='mergesort').drop(columns=['_sort'])
+        # Clear table
+
+        for item in table.get_children():
+            table.delete(item)
+        for idx, (_, row) in enumerate(df.iterrows()):
+            values = [str(val) if pd.notna(val) else "" for val in row]
+            tag = 'evenrow' if idx % 2 == 0 else 'oddrow'
+            table.insert('', tk.END, values=values, tags=(tag,))
+        configure_row_tags()
+        last_filtered_df = df
+
+    # Utilities
+    # Full-scan autosize with dynamic max width (per screen size)
+    def compute_column_width(col_name):
+        # Ensure UI is laid out for accurate font metrics
+        root.update_idletasks()
+
         try:
-            new_size = int(page_size_var.get())
-            if 10 <= new_size <= 200:
-                PAGE_SIZE = new_size
-                display_rows(current_offset, PAGE_SIZE)
-        except ValueError:
-            pass
-    
-    page_size_var = tk.StringVar(value=str(PAGE_SIZE))
-    page_size_combo = ttk.Combobox(page_size_frame, textvariable=page_size_var, width=5, 
-                                  values=["25", "50", "75", "100", "150", "200"])
-    page_size_combo.pack(side=tk.LEFT, padx=(5, 0))
-    page_size_combo.bind("<<ComboboxSelected>>", update_page_size)
-    page_size_combo.bind("<Return>", update_page_size)
-    
-    # Grid layout for the table and scrollbars
-    table.grid(row=0, column=0, sticky="nsew")
-    y_scrollbar.grid(row=0, column=1, sticky="ns")
-    x_scrollbar.grid(row=1, column=0, sticky="ew")
-    # Add corner filler to cover scrollbar intersection (prevents white square)
-    corner = ttk.Frame(table_frame)
-    corner.configure(style="TFrame")
-    corner.grid(row=1, column=1, sticky="nsew")
-    
-    # Add a button
-    def button_action():
-        selected = table.selection()
-        if selected:
-            selected_items = [table.item(item, "values") for item in selected]
-            logging.info(f"Selected {len(selected_items)} items:")
-            for item in selected_items:
-                logging.info(item)
-        else:
-            logging.info("No item selected")
-    
-    # Add a quit button
-    quit_button = ttk.Button(button_frame, text="Quit", command=root.quit)
-    quit_button.pack(side=tk.RIGHT)
+            cell_font_spec = style.lookup('Treeview', 'font') or tkfont.nametofont('TkDefaultFont')
+            cell_font = cell_font_spec if isinstance(cell_font_spec, tkfont.Font) else tkfont.Font(font=cell_font_spec) if cell_font_spec else tkfont.nametofont('TkDefaultFont')
+        except Exception:
+            cell_font = tkfont.nametofont('TkDefaultFont')
 
-    # Add a process selection button
-    button = ttk.Button(button_frame, text="Process Selection", command=button_action)
-    button.pack(side=tk.RIGHT)
+        try:
+            heading_font_spec = style.lookup('Treeview.Heading', 'font') or cell_font
+            heading_font = heading_font_spec if isinstance(heading_font_spec, tkfont.Font) else tkfont.Font(font=heading_font_spec) if heading_font_spec else cell_font
+        except Exception:
+            heading_font = cell_font
 
-    # Theme is now only settable from settings.py
-    
-    # Add filters section
-    # Global variables to track filter selections
-    filters = {
-        'enemy_type': 'All',
-        'Enemy Subfaction': 'All',
-        'sector': 'All',
-        'planet': 'All'
+        padding = 24
+        min_w = 60
+        # Dynamic max width as a fraction of screen width
+        screen_w = max(800, root.winfo_screenwidth())
+        max_w = int(screen_w * 0.45)  # allow up to 45% of screen per column
+
+        # Start with header width
+        width_px = heading_font.measure(str(col_name)) + padding
+
+        # Full scan of all row texts for this column
+        for item in table.get_children():
+            try:
+                val = table.set(item, col_name)
+                width_px = max(width_px, cell_font.measure(str(val)) + padding)
+            except Exception:
+                continue
+
+        width_px = max(min_w, min(max_w, int(width_px)))
+        return width_px
+
+    def autosize_columns_full():
+        for col in table["columns"]:
+            table.column(col, width=compute_column_width(col))
+
+    def autosize_column_full(col_name):
+        if col_name:
+            table.column(col_name, width=compute_column_width(col_name))
+
+    def reset_column_widths():
+        for col in table["columns"]:
+            table.column(col, width=120)
+
+    # Bind filter changes
+    enemy_var.trace_add("write", filter_table)
+    subfaction_var.trace_add("write", filter_table)
+    sector_var.trace_add("write", filter_table)
+    planet_var.trace_add("write", filter_table)
+
+    # Context menu for right-click actions on table (decorated)
+    context_menu = tk.Menu(root, tearoff=0, bg="#2b2b2b", fg="#ffffff", activebackground="#4C4C4C", activeforeground="#ffffff", bd=1)
+
+    # Map column names to their corresponding filter variables
+    filter_var_by_column = {
+        'Enemy': enemy_var,
+        'Subfaction': subfaction_var,
+        'Sector': sector_var,
+        'Planet': planet_var,
     }
-    
-    # Enemy Type filter
-    enemy_var = tk.StringVar()
-    def on_enemy_select(event):
-        filters['enemy_type'] = enemy_var.get()
-        filter_data()
-    enemy_dropdown = create_filter_dropdown(
-        button_frame, "Select enemy Type:", enemy_var, ENEMY_TYPES, on_enemy_select
-    )
 
-    # Subfaction filter
-    subfaction_var = tk.StringVar()
-    def on_subfaction_select(event):
-        filters['Enemy Subfaction'] = subfaction_var.get()
-        filter_data()
-    subfaction_dropdown = create_filter_dropdown(
-        button_frame, "Select subfaction:", subfaction_var, SUBFACTIONS, on_subfaction_select, padx=10
-    )
+    def copy_to_clipboard(text: str):
+        if text is None:
+            return
+        try:
+            root.clipboard_clear()
+            root.clipboard_append(str(text))
+            root.update()  # now it stays on the clipboard after the window is closed
+        except Exception as e:
+            logging.warning(f"Clipboard copy failed: {e}")
 
-    # Sector filter
-    sector_var = tk.StringVar()
-    def on_sector_select(event):
-        filters['sector'] = sector_var.get()
-        filter_data()
-    sector_dropdown = create_filter_dropdown(
-        button_frame, "Select sector:", sector_var, SECTORS, on_sector_select, padx=10
-    )
+    def copy_selection_as_delimited(row_ids, with_headers=False, delimiter=","):
+        cols = list(table["columns"])
+        lines = []
+        if with_headers:
+            lines.append(delimiter.join(cols))
+        for iid in row_ids:
+            vals = table.item(iid, 'values')
+            # Ensure delimiter-safe by quoting if needed
+            escaped = []
+            for v in vals:
+                s = str(v)
+                if delimiter in s or '"' in s or "\n" in s:
+                    s = '"' + s.replace('"', '""') + '"'
+                escaped.append(s)
+            lines.append(delimiter.join(escaped))
+        copy_to_clipboard("\n".join(lines))
 
-    # Planet filter
-    planet_var = tk.StringVar()
-    def on_planet_select(event):
-        filters['planet'] = planet_var.get()
-        filter_data()
-    planet_dropdown = create_filter_dropdown(
-        button_frame, "Select planet:", planet_var, PLANETS, on_planet_select, padx=10
-    )
+    def copy_row_as_json(row_id):
+        cols = list(table["columns"])
+        vals = list(table.item(row_id, 'values'))
+        obj = {c: v for c, v in zip(cols, vals)}
+        try:
+            s = json.dumps(obj, ensure_ascii=False, indent=2)
+        except Exception:
+            s = str(obj)
+        copy_to_clipboard(s)
 
-    # Add a button to clear filters
-    def clear_filters():
-        filters['enemy_type'] = 'All'
-        filters['Enemy Subfaction'] = 'All'
-        filters['sector'] = 'All'
-        filters['planet'] = 'All'
-        
-        enemy_dropdown.current(0)
-        subfaction_dropdown.current(0)
-        sector_dropdown.current(0)
-        planet_dropdown.current(0)
-        
-        filter_data()
-    clear_button = ttk.Button(button_frame, text="Clear Filters", command=clear_filters)
-    clear_button.pack(side=tk.LEFT, padx=(10, 0))
-    
-    # Run the main event loop
+    def get_selected_or_row(default_row):
+        sel = list(table.selection())
+        if sel:
+            return sel
+        return [default_row] if default_row else []
+
+    def show_row_details(row_id):
+        cols = list(table["columns"])
+        vals = list(table.item(row_id, 'values'))
+        details = "\n".join(f"{c}: {v}" for c, v in zip(cols, vals))
+        messagebox.showinfo("Row details", details)
+
+    def set_sort(c, reverse):
+        nonlocal sort_column, sort_reverse
+        sort_column, sort_reverse = c, reverse
+        filter_table()
+        update_heading_labels()
+
+    def add_exclude_value(col, val):
+        if col in exclude_filters and val not in (None, ""):
+            exclude_filters[col].add(val)
+            filter_table()
+
+    def clear_exclude(col):
+        if col in exclude_filters:
+            exclude_filters[col].clear()
+            filter_table()
+
+    def clear_all_excludes():
+        for k in exclude_filters:
+            exclude_filters[k].clear()
+        filter_table()
+
+    # Combine includes (comboboxes) and excludes into one clear action
+    def clear_all_filters():
+        reset_filters()      # clears comboboxes (triggers filter_table via traces)
+        clear_all_excludes() # clears exclude sets
+        filter_table()       # ensure refresh after both
+
+    def on_right_click(event):
+        # Identify the row and column under the cursor
+        row_id = table.identify_row(event.y)
+        col_id = table.identify_column(event.x)  # like '#1', '#2', ...
+
+        # Clear and rebuild the menu for this event
+        context_menu.delete(0, tk.END)
+
+        # If not on a valid row, don't show menu
+        if not row_id:
+            return
+
+        # Select the row that was right-clicked
+        try:
+            table.selection_set(row_id)
+        except Exception:
+            pass
+
+        # Resolve column name and cell value
+        try:
+            col_index = int(col_id.replace('#', '')) - 1
+        except Exception:
+            col_index = None
+
+        col_name = None
+        cell_value = None
+        if col_index is not None and 0 <= col_index < len(table['columns']):
+            col_name = table['columns'][col_index]
+            try:
+                cell_value = table.set(row_id, col_name)
+            except Exception:
+                cell_value = None
+
+        # Submenus for organization
+        copy_menu = tk.Menu(context_menu, tearoff=0, bg="#2b2b2b", fg="#ffffff", activebackground="#4C4C4C", activeforeground="#ffffff", bd=1)
+        select_menu = tk.Menu(context_menu, tearoff=0, bg="#2b2b2b", fg="#ffffff", activebackground="#4C4C4C", activeforeground="#ffffff", bd=1)
+        sort_menu = tk.Menu(context_menu, tearoff=0, bg="#2b2b2b", fg="#ffffff", activebackground="#4C4C4C", activeforeground="#ffffff", bd=1)
+        filter_menu = tk.Menu(context_menu, tearoff=0, bg="#2b2b2b", fg="#ffffff", activebackground="#4C4C4C", activeforeground="#ffffff", bd=1)
+        size_menu = tk.Menu(context_menu, tearoff=0, bg="#2b2b2b", fg="#ffffff", activebackground="#4C4C4C", activeforeground="#ffffff", bd=1)
+
+        # Copy submenu
+        if cell_value not in (None, ""):
+            copy_menu.add_command(
+                label=f"Copy value",
+                command=lambda v=cell_value: copy_to_clipboard(v)
+            )
+        # Selection rows for copy operations
+        target_ids = get_selected_or_row(row_id)
+        copy_menu.add_command(label="Copy selection (CSV)", command=lambda ids=target_ids: copy_selection_as_delimited(ids, with_headers=False, delimiter=","))
+        copy_menu.add_command(label="Copy selection (CSV + headers)", command=lambda ids=target_ids: copy_selection_as_delimited(ids, with_headers=True, delimiter=","))
+        copy_menu.add_command(label="Copy selection (TSV)", command=lambda ids=target_ids: copy_selection_as_delimited(ids, with_headers=False, delimiter="\t"))
+        copy_menu.add_separator()
+        copy_menu.add_command(label="Copy row as JSON", command=lambda rid=row_id: copy_row_as_json(rid))
+        copy_menu.add_command(label="Copy column name", command=lambda n=col_name: copy_to_clipboard(n) if n else None, state=(tk.NORMAL if col_name else tk.DISABLED))
+
+        # Select submenu
+        select_menu.add_command(label="Select all", command=lambda: table.selection_set(table.get_children()))
+        select_menu.add_command(label="Clear selection", command=lambda: table.selection_remove(table.get_children()))
+
+        # Sort submenu
+        if col_name:
+            # Indicate current sort with checkmarks
+            asc_label = f"Sort by {col_name} ▲"
+            desc_label = f"Sort by {col_name} ▼"
+            sort_menu.add_command(label=asc_label, command=lambda c=col_name: set_sort(c, False))
+            sort_menu.add_command(label=desc_label, command=lambda c=col_name: set_sort(c, True))
+            # Visual hint: disabled item showing current state
+            try:
+                current = f"Current: {sort_column} " + ("▼" if sort_reverse else "▲") if sort_column else "Current: None"
+            except Exception:
+                current = "Current: None"
+            sort_menu.add_separator()
+            sort_menu.add_command(label=current, state=tk.DISABLED)
+
+        # Filter submenu
+        if col_name in filter_var_by_column and cell_value not in (None, ""):
+            filter_menu.add_command(
+                label=f"Include: {col_name} = {cell_value}",
+                command=lambda c=col_name, v=cell_value: filter_var_by_column[c].set(v)
+            )
+            filter_menu.add_command(
+                label=f"Exclude: {col_name} = {cell_value}",
+                command=lambda c=col_name, v=cell_value: add_exclude_value(c, v)
+            )
+            filter_menu.add_separator()
+            filter_menu.add_command(label=f"Clear {col_name} include", command=lambda c=col_name: filter_var_by_column[c].set("All"))
+            filter_menu.add_command(label=f"Clear {col_name} excludes", command=lambda c=col_name: clear_exclude(c))
+            filter_menu.add_separator()
+        filter_menu.add_command(label="Clear all includes", command=reset_filters)
+        filter_menu.add_command(label="Clear all excludes", command=clear_all_excludes)
+        filter_menu.add_command(label="Clear all filters", command=clear_all_filters)
+
+        # Size submenu
+        size_menu.add_command(label="Auto-size this column", command=lambda n=col_name: autosize_column_full(n), state=(tk.NORMAL if col_name else tk.DISABLED))
+        size_menu.add_command(label="Auto-size all columns", command=autosize_columns_full)
+        size_menu.add_command(label="Reset column widths", command=reset_column_widths)
+
+        # Row details
+        context_menu.add_cascade(label="Copy", menu=copy_menu)
+        context_menu.add_cascade(label="Select", menu=select_menu)
+        context_menu.add_cascade(label="Sort", menu=sort_menu, state=(tk.NORMAL if col_name else tk.DISABLED))
+        context_menu.add_cascade(label="Filter", menu=filter_menu)
+        context_menu.add_cascade(label="Columns", menu=size_menu)
+        context_menu.add_separator()
+        context_menu.add_command(label="Show row details", command=lambda rid=row_id: show_row_details(rid))
+
+        # Show the menu
+        try:
+            context_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            context_menu.grab_release()
+
+    # Bind right-click on the table
+    table.bind("<Button-3>", on_right_click)
+
+    # Populate initially using tagged rows for alternating colors
+    filter_table()
+
+    # Now that clear_all_filters exists, attach it to the top bar button
+    try:
+        reset_btn.configure(command=clear_all_filters)
+    except Exception:
+        pass
+
     root.mainloop()
 
+        
 if __name__ == "__main__":
     main()
