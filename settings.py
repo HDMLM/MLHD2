@@ -367,9 +367,11 @@ class SettingsPage(tk.Tk):
         self.new_webhook_label_var_logging = tk.StringVar()
         self.new_webhook_var_logging = tk.StringVar()
         ttk.Label(log_controls, text="Label:").pack(side=tk.LEFT, padx=5)
-        ttk.Entry(log_controls, textvariable=self.new_webhook_label_var_logging, width=20).pack(side=tk.LEFT, padx=5)
+        self.entry_webhook_label_logging = ttk.Entry(log_controls, textvariable=self.new_webhook_label_var_logging, width=20)
+        self.entry_webhook_label_logging.pack(side=tk.LEFT, padx=5)
         ttk.Label(log_controls, text="URL:").pack(side=tk.LEFT, padx=5)
-        ttk.Entry(log_controls, textvariable=self.new_webhook_var_logging, width=40).pack(side=tk.LEFT, padx=5)
+        self.entry_webhook_url_logging = ttk.Entry(log_controls, textvariable=self.new_webhook_var_logging, width=40)
+        self.entry_webhook_url_logging.pack(side=tk.LEFT, padx=5)
         # Load and subsample images for Add button (logging)
         def load_add_btn_img(path):
             pil_img = Image.open(path).convert('RGBA')
@@ -466,9 +468,11 @@ class SettingsPage(tk.Tk):
         self.new_webhook_label_var_export = tk.StringVar()
         self.new_webhook_var_export = tk.StringVar()
         ttk.Label(exp_controls, text="Label:").pack(side=tk.LEFT, padx=5)
-        ttk.Entry(exp_controls, textvariable=self.new_webhook_label_var_export, width=20).pack(side=tk.LEFT, padx=5)
+        self.entry_webhook_label_export = ttk.Entry(exp_controls, textvariable=self.new_webhook_label_var_export, width=20)
+        self.entry_webhook_label_export.pack(side=tk.LEFT, padx=5)
         ttk.Label(exp_controls, text="URL:").pack(side=tk.LEFT, padx=5)
-        ttk.Entry(exp_controls, textvariable=self.new_webhook_var_export, width=40).pack(side=tk.LEFT, padx=5)
+        self.entry_webhook_url_export = ttk.Entry(exp_controls, textvariable=self.new_webhook_var_export, width=40)
+        self.entry_webhook_url_export.pack(side=tk.LEFT, padx=5)
         # Load and subsample images for Add button (export) with dark compositing
         def load_add_btn_img_export(path):
             pil_img = Image.open(path).convert('RGBA')
@@ -538,7 +542,8 @@ class SettingsPage(tk.Tk):
         self.remove_webhook_export_btn.bind("<Enter>", on_remove_btn_export_enter)
         self.remove_webhook_export_btn.bind("<Leave>", on_remove_btn_export_leave)
 
-        ttk.Checkbutton(hooks_lf, text="Show URLs (otherwise show labels)", variable=self.show_urls_var, command=self.refresh_webhook_listboxes).grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.show_urls_chk = ttk.Checkbutton(hooks_lf, text="Show URLs (otherwise show labels)", variable=self.show_urls_var, command=self.refresh_webhook_listboxes)
+        self.show_urls_chk.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
@@ -639,6 +644,8 @@ class SettingsPage(tk.Tk):
 
         # Populate webhook listboxes
         self.refresh_webhook_listboxes()
+        # Apply initial UI state for dont-send flag
+        self._apply_dont_send_ui_state()
 
     # ----- Do-not-send helper -----
     def _set_forced_webhooks_ui(self):
@@ -689,8 +696,42 @@ class SettingsPage(tk.Tk):
             else:
                 # Restore previous webhooks if we have a backup
                 self._restore_backup_to_ui()
+            # Apply UI state changes (disable/enable fields)
+            self._apply_dont_send_ui_state()
         except Exception as e:
             print(f"[settings] on_dont_send_toggle error: {e}")
+
+    def _apply_dont_send_ui_state(self):
+        disabled = self.dont_send_to_discord_var.get()
+        # Entries
+        state_val = tk.DISABLED if disabled else tk.NORMAL
+        try:
+            self.entry_webhook_label_logging.configure(state=state_val)
+            self.entry_webhook_url_logging.configure(state=state_val)
+            self.entry_webhook_label_export.configure(state=state_val)
+            self.entry_webhook_url_export.configure(state=state_val)
+        except Exception:
+            pass
+        # Listboxes: change color and swallow clicks when disabled
+        try:
+            self.webhooks_listbox_logging.configure(fg=("#777777" if disabled else "#ffffff"))
+            self.webhooks_listbox_export.configure(fg=("#777777" if disabled else "#ffffff"))
+            if disabled:
+                self.webhooks_listbox_logging.bind("<Button-1>", lambda e: "break")
+                self.webhooks_listbox_export.bind("<Button-1>", lambda e: "break")
+            else:
+                self.webhooks_listbox_logging.unbind("<Button-1>")
+                self.webhooks_listbox_export.unbind("<Button-1>")
+        except Exception:
+            pass
+        # Show URLs checkbox
+        try:
+            if disabled:
+                self.show_urls_chk.state(["disabled"])
+            else:
+                self.show_urls_chk.state(["!disabled"])
+        except Exception:
+            pass
 
     def _update_full_ship_name(self, *args):
         s1 = (self.shipName1_var.get() or "").strip()

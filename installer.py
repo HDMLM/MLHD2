@@ -1020,7 +1020,7 @@ class InstallerGUI(tk.Tk):
         # Patch notes box
         # Match size with the main log text box
         self.patch_notes_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=250)
-        # Place directly below the (shorter) log box, keeping ~10px gap
+        # Place directly below the log box, keeping ~10px gap
         self.patch_notes_frame.place(x=120, y=340)
         self.patch_notes_frame.config(highlightbackground="#252526", highlightthickness=2)
         self.patch_notes_box = scrolledtext.ScrolledText(self.patch_notes_frame, state="disabled", width=46, height=15, font=("Arial", 11, "italic"), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
