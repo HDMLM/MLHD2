@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Tuple, Callable
 import webbrowser
 from pathlib import Path
 from ast import literal_eval
+import configparser
 
 
 #Manual Constants
@@ -30,6 +31,12 @@ try:
 except Exception:
     winreg = None
 import tkinter.font as tkfont
+
+# Optional: Discord Rich Presence for the launcher
+try:
+    import discordrpc  # provided by package 'discord-rpc'
+except Exception:
+    discordrpc = None  # launcher will still work without RPC
 
 # Python 3.10.6 enforcement and bootstrap
 REQUIRED_PYTHON_VERSION = (3, 10, 6)
@@ -46,6 +53,14 @@ def app_path(*parts: str) -> str:
 
 def resource_path(*parts: str) -> str:
     return str(BUNDLE_DIR.joinpath(*parts))
+
+# Load launcher config for Discord RPC Client ID
+_config = configparser.ConfigParser()
+try:
+    _config.read(app_path("config.config"))
+    DISCORD_CLIENT_ID = _config.get('Discord', 'DISCORD_CLIENT_ID', fallback='0')
+except Exception:
+    DISCORD_CLIENT_ID = '0'
 
 def find_python3106_executable() -> Optional[List[str]]:
     # In frozen mode, sys.executable points to the EXE; skip that candidate
@@ -101,6 +116,7 @@ ensure_python_version()
 import requests
 import tkinter as tk
 from tkinter import messagebox, scrolledtext
+from tkinter import ttk
 
 GITHUB_API_REPO = "HDMLM/MLHD2"
 GITHUB_REPO = "https://github.com/HDMLM/MLHD2"
@@ -116,6 +132,64 @@ REQUEST_TIMEOUT_ZIP = 30
 FONT_FAMILY_NAME = "Insignia"
 FONT_FILE_NAME = "Insignia.ttf"
 FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
+
+# --- Discord Rich Presence helper for the launcher ---
+class _LauncherRPC:
+    def __init__(self) -> None:
+        self.RPC = None
+        self._started = False
+
+    def start(self) -> None:
+        if self._started or not discordrpc:
+            return
+        def _init():
+            try:
+                app_id_int = int(DISCORD_CLIENT_ID)
+                self.RPC = discordrpc.RPC(app_id=app_id_int)
+                threading.Thread(target=self.RPC.run, daemon=True).start()
+                self._started = True
+                # Initial presence
+                self.set_status("Launcher Open")
+            except Exception:
+                self.RPC = None
+                self._started = False
+        threading.Thread(target=_init, daemon=True).start()
+
+    def set_status(self, status: str, details: Optional[str] = None) -> None:
+        if not self.RPC:
+            return
+        try:
+            # Buttons are optional; ignore if not available
+            buttons = None
+            try:
+                from discordrpc import Button
+                buttons = Button(
+                    "GitHub Repo", "https://github.com/HDMLM/MLHD2",
+                    "Join Discord", "https://discord.gg/U6ydgwFKZG",
+                )
+            except Exception:
+                buttons = None
+
+            self.RPC.set_activity(
+                state=status,
+                details=details or "MLHD2 Launcher",
+                large_image="test",          # Uses same asset key as the main app
+                large_text="MLHD2",
+                small_image="obs",           # Neutral/observing icon
+                small_text="Launcher",
+                act_type=3,                   # 3 = Watching
+                **({"buttons": buttons} if buttons else {})
+            )
+        except Exception:
+            # Silently ignore RPC errors to keep launcher robust
+            pass
+
+    def close(self) -> None:
+        try:
+            if self.RPC and hasattr(self.RPC, 'close'):
+                self.RPC.close()
+        except Exception:
+            pass
 
 # Exclusion globs / prefixes relative to repo root (from inside the ZIP)
 # We don't want to overwrite user data since even if it's outdated the program should update the JSON as required, though we could add the option
@@ -373,7 +447,12 @@ def check_version(include_prerelease: bool = False) -> str:
         f"Latest GitHub version: {latest_version}{' (pre-release)' if is_pr else ''}\n"
         f"{status_line}\n\nPatch Notes:\n{notes}"
     )
-def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> str:
+def check_requirements(
+    log_callback: Optional[Callable[[str], None]] = None,
+    progress_init: Optional[Callable[[int], None]] = None,
+    progress_tick: Optional[Callable[[int], None]] = None,
+    progress_done: Optional[Callable[[], None]] = None,
+) -> str:
     # Ensure packages in requirements.txt are installed and report per-package status
     output: List[str] = []
 
@@ -410,9 +489,22 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
         # Return mapping of installed package -> version using single pip list call
         python_exe = _py_cmd()
         try:
+            # Hide console windows on Windows while invoking pip
+            startupinfo = None
+            creationflags = 0
+            if os.name == "nt":
+                try:
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    creationflags = subprocess.CREATE_NO_WINDOW
+                except Exception:
+                    startupinfo = None
+                    creationflags = 0
             data = subprocess.check_output(
                 [*python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
                 stderr=subprocess.DEVNULL,
+                startupinfo=startupinfo,
+                creationflags=creationflags,
             )
             import json
             pkgs = json.loads(data.decode("utf-8", errors="replace"))
@@ -428,11 +520,28 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
         DEBUG_MODE = bool(sys.gettrace()) or os.environ.get("MLHD2_DEBUG_PIP")
         try:
             cmd = [*python_exe, "-m", "pip", "install", spec, "--disable-pip-version-check", "--no-input"]
+            # Hide console windows on Windows when not in debug mode
+            startupinfo = None
+            creationflags = 0
+            if os.name == "nt" and not DEBUG_MODE:
+                try:
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    creationflags = subprocess.CREATE_NO_WINDOW
+                except Exception:
+                    startupinfo = None
+                    creationflags = 0
             if DEBUG_MODE:
                 # Don't redirect so errors are visible in the console
                 subprocess.check_call(cmd)
             else:
-                subprocess.check_call(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+                subprocess.check_call(
+                    cmd,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.STDOUT,
+                    startupinfo=startupinfo,
+                    creationflags=creationflags,
+                )
             return True, ""
         except subprocess.CalledProcessError as e:
             return False, f"pip exit code {e.returncode}"
@@ -474,12 +583,22 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
                 parsed_reqs.append((req.strip(), None))
 
         total = len(parsed_reqs)
+        if progress_init:
+            try:
+                progress_init(total)
+            except Exception:
+                pass
         for idx, (pkg, pinned) in enumerate(parsed_reqs, start=1):
             if not pkg:
                 continue
             key = _canon_name(pkg)
             if key in MGMT_PACKAGES:
                 log(f"[{idx}/{total}] {pkg}: Skipping (management package).")
+                if progress_tick:
+                    try:
+                        progress_tick(1)
+                    except Exception:
+                        pass
                 continue
 
             log(f"[{idx}/{total}] Checking {pkg} ...")
@@ -523,8 +642,19 @@ def check_requirements(log_callback: Optional[Callable[[str], None]] = None) -> 
                     msg = f"{pkg}: INSTALL FAILED ({err})"
                     log(f"  - {msg}")
                     failures.append(msg)
+            if progress_tick:
+                try:
+                    progress_tick(1)
+                except Exception:
+                    pass
     except Exception as e:
         log(f"Error reading requirements: {e}")
+    finally:
+        if progress_done:
+            try:
+                progress_done()
+            except Exception:
+                pass
 
     # Summary
     if output and output[-1] != "":
@@ -559,8 +689,18 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
         messagebox.showerror("Launch Error", str(e))
 
         
-def threaded_action(action: Callable[..., str], text_widget: scrolledtext.ScrolledText) -> None:
+def threaded_action(
+    action: Callable[..., str],
+    text_widget: scrolledtext.ScrolledText,
+    *,
+    silent: bool = False,
+    progress_init: Optional[Callable[[int], None]] = None,
+    progress_tick: Optional[Callable[[int], None]] = None,
+    progress_done: Optional[Callable[[], None]] = None,
+) -> None:
     def log_callback(line: str) -> None:
+        if silent:
+            return
         text_widget.config(state="normal")
         text_widget.insert(tk.END, line)
         text_widget.see(tk.END)
@@ -570,12 +710,19 @@ def threaded_action(action: Callable[..., str], text_widget: scrolledtext.Scroll
     def run():
         try:
             text_widget.config(state="normal")
-            text_widget.insert(tk.END, f"{action.__name__.replace('_', ' ').title()}...\n")
+            if not silent:
+                text_widget.insert(tk.END, f"{action.__name__.replace('_', ' ').title()}...\n")
             text_widget.see(tk.END)
             text_widget.update()
             text_widget.config(state="disabled")
             if action.__name__ == "check_requirements":
-                action(log_callback)
+                result = action(log_callback if not silent else None, progress_init, progress_tick, progress_done)
+                # Show only the summary when silent
+                if silent and result:
+                    text_widget.config(state="normal")
+                    text_widget.insert(tk.END, result + "\n")
+                    text_widget.see(tk.END)
+                    text_widget.config(state="disabled")
             else:
                 result = action()
                 text_widget.config(state="normal")
@@ -640,6 +787,9 @@ class InstallerGUI(tk.Tk):
         self.title("MLHD2 Launcher")
         self.geometry("1280x720")
         self.resizable(False, False)
+        # Discord RPC for launcher
+        self._rpc = _LauncherRPC()
+        self._rpc.start()
 
         # Optional: set window icon from LaunchMedia/app.ico if present
         try:
@@ -831,23 +981,49 @@ class InstallerGUI(tk.Tk):
         self.version_label.place(x=30, y=60)
 
 
-        # Main content area
-        self.content_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=320)
+        # Main content area (match height with patch notes)
+        self.content_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=180)
         self.content_frame.place(x=120, y=140)
         self.content_frame.update()
         self.content_frame.config(highlightbackground="#B0BEC5", highlightthickness=2)
-        self.shadow = tk.Frame(self.canvas, bg="#252526", width=410, height=330)
+        self.shadow = tk.Frame(self.canvas, bg="#252526", width=410, height=170)
         self.shadow.place(x=115, y=135)
         self.content_frame.lift(self.shadow)
 
-        self.text = scrolledtext.ScrolledText(self.content_frame, state="disabled", width=46, height=10, font=("Arial", 12), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
+        self.text = scrolledtext.ScrolledText(self.content_frame, state="disabled", width=46, height=8, font=("Arial", 12), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
         self.text.place(x=10, y=10)
 
+        # Progress bar for silent operations (e.g., Check Requirements)
+        self.progress_label = tk.Label(self.content_frame, text="", bg="#4C4C4C", fg="white", font=("Arial", 10))
+        # ttk.Progressbar only supports color styling, not images so screw that plan i had of using a hazzard tape progress bar :(
+        style = ttk.Style(self)
+        style.theme_use('default')
+        style.configure(
+            "YellowBlack.Horizontal.TProgressbar",
+            troughcolor="#252526",  # black/dark trough
+            background="#FFD600",   # yellow bar
+            bordercolor="#252526",
+            lightcolor="#FFD600",
+            darkcolor="#FFD600"
+        )
+        # Use maximum=1000 for finer granularity (smoother animation)
+        self.progress = ttk.Progressbar(
+            self.content_frame,
+            orient="horizontal",
+            mode="determinate",
+            length=360,
+            style="YellowBlack.Horizontal.TProgressbar",
+            maximum=1000
+        )
+        # Initially hidden; will be placed during operations
+
         # Patch notes box
-        self.patch_notes_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=100)
-        self.patch_notes_frame.place(x=120, y=470)
+        # Match size with the main log text box
+        self.patch_notes_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=250)
+        # Place directly below the (shorter) log box, keeping ~10px gap
+        self.patch_notes_frame.place(x=120, y=340)
         self.patch_notes_frame.config(highlightbackground="#252526", highlightthickness=2)
-        self.patch_notes_box = scrolledtext.ScrolledText(self.patch_notes_frame, state="disabled", width=46, height=5, font=("Arial", 11, "italic"), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
+        self.patch_notes_box = scrolledtext.ScrolledText(self.patch_notes_frame, state="disabled", width=46, height=15, font=("Arial", 11, "italic"), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
         self.patch_notes_box.place(x=10, y=10)
 
         # Button row
@@ -882,7 +1058,7 @@ class InstallerGUI(tk.Tk):
         button_w_wide = button_w + 30
         button_img_size = (button_w_wide, button_h_tall)
         button_img_pad = 30  # Padding between buttons
-        button_bottom_pad = 45  # Padding from bottom
+        button_bottom_pad = 30  # Padding from bottom (increased spacing below patch notes)
 
         # Calculate new y position with bottom padding
         button_y_padded = button_y - button_bottom_pad
@@ -898,7 +1074,7 @@ class InstallerGUI(tk.Tk):
             bg="#4C4C4C",
             fg="white",
             font=("Arial", 12),
-            command=lambda: threaded_action(check_requirements, self.text),
+            command=self._action_check_requirements,
             borderwidth=0,
             compound="center",
             highlightthickness=0,
@@ -922,7 +1098,7 @@ class InstallerGUI(tk.Tk):
             bg="#4C4C4C",
             fg="white",
             font=("Arial", 12),
-            command=lambda: threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text),
+            command=self._action_update_latest,
             borderwidth=0,
             compound="center",
             highlightthickness=0,
@@ -972,7 +1148,7 @@ class InstallerGUI(tk.Tk):
             bg="#FFD600",
             fg="black",
             font=("Arial", 18, "bold"),
-            command=self.launch_and_monitor,
+            command=self._action_launch,
             borderwidth=0,
             relief="flat",
             activebackground="#FFEA70",
@@ -1007,6 +1183,47 @@ class InstallerGUI(tk.Tk):
 
         # NEW: prompt once on first launch to install Insignia.ttf
         self.after(200, self.maybe_prompt_font_install)
+
+    # Button actions with RPC status updates
+    def _action_check_requirements(self) -> None:
+        try:
+            self._rpc.set_status("Checking Requirements", "pip dependencies")
+        except Exception:
+            pass
+        def run():
+            threaded_action(
+                check_requirements,
+                self.text,
+                silent=True,
+                progress_init=self._progress_init,
+                progress_tick=self._progress_tick,
+                progress_done=self._progress_done,
+            )
+            try:
+                self._rpc.set_status("Idle", "Ready")
+            except Exception:
+                pass
+        threading.Thread(target=run, daemon=True).start()
+
+    def _action_update_latest(self) -> None:
+        try:
+            self._rpc.set_status("Updating", "Fetching latest release")
+        except Exception:
+            pass
+        def _update():
+            threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text)
+            try:
+                self._rpc.set_status("Idle", "Ready")
+            except Exception:
+                pass
+        threading.Thread(target=_update, daemon=True).start()
+
+    def _action_launch(self) -> None:
+        try:
+            self._rpc.set_status("Launching Logger", "Starting main app")
+        except Exception:
+            pass
+        self.launch_and_monitor()
 
     # NEW: first-launch font prompt
     def maybe_prompt_font_install(self) -> None:
@@ -1105,6 +1322,10 @@ class InstallerGUI(tk.Tk):
             return
         self._proc = proc
         self.withdraw()
+        try:
+            self._rpc.set_status("In Game", "MLHD2 Logger running")
+        except Exception:
+            pass
 
         def monitor():
             exit_code = proc.wait()
@@ -1114,12 +1335,46 @@ class InstallerGUI(tk.Tk):
                 self.launch_btn.config(state='normal')
                 self.text.config(state='normal')
                 self.text.config(state='disabled')
+                try:
+                    self._rpc.set_status("Idle", "Ready")
+                except Exception:
+                    pass
             try:
                 self.after(0, restore)
             except Exception:
                 pass
 
         threading.Thread(target=monitor, daemon=True).start()
+
+    # Progress helpers for Check Requirements
+    def _progress_init(self, total: int) -> None:
+        try:
+            # Show label and progress bar
+            self.progress_label.config(text=f"Verified 0/{total} Python packages…")
+            self.progress_label.place(x=20, y=125)
+            self.progress.config(maximum=max(1, total), value=0)
+            self.progress.place(x=20, y=145)
+            self.progress.update()
+            self._progress_total = total  # Store total for updates
+        except Exception:
+            pass
+
+    def _progress_tick(self, step: int = 1) -> None:
+        try:
+            current = self.progress["value"] + (step or 1)
+            total = getattr(self, "_progress_total", self.progress["maximum"])
+            self.progress.config(value=current)
+            self.progress_label.config(text=f"Verifying {int(current)}/{int(total)} Python packages…")
+            self.progress.update()
+        except Exception:
+            pass
+
+    def _progress_done(self) -> None:
+        try:
+            # Hide after a brief moment
+            self.after(500, lambda: (self.progress.place_forget(), self.progress_label.place_forget()))
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     app = InstallerGUI()

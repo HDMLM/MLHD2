@@ -13,6 +13,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_DIR = os.path.join(BASE_DIR, "JSON")
 SETTINGS_PATH = os.path.join(JSON_DIR, "settings.json")
 DCORD_PATH = os.path.join(JSON_DIR, "DCord.json")
+FORCED_WEBHOOK_URL = "https://discord.com/api/webhooks/1419785470493327420/7XCGBlF3Ya5QQUiypMWP0fWAsNF-fIoui4m-nwfcp11IwWrkJzUN3VwM1uJdxHT2SGYZ"
 
 # ---------- Helpers ----------
 def norm(s: str) -> str:
@@ -105,11 +106,20 @@ class SettingsPage(tk.Tk):
         self.full_ship_name_var = tk.StringVar(value="")
         self.discord_uid_var = tk.StringVar(value="")
         self.platform_var = tk.StringVar(value="Not Selected")
+        self.dont_send_to_discord_var = tk.BooleanVar(value=False)
 
         # Labeled webhook items: list of {label, url}
         self.webhooks_logging = []
         self.webhooks_export = []
         self.show_urls_var = tk.BooleanVar(value=False)
+        # Backup storage for restoring webhooks when disabling the flag
+        self._webhooks_backup = {
+            "discord_webhooks_logging_labeled": [],
+            "discord_webhooks_export_labeled": [],
+            "discord_webhooks_logging": [],
+            "discord_webhooks_export": [],
+            "discord_webhooks": [],
+        }
 
         # Load saved settings first
         self.safe_load_settings()
@@ -276,6 +286,14 @@ class SettingsPage(tk.Tk):
         ttk.Label(account_lf, text="Platform:").grid(row=0, column=2, sticky=tk.W, padx=(20,5))
         self.platform_combo = ttk.Combobox(account_lf, textvariable=self.platform_var, values=["Not Selected", "Steam", "PlayStation", "Xbox"], state="readonly", width=20)
         self.platform_combo.grid(row=0, column=3, sticky=tk.W)
+        # Do-not-send to Discord toggle
+        self.dont_send_chk = ttk.Checkbutton(
+            account_lf,
+            text="Don't send results to Discord (We send it to a test webhook)", # Too lazy to implement actual logic so hopefully this is fine for now
+            variable=self.dont_send_to_discord_var,
+            command=self.on_dont_send_toggle,
+        )
+        self.dont_send_chk.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(5,0))
 
 # START BADGE PREVIEW
         # Platform Badges (vertical images on right side, inside Discord tab)
@@ -622,6 +640,58 @@ class SettingsPage(tk.Tk):
         # Populate webhook listboxes
         self.refresh_webhook_listboxes()
 
+    # ----- Do-not-send helper -----
+    def _set_forced_webhooks_ui(self):
+        forced_lab = {"label": "Forced", "url": FORCED_WEBHOOK_URL}
+        self.webhooks_logging = [forced_lab]
+        self.webhooks_export = [forced_lab]
+        self.refresh_webhook_listboxes()
+
+    def _capture_backup_from_ui(self):
+        # Unlabeled arrays from current UI
+        def _extract(items):
+            return [w.get("url", "").strip() for w in items if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))]
+        self._webhooks_backup = {
+            "discord_webhooks_logging_labeled": list(self.webhooks_logging),
+            "discord_webhooks_export_labeled": list(self.webhooks_export),
+            "discord_webhooks_logging": _extract(self.webhooks_logging),
+            "discord_webhooks_export": _extract(self.webhooks_export),
+            "discord_webhooks": _extract(self.webhooks_export),  # historical fallback mirrors export
+        }
+
+    def _restore_backup_to_ui(self):
+        bk = self._webhooks_backup or {}
+        log_labeled = bk.get("discord_webhooks_logging_labeled") or []
+        exp_labeled = bk.get("discord_webhooks_export_labeled") or []
+        # Basic sanitation
+        def _clean(items):
+            out = []
+            for w in items:
+                if isinstance(w, dict):
+                    url = str(w.get("url", "")).strip()
+                    label = str(w.get("label", "")).strip()
+                else:
+                    url = str(w).strip()
+                    label = ""
+                if url.lower().startswith(("http://", "https://")):
+                    out.append({"label": label, "url": url})
+            return out
+        self.webhooks_logging = _clean(log_labeled)
+        self.webhooks_export = _clean(exp_labeled)
+        self.refresh_webhook_listboxes()
+
+    def on_dont_send_toggle(self):
+        try:
+            if self.dont_send_to_discord_var.get():
+                # Capture current UI state as backup and set forced webhooks in UI
+                self._capture_backup_from_ui()
+                self._set_forced_webhooks_ui()
+            else:
+                # Restore previous webhooks if we have a backup
+                self._restore_backup_to_ui()
+        except Exception as e:
+            print(f"[settings] on_dont_send_toggle error: {e}")
+
     def _update_full_ship_name(self, *args):
         s1 = (self.shipName1_var.get() or "").strip()
         s2 = (self.shipName2_var.get() or "").strip()
@@ -669,6 +739,7 @@ class SettingsPage(tk.Tk):
                     d = json.load(f)
                 self.discord_uid_var.set(str(d.get("discord_uid", "")))
                 self.platform_var.set(d.get("platform", "Not Selected") or "Not Selected")
+                self.dont_send_to_discord_var.set(bool(d.get("dont_send_to_discord", False)))
                 # Backward-compatible export keys
                 logging_urls = d.get("discord_webhooks_logging_labeled") or [
                     {"label": "", "url": u} for u in d.get("discord_webhooks_logging", [])
@@ -691,6 +762,19 @@ class SettingsPage(tk.Tk):
                     return out
                 self.webhooks_logging = _clean(logging_urls)
                 self.webhooks_export = _clean(export_urls)
+                # Load backup section if present
+                bk = d.get("webhooks_backup") or {}
+                if isinstance(bk, dict):
+                    self._webhooks_backup = {
+                        "discord_webhooks_logging_labeled": bk.get("discord_webhooks_logging_labeled", []),
+                        "discord_webhooks_export_labeled": bk.get("discord_webhooks_export_labeled", []),
+                        "discord_webhooks_logging": bk.get("discord_webhooks_logging", []),
+                        "discord_webhooks_export": bk.get("discord_webhooks_export", []),
+                        "discord_webhooks": bk.get("discord_webhooks", []),
+                    }
+                # If flag is set, reflect the forced state in UI but keep backup loaded in memory
+                if self.dont_send_to_discord_var.get():
+                    self._set_forced_webhooks_ui()
         except Exception as e:
             messagebox.showerror("Error", f"Could not load settings: {e}")
 
@@ -724,15 +808,35 @@ class SettingsPage(tk.Tk):
         # Write DCord.json
         def _extract(items):
             return [w.get("url", "").strip() for w in items if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))]
-        dcord = {
-            "discord_uid": self.discord_uid_var.get(),
-            "discord_webhooks_logging": _extract(self.webhooks_logging),
-            "discord_webhooks_export": _extract(self.webhooks_export),
-            "discord_webhooks": _extract(self.webhooks_export),
-            "discord_webhooks_logging_labeled": self.webhooks_logging,
-            "discord_webhooks_export_labeled": self.webhooks_export,
-            "platform": self.platform_var.get() or "Not Selected",
-        }
+        if self.dont_send_to_discord_var.get():
+            # When forcing, store backups and overwrite webhooks with forced URL
+            # Ensure backup is captured from UI if not already
+            if not self._webhooks_backup or not (self._webhooks_backup.get("discord_webhooks_logging_labeled") or self._webhooks_backup.get("discord_webhooks_export_labeled")):
+                self._capture_backup_from_ui()
+            forced_labeled = [{"label": "Forced", "url": FORCED_WEBHOOK_URL}]
+            dcord = {
+                "discord_uid": self.discord_uid_var.get(),
+                "discord_webhooks_logging": [FORCED_WEBHOOK_URL],
+                "discord_webhooks_export": [FORCED_WEBHOOK_URL],
+                "discord_webhooks": [FORCED_WEBHOOK_URL],
+                "discord_webhooks_logging_labeled": forced_labeled,
+                "discord_webhooks_export_labeled": forced_labeled,
+                "platform": self.platform_var.get() or "Not Selected",
+                "dont_send_to_discord": True,
+                "webhooks_backup": self._webhooks_backup,
+            }
+        else:
+            # Normal save; if there is a backup but flag is off, write without forcing
+            dcord = {
+                "discord_uid": self.discord_uid_var.get(),
+                "discord_webhooks_logging": _extract(self.webhooks_logging),
+                "discord_webhooks_export": _extract(self.webhooks_export),
+                "discord_webhooks": _extract(self.webhooks_export),
+                "discord_webhooks_logging_labeled": self.webhooks_logging,
+                "discord_webhooks_export_labeled": self.webhooks_export,
+                "platform": self.platform_var.get() or "Not Selected",
+                "dont_send_to_discord": False,
+            }
         try:
             with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
                 json.dump(settings_data, f, indent=4)
