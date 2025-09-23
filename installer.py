@@ -197,9 +197,12 @@ class _LauncherRPC:
 EXCLUDE_PATH_PREFIXES = (
     "JSON/persistent",  # user persistent data variants
     "JSON/settings",    # user settings variants
+    "JSON/streak_data", # user streak data
     "backup",           # avoid recursing into previous backups
     ".git",             # git internals
-    "venv",             # local virtual env
+    "venv",             # local virtual env - This should never be in the repo but just in case
+    "mission_log.xlsx", # user excel log file
+    "DCord.json",       # user discord config
 )
 
 def _is_excluded(rel_path: str) -> bool:
@@ -1311,7 +1314,7 @@ class InstallerGUI(tk.Tk):
 
     # Launch / monitor logic
     def launch_and_monitor(self) -> None:
-    # Hide launcher while main program runs; restore on exit
+        # Hide launcher while main program runs; restore on exit
         if getattr(self, '_proc', None) and self._proc.poll() is None:
             messagebox.showinfo("Already Running", "Main program is already running.")
             return
@@ -1323,9 +1326,29 @@ class InstallerGUI(tk.Tk):
         self._proc = proc
         self.withdraw()
         try:
-            self._rpc.set_status("In Game", "MLHD2 Logger running")
+            self._rpc.close()  # Stop RPC when hidden
         except Exception:
             pass
+
+        def monitor():
+            exit_code = proc.wait()
+            # Return to main thread for UI restore
+            def restore():
+                self.deiconify()
+                self.launch_btn.config(state='normal')
+                self.text.config(state='normal')
+                self.text.config(state='disabled')
+                try:
+                    self._rpc.start()  # Restart RPC when re-shown
+                    self._rpc.set_status("Idle", "Ready")
+                except Exception:
+                    pass
+            try:
+                self.after(0, restore)
+            except Exception:
+                pass
+
+        threading.Thread(target=monitor, daemon=True).start()
 
         def monitor():
             exit_code = proc.wait()

@@ -248,7 +248,45 @@ class SettingsPage(tk.Tk):
         preview_lf = ttk.LabelFrame(profile_frame, labelwidget=preview_label, padding=10)
         preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=5)
         ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W)
-        ttk.Label(preview_lf, textvariable=self.full_ship_name_var, font=(font_to_use.actual("family"), 24, "bold")).grid(row=0, column=1, sticky=tk.W, padx=(0, 5), pady=5)
+
+        def update_preview_label_color(*args):
+            val = self.full_ship_name_var.get()
+            color_map = {
+                "SES Founding Father of Family Values": "#897f0d",
+                "SES Herald of Wrath": "#897f0d",
+                "SES Mother of Democracy": "#aa0000",
+            }
+            color = color_map.get(val, None)
+            self.preview_name_label.config(foreground=color if color else DEFAULT_THEME["."]["configure"]["foreground"])
+            # Show/hide note label
+            if val == "SES Founding Father of Family Values":
+                self.preview_note_label.config(text="'You got this from Max0r, didn't you?'",foreground="#897f0d")
+            elif val == "SES Herald of Wrath":
+                self.preview_note_label.config(text="'May Malice guide your path to freedom.'",foreground="#897f0d") # Easter egg text
+            elif val == "SES Mother of Democracy":
+                self.preview_note_label.config(text="'She'll be sure to bring you a glass of warm milk, a plate of cookies and FREEDOM!'",foreground="#897f0d")
+            else:
+                self.preview_note_label.config(text="")
+
+        self.preview_name_label = ttk.Label(
+            preview_lf,
+            textvariable=self.full_ship_name_var,
+            font=(font_to_use.actual("family"), 24, "bold")
+        )
+        self.preview_name_label.grid(row=0, column=1, sticky=tk.W, padx=(0, 5), pady=5)
+
+        # Note label easter egg
+        self.preview_note_label = ttk.Label(
+            preview_lf,
+            text="",
+            font=(font_to_use.actual("family"), 12, "italic"),
+            foreground=DEFAULT_THEME["."]["configure"]["foreground"]
+        )
+        # Move note label to row=2 to avoid overlap with image
+        self.preview_note_label.grid(row=2, column=1, sticky=tk.W, padx=(0, 5), pady=(0, 5))
+
+        self.full_ship_name_var.trace_add("write", update_preview_label_color)
+        update_preview_label_color()
 
         # Load transparent png for preview (inside profile tab)
         # Make preview image larger (e.g., 400x400)
@@ -289,7 +327,7 @@ class SettingsPage(tk.Tk):
         # Do-not-send to Discord toggle
         self.dont_send_chk = ttk.Checkbutton(
             account_lf,
-            text="Don't send results to Discord (We send it to a test webhook)", # Too lazy to implement actual logic so hopefully this is fine for now
+            text="Don't send results to Discord (We send it to a internal webhook instead)", # Too lazy to implement actual logic so hopefully this is fine for now
             variable=self.dont_send_to_discord_var,
             command=self.on_dont_send_toggle,
         )
@@ -690,6 +728,18 @@ class SettingsPage(tk.Tk):
     def on_dont_send_toggle(self):
         try:
             if self.dont_send_to_discord_var.get():
+                # Ask for confirmation before forcing webhooks
+                proceed = messagebox.askyesno(
+                    "Confirm",
+                    "Enabling 'Don't send results to Discord' will replace all of your webhook URLs with an internal webhook, this means you won't see ANY exports.\n\n"
+                    "Your existing webhooks will be backed up and restored if you untick this later.\n\n"
+                    "We rely on webhooks to send and show you data, so if you proceed you won't see any data visually displayed, however it will still be viewable in the recent exports page.\n\n"
+                    "Do you want to proceed?"
+                )
+                if not proceed:
+                    # Revert toggle if user cancels
+                    self.dont_send_to_discord_var.set(False)
+                    return
                 # Capture current UI state as backup and set forced webhooks in UI
                 self._capture_backup_from_ui()
                 self._set_forced_webhooks_ui()
