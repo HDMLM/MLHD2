@@ -61,10 +61,13 @@ PLANET_ICONS = {
     "Erson Sands": iconconfig['PlanetIcons']['Gloom'],
     "Nivel 43": iconconfig['PlanetIcons']['Gloom'],
     "Zagon Prime": iconconfig['PlanetIcons']['Gloom'],
-    "Hellmire": iconconfig['PlanetIcons']['Gloom'],
+    "Hellmire": iconconfig['PlanetIcons']['Hellmire'],
     "Omicron": iconconfig['PlanetIcons']['Gloom'],
-    "Oshaune": iconconfig['PlanetIcons']['Gloom'],
+    "Oshaune": iconconfig['PlanetIcons']['Hive World'],
     "Fori Prime": iconconfig['PlanetIcons']['Gloom'],
+    "Socorro III": iconconfig['PlanetIcons']['Gloom'],
+    "Esker": iconconfig['PlanetIcons']['Gloom'],
+    "Overgoe Prime": iconconfig['PlanetIcons']['Gloom'],
     "Aurora Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Widow's Harbor": iconconfig['PlanetIcons']['Free Springs Retreat'],
@@ -77,10 +80,15 @@ PLANET_ICONS = {
     "Tarsh": iconconfig['PlanetIcons']['Governmental'],
     "Claorell": iconconfig['PlanetIcons']['Hammer'],
     "Achernar Secundus": iconconfig['PlanetIcons']['Hammer'],
+    "Mintoria": iconconfig['PlanetIcons']['Hammer'],
     "Turing": iconconfig['PlanetIcons']['Science'],
     "Emeria": iconconfig['PlanetIcons']['Governmental'],
     "Fort Union": iconconfig['PlanetIcons']['Governmental'],
     "Fort Sanctuary": iconconfig['PlanetIcons']['Governmental'],
+    "Alamak VII": iconconfig['PlanetIcons']['Illuminate Stronghold'],
+    "Alairt III": iconconfig['PlanetIcons']['Illuminate Stronghold'],
+    "Wasat": iconconfig['PlanetIcons']['Database One'],
+    "Pöpli IX": iconconfig['PlanetIcons']['Popli IX'],
 }
 
 
@@ -439,6 +447,7 @@ HVT_ICONS = {
 }
 
 DSS_ICONS = {
+    "Inactive": iconconfig['MiscIcon']['Inactive'],
     "Eagle Storm": iconconfig['MiscIcon']['Eagle Storm'],
     "Orbital Blockade": iconconfig['MiscIcon']['Orbital Blockade'],
     "Heavy Ordnance Distribution": iconconfig['MiscIcon']['Heavy Ordnance Distribution'],
