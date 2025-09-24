@@ -2337,6 +2337,27 @@ class MissionLogGUI:
             logging.error(f"Failed to refresh planet / mega city lists after settings load: {e}")
 
 if __name__ == "__main__":
+    # Efficiently validate Discord ID and Platform before launching GUI
+    try:
+        with open('./JSON/DCord.json', 'r') as f:
+            settings_data = json.load(f)
+        discord_uid = settings_data.get('discord_uid', '0')
+        platform = settings_data.get('platform', "Not Selected")
+        if not (re.match(r'^\d{17,19}$', discord_uid) or (DEBUG and discord_uid == '0')):
+            logging.error("Please set a valid Discord ID in the settings.py file")
+            messagebox.showerror("Error", "Please set a valid Discord ID in the settings.py file")
+            subprocess.run(['python', 'settings.py'])
+            os._exit(1)
+        if platform == "Not Selected":
+            logging.error("Please set a valid Platform in settings.py")
+            messagebox.showerror("Error", "Please set a valid Platform in settings.py")
+            subprocess.run(['python', 'settings.py'])
+            os._exit(1)
+    except (FileNotFoundError, json.JSONDecodeError) as e:
+        logging.error(f"Error loading DCord.json: {e}")
+        messagebox.showerror("Error", f"Error loading DCord.json: {e}")
+        os._exit(1)
+
     root = tk.Tk()
     app = MissionLogGUI(root)
     root.mainloop()

@@ -210,6 +210,77 @@ def _is_excluded(rel_path: str) -> bool:
     normalized = rel_path.replace("\\", "/").lstrip("./")
     return any(normalized.startswith(pref) for pref in EXCLUDE_PATH_PREFIXES)
 
+# NEW: validate files/dirs against LaunchMedia/FStruct.json
+def _validate_files_against_fstruct() -> Tuple[int, int, int, List[str], List[str]]:
+    """
+    Returns:
+      total_expected (int): total expected entries (files+dirs, required only)
+      missing_required (int)
+      missing_optional (int)
+      missing_required_list (List[str])  relative paths
+      missing_optional_list (List[str])  relative paths
+    """
+    try:
+        import json
+        # Locate FStruct.json (prefer bundled, fallback to app dir)
+        candidates = [
+            resource_path("LaunchMedia", "FStruct.json"),
+            app_path("LaunchMedia", "FStruct.json"),
+            app_path("FStruct.json"),
+        ]
+        fstruct_path = next((p for p in candidates if os.path.exists(p)), "")
+        if not fstruct_path:
+            return -1, 0, 0, [], []  # not found; signal skipped
+
+        with open(fstruct_path, "r", encoding="utf-8") as f:
+            spec = json.load(f)
+
+        # Flatten tree (ignore the root name and start from its children)
+        required: List[Tuple[str, str]] = []  # (type, relpath)
+        optional: List[Tuple[str, str]] = []  # (type, relpath)
+
+        def is_optional(node_type: str, name: str, rel_path: str) -> bool:
+            # Treat data files and dotfiles as optional; adjust if needed
+            if node_type == "data":
+                return True
+            if os.path.basename(name).startswith("."):
+                return True
+            return False
+
+        def walk(children: List[Dict[str, Any]], base: str = "") -> None:
+            for ch in children or []:
+                t = ch.get("type", "")
+                n = ch.get("name", "")
+                if not n:
+                    # Skip anonymous container nodes; recurse into their children at same base
+                    sub = ch.get("children", [])
+                    if sub:
+                        walk(sub, base)
+                    continue
+                rel = os.path.normpath(os.path.join(base, n))
+                if t == "dir":
+                    (optional if is_optional(t, n, rel) else required).append(("dir", rel))
+                    walk(ch.get("children", []), rel)
+                else:
+                    (optional if is_optional(t, n, rel) else required).append(("file", rel))
+
+        walk(spec.get("children", []), "")
+
+        def exists(entry_type: str, rel: str) -> bool:
+            full = os.path.join(str(APP_DIR), rel)
+            if entry_type == "dir":
+                return os.path.isdir(full)
+            return os.path.isfile(full)
+
+        missing_req = [rel for (t, rel) in required if not exists(t, rel)]
+        missing_opt = [rel for (t, rel) in optional if not exists(t, rel)]
+
+        return len(required), len(missing_req), len(missing_opt), missing_req, missing_opt
+    except Exception:
+        # On any error, don't block normal flow
+        return -1, 0, 0, [], []
+
+
 _VERSION_REGEX = re.compile(r'^\s*VERSION\s*=\s*["\']([^"\']+)["\']')
 
 
@@ -458,6 +529,7 @@ def check_requirements(
 ) -> str:
     # Ensure packages in requirements.txt are installed and report per-package status
     output: List[str] = []
+    progress_initialized = False
 
     def log(line: str) -> None:
         # Word wrap at 80 chars for better display
@@ -585,12 +657,14 @@ def check_requirements(
             else:
                 parsed_reqs.append((req.strip(), None))
 
-        total = len(parsed_reqs)
+        # Add one extra step for file validation
+        total = len(parsed_reqs) + 1
         if progress_init:
             try:
                 progress_init(total)
+                progress_initialized = True
             except Exception:
-                pass
+                progress_initialized = False
         for idx, (pkg, pinned) in enumerate(parsed_reqs, start=1):
             if not pkg:
                 continue
@@ -652,7 +726,45 @@ def check_requirements(
                     pass
     except Exception as e:
         log(f"Error reading requirements: {e}")
+
+    # NEW: Validate files/dirs using FStruct.json
+    try:
+        # If we never initialized the progress bar due to an early error, initialize with a single step for file check
+        if not progress_initialized and progress_init:
+            try:
+                progress_init(1)
+                progress_initialized = True
+            except Exception:
+                pass
+        log("")
+        log("Validating files against LaunchMedia/FStruct.json ...")
+        total_expected, miss_req, miss_opt, miss_req_list, miss_opt_list = _validate_files_against_fstruct()
+        if total_expected == -1:
+            log("Files: FStruct.json not found. Skipped file validation.")
+        else:
+            if miss_req == 0 and miss_opt == 0:
+                log("Files: All files present.")
+            elif miss_req == 0:
+                log(f"Files: OK (0 missing required). Optional missing: {miss_opt}")
+                # List a few optional misses for visibility
+                for p in miss_opt_list[:10]:
+                    log(f"  - missing optional: {p}")
+            else:
+                log(f"Files: {miss_req} missing required file(s). Optional missing: {miss_opt}")
+                for p in miss_req_list[:15]:
+                    log(f"  - MISSING: {p}")
+                # Show a few optional too
+                for p in miss_opt_list[:5]:
+                    log(f"  - missing optional: {p}")
+    except Exception as e:
+        log(f"Files: Validation error: {e}")
     finally:
+        if progress_tick:
+            try:
+                # Count the file validation as one progress step
+                progress_tick(1)
+            except Exception:
+                pass
         if progress_done:
             try:
                 progress_done()
@@ -670,10 +782,19 @@ def check_requirements(
         log("Summary: All requirements satisfied.")
     if updated_count or installed_count:
         log(f"Actions: {installed_count} installed, {updated_count} updated.")
+
     # Only return the summary for the version box, not the full log
     summary_lines = []
     for line in output:
-        if line.startswith("Summary:") or line.startswith("Actions:") or line.startswith("Error reading requirements:"):
+        if (
+            line.startswith("Summary:")
+            or line.startswith("Actions:")
+            or line.startswith("Error reading requirements:")
+            or line.startswith("Files:")            # NEW: include file validation in silent summary
+        ):
+            summary_lines.append(line)
+        elif line.strip().startswith("- MISSING:") or line.strip().startswith("- missing optional:"):
+            # Include detailed missing entries in silent summary
             summary_lines.append(line)
     return "\n".join(summary_lines) if summary_lines else "\n".join(output[-10:])
 
