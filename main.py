@@ -249,50 +249,6 @@ class MissionLogGUI:
             self.submit_label.image = self.submit_img_default
             self._submit_img_state = self.submit_img_default
 
-    def create_tooltip(self, widget, text):
-        def enter(event):
-            # Create tooltip window
-            tooltip = tk.Toplevel(widget)
-            tooltip.wm_overrideredirect(True)  # Remove window decorations
-
-            # Create a hidden label to measure the wrapped size
-            # Check if widget supports 'font' option
-            font_value = None
-            if "font" in widget.keys():
-                font_value = widget.cget("font")
-            test_label = tk.Label(
-                widget,
-                text=text,
-                font=font_value,
-                wraplength=400,
-            )
-            test_label.update_idletasks()
-            test_label.pack_forget()
-            test_label.update_idletasks()
-            width = test_label.winfo_reqwidth()
-            height = test_label.winfo_reqheight()
-            test_label.destroy()
-
-            tooltip.wm_geometry(f"+{event.x_root+15}+{event.y_root+10}")
-
-            # Create label with calculated width
-            label = tk.Label(
-                tooltip,
-                text=text,
-                justify=tk.LEFT,
-                bg="#252526",  # Match your app background
-                fg="#FFFFFF",  # Match your app foreground
-                relief="solid",
-                borderwidth=0,
-                wraplength=width
-            )
-            label.pack(ipadx=8, ipady=4)
-
-            tooltip.update_idletasks()
-            tooltip.geometry(f"{width}x{height}+{event.x_root+15}+{event.y_root+10}")
-
-            widget.tooltip = tooltip
-
         def leave(event):
             if hasattr(widget, 'tooltip'):
                 widget.tooltip.destroy()
@@ -990,6 +946,9 @@ class MissionLogGUI:
         # Create a dedicated frame for setting and invite buttons to avoid affecting grid row height
         button_icon_frame = ttk.Frame(mission_frame)
         button_icon_frame.grid(row=0, column=7, padx=(0,10), pady=(0,10), sticky=tk.NE,rowspan=7)
+        # Top row to place Settings (kept inside) and a separate root-level info button
+        top_buttons_row = ttk.Frame(button_icon_frame)
+        top_buttons_row.pack(side=tk.TOP, pady=(10,8), padx=(10,0))
         # Settings button with hover effect
         try:
             def load_settings_btn_img(path):
@@ -1004,13 +963,13 @@ class MissionLogGUI:
             self.settings_btn_img_hover = load_settings_btn_img("./media/SyInt/SettingsButtonHover.png")
 
             self.settings_btn_label = tk.Label(
-                button_icon_frame,
+                top_buttons_row,
                 image=self.settings_btn_img_default,
                 borderwidth=0,
                 highlightthickness=0,
                 cursor="hand2"
             )
-            self.settings_btn_label.pack(side=tk.TOP, pady=(10,8), padx=(10,0))
+            self.settings_btn_label.pack(side=tk.LEFT, pady=0, padx=(0,6))
 
             def on_settings_btn_enter(e):
                 self.settings_btn_label.configure(image=self.settings_btn_img_hover)
@@ -1022,9 +981,68 @@ class MissionLogGUI:
             self.settings_btn_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'settings.py', '-ML']))
         except Exception as e:
             logging.error(f"Failed to load settings button image: {e}")
-            fallback_label = tk.Label(button_icon_frame, text="Settings", cursor="hand2")
-            fallback_label.pack(side=tk.TOP, pady=(10,8), padx=(10,0))
+            fallback_label = tk.Label(top_buttons_row, text="Settings", cursor="hand2")
+            fallback_label.pack(side=tk.LEFT, pady=0, padx=(0,6))
             fallback_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'settings.py']))
+
+        # Info (Help) button with hover effect, placed OUTSIDE frames at root top-right and smaller
+        try:
+            # Create a root-level overlay frame for the info button
+            self.top_right_info_frame = ttk.Frame(self.root)
+            # Anchor to top-right, adjust x/y padding as needed
+            self.top_right_info_frame.place(relx=1.0, rely=0.0, anchor="ne", x=-8, y=8)
+
+            def load_help_btn_img(path):
+                pil_img = Image.open(path).convert('RGBA')
+                # Smaller than other icons
+                pil_img = pil_img.resize((max(12, pil_img.width // 6), max(12, pil_img.height // 6)), Image.LANCZOS)
+                bg_color = (37, 37, 38, 255)
+                background = Image.new('RGBA', pil_img.size, bg_color)
+                pil_img = Image.alpha_composite(background, pil_img)
+                return ImageTk.PhotoImage(pil_img)
+
+            self.help_btn_img_default = load_help_btn_img("./media/SyInt/HelpButton.png")
+            self.help_btn_img_hover = load_help_btn_img("./media/SyInt/HelpButtonHover.png")
+
+            self.help_btn_label = tk.Label(
+            self.top_right_info_frame,
+            image=self.help_btn_img_default,
+            borderwidth=0,
+            highlightthickness=0,
+            cursor="hand2"
+            )
+            self.help_btn_label.pack(side=tk.LEFT, pady=0, padx=0)
+
+            def on_help_btn_enter(e):
+                self.help_btn_label.configure(image=self.help_btn_img_hover)
+            def on_help_btn_leave(e):
+                self.help_btn_label.configure(image=self.help_btn_img_default)
+
+            self.help_btn_label.bind("<Enter>", on_help_btn_enter)
+            self.help_btn_label.bind("<Leave>", on_help_btn_leave)
+
+            def show_sector_placeholder_window():
+                # Create a new top-level window
+                win = tk.Toplevel(self.root)
+                win.title("Sector Placeholder")
+                win.resizable(False, False)
+                # Load the image
+                try:
+                    pil_img = Image.open("sector-placeholder.png").convert('RGBA')
+                    img = ImageTk.PhotoImage(pil_img)
+                    lbl = tk.Label(win, image=img)
+                    lbl.image = img  # Keep reference
+                    lbl.pack(padx=10, pady=10)
+                except Exception as e:
+                    lbl = tk.Label(win, text="Failed to load image")
+                    lbl.pack(padx=10, pady=10)
+
+            self.help_btn_label.bind("<Button-1>", lambda e: show_sector_placeholder_window())
+        except Exception as e:
+            logging.error(f"Failed to load help/info button image: {e}")
+            help_fallback = tk.Label(self.root, text="Info", cursor="hand2")
+            help_fallback.place(relx=1.0, rely=0.0, anchor="ne", x=-8, y=8)
+            help_fallback.bind("<Button-1>", lambda e: show_sector_placeholder_window())
 
         # Invite button with hover effect
         try:
@@ -1568,67 +1586,6 @@ class MissionLogGUI:
             export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'achievements.py']), padding=(6,5), width=16)
             export_button.grid(row=4, column=5, padx=(20,0), pady=15)
 
-        # --- Tooltips Section ---
-
-        # Tooltip for level entry
-        self.create_tooltip(self.root.nametowidget(mission_frame.grid_slaves(row=0, column=2)[0]), "Enter your Helldiver's current level (1-150)")
-
-        # Tooltip for title combobox
-        self.create_tooltip(self.title_combo, "Select your Helldiver's military title")
-
-        # Tooltip for profile picture combobox
-        self.create_tooltip(self.profile_picture_combo, "Select your Helldiver profile picture for the mission report")
-
-        # Tooltip for settings button
-        if hasattr(self, 'settings_btn_label'):
-            self.create_tooltip(self.settings_btn_label, "View and edit settings (Helldiver name, ship name, webhooks, etc.)")
-
-        # Tooltip for invite button
-        if hasattr(self, 'invite_btn_label'):
-            self.create_tooltip(self.invite_btn_label, "Join our Discord server for support, feedback, and updates!")
-
-        # Tooltip for enemy type combobox
-        self.create_tooltip(enemy_combo, "Select the enemy faction you're facing in combat")
-
-        # Tooltip for DSS modifier combobox
-        self.create_tooltip(self.dss_combo, "Select the active DSS (Democracy Space Station) modifier for the mission")
-
-        # Tooltip for enemy subfaction combobox
-        self.create_tooltip(subfaction_combo, "Select the specific enemy subfaction you're fighting")
-
-        # Tooltip for HVT combobox
-        self.create_tooltip(hvt_combo, "Select the High-Value Target enemy if present on this mission")
-
-        # Tooltip for campaign combobox
-        self.create_tooltip(mission_cat_combo, "Select the current campaign type for this mission")
-
-        # Tooltip for difficulty combobox
-        self.create_tooltip(difficulty_combo, "Select the mission difficulty rating (higher means more challenge and rewards)")
-
-        # Tooltip for mission type combobox
-        self.create_tooltip(mission_type_combo, "Select the specific mission type you're deploying on")
-
-        # Tooltip for mega city combobox
-        self.create_tooltip(mega_cities_combo, "Select the major settlement location on this planet if any exist")
-
-        # Tooltip for notes frame
-        self.create_tooltip(note_frame, "Add any additional notes or comments about the mission (max 512 characters)")
-
-        # Tooltip for performance rating combobox
-        self.create_tooltip(rating_combo, "Select your mission performance rating based on your overall success and contribution")
-
-        # Tooltip for planet preview frame
-        self.create_tooltip(planet_preview_frame, "Preview of the selected planet")
-
-        # Tooltip for sector preview frame
-        self.create_tooltip(sector_frame, "Preview of the selected sector, including faction indicator")
-
-        # Tooltip for sector combobox
-        self.create_tooltip(sector_combo, "Select the sector within the Galactic War Map you're deploying on.")
-
-        # Tooltip for planet combobox
-        self.create_tooltip(planet_combo, "Select the planet within the selected sector you're deploying on.")
-
         ###############################################################
         # END OF GUI SETUP
         ###############################################################
@@ -1900,6 +1857,30 @@ class MissionLogGUI:
 
     def _show_error(self, message: str) -> None:
         messagebox.showerror("Error", message)
+
+    def _open_info(self) -> None:
+        try:
+            readme_path = os.path.abspath("README.md")
+            if os.path.exists(readme_path):
+                webbrowser.open_new_tab(f"file:///{readme_path}")
+                return
+        except Exception as e:
+            logging.error(f"Failed to open README: {e}")
+
+        # Fallback: About dialog
+        try:
+            info_text = (
+                f"Helldiver Mission Log Manager\n"
+                f"Version: {VERSION}{DEV_RELEASE}\n\n"
+                "- Logs missions to Excel and Discord webhooks\n"
+                "- Use Settings (gear icon) to configure platform, webhooks, and names\n\n"
+                "Helpful links:\n"
+                "• Galactic War Map: https://helldiverscompanion.com/#map\n"
+                "• Project README (in repo root)\n"
+            )
+            messagebox.showinfo("About / Help", info_text)
+        except Exception as e:
+            logging.error(f"Failed to show info dialog: {e}")
 
     def _collect_mission_data(self) -> Dict:
     # Collect all mission data into a dictionary.
