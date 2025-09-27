@@ -439,6 +439,8 @@ SUBFACTION_ICONS = {
     "The Great Host": iconconfig['SubfactionIcons']['TheGreatHost'],
     "Rupture Strain": iconconfig['SubfactionIcons']['RuptureStrain'],
     "Dragonroach": iconconfig['SubfactionIcons']['Dragonroach'],
+    "Predator Strain & Dragonroach": iconconfig['SubfactionIcons']['PredatorStrainDragonroach'],
+    "Spore Burst Strain & Dragonroach": iconconfig['SubfactionIcons']['SporeBurstStrainDragonroach'],
     "Rupture Strain & Dragonroach": iconconfig['SubfactionIcons']['RuptureStrainDragonroach']
 }
 

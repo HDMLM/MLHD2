@@ -187,6 +187,8 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "The Great Host": "TheGreatHost",
         "Rupture Strain": "RuptureStrain",
         "Dragonroach": "Dragonroach",
+        "Predator Strain & Dragonroach": "PredatorStrainDragonroach",
+        "Spore Burst Strain & Dragonroach": "SporeBurstStrainDragonroach",
         "Rupture Strain & Dragonroach": "RuptureStrainDragonroach"
     }
     return replacements.get(normalized, normalized)

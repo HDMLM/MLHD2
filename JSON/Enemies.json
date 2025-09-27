@@ -11,6 +11,8 @@
         "Spore Burst Strain": ["No HVTs", "Hive Lords"],
         "Rupture Strain": ["No HVTs", "Hive Lords"],
         "Dragonroach": ["No HVTs", "Hive Lords"],
+        "Predator Strain & Dragonroach": ["No HVTs", "Hive Lords"],
+        "Spore Burst Strain & Dragonroach": ["No HVTs", "Hive Lords"],
         "Rupture Strain & Dragonroach": ["No HVTs", "Hive Lords"]
     },
     "Illuminate": {
