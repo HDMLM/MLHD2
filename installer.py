@@ -11,6 +11,7 @@ import re
 import shutil
 import subprocess
 import sys
+import logging
 import threading
 import time
 import zipfile
@@ -106,11 +107,11 @@ def ensure_python_version():
         )
         if not PYTHON3106_CMD:
             msg += "Python 3.10.6 not found. Please install it and re-run this installer."
-            print(msg)
+            logging.error(msg)
             sys.exit(1)
         else:
             msg += f"Attempting to use Python 3.10.6 at: {' '.join(PYTHON3106_CMD)}\n"
-            print(msg)
+            logging.info(msg)
 ensure_python_version()
 
 import requests
@@ -292,8 +293,12 @@ def get_local_version() -> Optional[str]:
                 m = _VERSION_REGEX.match(line)
                 if m:
                     return m.group(1).strip()
+    except FileNotFoundError:
+        # Fresh install scenario: main program not present yet
+        return None
     except Exception as e:
-        return f"Error reading local version: {e}"
+        # Return a sentinel string describing unexpected error so caller can surface it
+        return f"__ERROR__:{e}"
     return None
 
 def _github_headers() -> Dict[str, str]:
@@ -355,11 +360,13 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
     #check if current version is higher than latest version if so skip update
     local_version = get_local_version()
     latest = get_latest_github_version(include_prerelease=include_prerelease)
-    if not local_version or not isinstance(latest, str):
-        return f"Could not determine version. Local: {local_version}, GitHub: {latest}"
-    cmp_result = _compare_versions(local_version, latest)
-    if cmp_result > 0:
-        return "Local version is ahead of GitHub release (development build). No update applied."
+    if not isinstance(latest, str):
+        return f"Could not determine GitHub version: {latest}"
+    if local_version and not local_version.startswith("__ERROR__:"):
+        cmp_result = _compare_versions(local_version, latest)
+        if cmp_result > 0:
+            return "Local version is ahead of GitHub release (development build). No update applied."
+    # If local_version is None (fresh install) or an error string, proceed with installation/update
 
 
     tag, content, err = download_release_zip(include_prerelease=include_prerelease)
@@ -502,22 +509,39 @@ def _canon_name(name: str) -> str:
 
 def check_version(include_prerelease: bool = False) -> str:
     # Return formatted version + patch notes using semantic comparison
-    local_version = get_local_version()
+    raw_local = get_local_version()
     latest = get_latest_github_version(full=True, include_prerelease=include_prerelease)
-    if not local_version or not isinstance(latest, dict):
-        return f"Could not determine version. Local: {local_version}, GitHub: {latest}"
+    if not isinstance(latest, dict):
+        # Even if we can't get latest metadata, show local state
+        if raw_local is None:
+            return f"Current version: Not installed\nLatest GitHub version: (error fetching releases)\nCannot fetch patch notes right now. Try again later."
+        elif isinstance(raw_local, str) and raw_local.startswith("__ERROR__:"):
+            return f"Current version: Error determining local version ({raw_local[10:]})\nLatest GitHub version: (error fetching releases)\nCannot fetch patch notes right now. Try again later."
+        else:
+            return f"Current version: {raw_local}\nLatest GitHub version: (error fetching releases)\nCannot fetch patch notes right now. Try again later."
+
     latest_version = latest.get("tag", "?")
     notes = latest.get("body", "No patch notes found.")
     is_pr = latest.get("prerelease", False)
-    cmp_result = _compare_versions(local_version, latest_version)
-    if cmp_result == 0:
-        status_line = "You are up to date!"
-    elif cmp_result > 0:
-        status_line = "Local version is ahead of GitHub release (development build)."
+
+    if raw_local is None:
+        status_line = "Not installed yet. Click 'Update to Latest' to install."
+        local_display = "Not installed"
+    elif raw_local.startswith("__ERROR__:"):
+        status_line = "Local version unreadable (see log). You can still attempt an update."
+        local_display = f"Error: {raw_local[10:]}"
     else:
-        status_line = "Update available!"
+        local_display = raw_local
+        cmp_result = _compare_versions(raw_local, latest_version)
+        if cmp_result == 0:
+            status_line = "You are up to date!"
+        elif cmp_result > 0:
+            status_line = "Local version is ahead of GitHub release (development build)."
+        else:
+            status_line = "Update available!"
+
     return (
-        f"Current version: {local_version}\n"
+        f"Current version: {local_display}\n"
         f"Latest GitHub version: {latest_version}{' (pre-release)' if is_pr else ''}\n"
         f"{status_line}\n\nPatch Notes:\n{notes}"
     )
@@ -802,7 +826,11 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
     # Start the main program process and return the Popen or None on failure
     python_exe = _py_cmd()
     if not os.path.exists(MAIN_PROGRAM):
-        messagebox.showerror("Launch Error", f"Main program not found at: {MAIN_PROGRAM}")
+        messagebox.showerror(
+            "Not Installed",
+            "The main program is not installed yet.\n"
+            "Click 'Update to Latest' to download the latest release, then try launching again."
+        )
         return None
     if not PYTHON3106_CMD and _is_frozen():
         messagebox.showerror("Launch Error", "Python 3.10.6 is required to run the logger. Please install Python 3.10.6 and try again.")
@@ -1035,6 +1063,12 @@ class InstallerGUI(tk.Tk):
         def open_settings():
             python_exe = _py_cmd()
             settings_path = app_path("settings.py")
+            if not os.path.exists(settings_path):
+                messagebox.showerror(
+                    "Settings Not Found",
+                    "Please \"Update to Latest\" before opening Settings."
+                )
+                return
             try:
                 subprocess.Popen([*python_exe, settings_path])
             except Exception as e:

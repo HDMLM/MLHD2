@@ -31,6 +31,12 @@ import logging
 import pandas as pd
 from logging_config import setup_logging
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS
+from ui_sound import (
+    init_ui_sounds,
+    play_button_click,
+    play_button_hover,
+    register_global_click_binding,
+)
 
 # Theme system (copied from main.py/settings.py)
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
@@ -191,14 +197,9 @@ def main():
     style.configure("Treeview", background="#232323", foreground="#FFFFFF", fieldbackground="#232323", rowheight=24, bordercolor="#232323", lightcolor="#232323", darkcolor="#232323")
     style.configure("Treeview.Heading", background="#252526", foreground="#FFFFFF", font=(fs_sinclair_font.actual("family"), 10, "bold"))
     style.map("Treeview", background=[("selected", "#4C4C4C")], foreground=[("selected", "#FFFFFF")])
-
     table = ttk.Treeview(table_lf, show="headings", selectmode="extended", style="Treeview")
     table.pack(fill=tk.BOTH, expand=True)
-    y_scrollbar = ttk.Scrollbar(table_lf, orient=tk.VERTICAL, command=table.yview)
-    x_scrollbar = ttk.Scrollbar(table_lf, orient=tk.HORIZONTAL, command=table.xview)
-    table.configure(yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
-    y_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
-    x_scrollbar.pack(side=tk.BOTTOM, fill=tk.X)
+
 
 
     # Button section (bottom of window)
@@ -252,6 +253,10 @@ def main():
     def on_enter(event):
         reset_btn.configure(image=clear_btn_img_hover)
         reset_btn.image = clear_btn_img_hover
+        try:
+            play_button_hover()
+        except Exception:
+            pass
 
     def on_leave(event):
         reset_btn.configure(image=clear_btn_img)
@@ -260,6 +265,13 @@ def main():
     reset_btn.bind("<Enter>", on_enter)
     reset_btn.bind("<Leave>", on_leave)
     reset_btn.bind("<Button-1>", lambda e: clear_all_filters())
+
+    # Initialize & bind UI sounds
+    try:
+        init_ui_sounds(preload=True)
+        register_global_click_binding(root)
+    except Exception:
+        pass
 
     # Refresh button
     def refresh_table():
@@ -287,14 +299,22 @@ def main():
     def on_refresh_enter(event):
         refresh_btn.configure(image=refresh_btn_img_hover)
         refresh_btn.image = refresh_btn_img_hover
+        try:
+            play_button_hover()
+        except Exception:
+            pass
 
     def on_refresh_leave(event):
         refresh_btn.configure(image=refresh_btn_img)
         refresh_btn.image = refresh_btn_img
 
+    def on_refresh_click(event):
+        play_button_click()
+        refresh_table()
+
     refresh_btn.bind("<Enter>", on_refresh_enter)
     refresh_btn.bind("<Leave>", on_refresh_leave)
-    refresh_btn.bind("<Button-1>", lambda e: refresh_table())
+    refresh_btn.bind("<Button-1>", on_refresh_click)
 
     # Removed Preview Embed feature as requested
 
@@ -590,14 +610,22 @@ def main():
     def on_export_enter(event):
         export_btn.configure(image=extract_btn_img_hover)
         export_btn.image = extract_btn_img_hover
+        try:
+            play_button_hover()
+        except Exception:
+            pass
 
     def on_export_leave(event):
         export_btn.configure(image=extract_btn_img)
         export_btn.image = extract_btn_img
 
+    def on_export_click(event):
+        play_button_click()
+        export_to_discord()
+
     export_btn.bind("<Enter>", on_export_enter)
     export_btn.bind("<Leave>", on_export_leave)
-    export_btn.bind("<Button-1>", lambda e: export_to_discord())
+    export_btn.bind("<Button-1>", on_export_click)
 
     # Exit button as image button (styled like other image buttons)
     exit_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExitButton.png"))
@@ -619,14 +647,22 @@ def main():
     def on_exit_enter(event):
         exit_btn.configure(image=exit_btn_img_hover)
         exit_btn.image = exit_btn_img_hover
+        try:
+            play_button_hover()
+        except Exception:
+            pass
 
     def on_exit_leave(event):
         exit_btn.configure(image=exit_btn_img)
         exit_btn.image = exit_btn_img
 
+    def on_exit_click(event):
+        play_button_click()
+        root.quit()
+
     exit_btn.bind("<Enter>", on_exit_enter)
     exit_btn.bind("<Leave>", on_exit_leave)
-    exit_btn.bind("<Button-1>", lambda e: root.quit())
+    exit_btn.bind("<Button-1>", on_exit_click)
 
     # Alternating row colors for Treeview
     def set_alternating_row_colors():
@@ -675,23 +711,6 @@ def main():
         'Tien Kwan', 'Lastofe', 'Varylia 5', 'Choepessa IV', 'Ustotu', 'Troost', 'Vandalon IV', 'Erata Prime', 'Fenrir III', 'Turing', 'Skaash', 'Acrab XI', 'Acrux IX', 'Gemma', 'Merga IV', 'Merak', 'Cyberstan', 'Aurora Bay', 'Mekbuda', 'Videmitarix Prime', 'Skat Bay', 'Sirius', 'Siemnot', 'Shete', 'Mort', 'P\u00F6pli IX', 'Ingmar', 'Mantes',
         'Draupnir', 'Meissa', 'Wasat', 'X-45', 'Vega Bay', 'Wezen'
     ]
-
-    # Filter widgets
-    ttk.Label(filter_lf, text="Enemy:").pack(side=tk.LEFT, padx=5)
-    enemy_combo = ttk.Combobox(filter_lf, textvariable=enemy_var, values=ENEMY_TYPES, state='readonly', width=15)
-    enemy_combo.pack(side=tk.LEFT, padx=5)
-
-    ttk.Label(filter_lf, text="Subfaction:").pack(side=tk.LEFT, padx=5)
-    subfaction_combo = ttk.Combobox(filter_lf, textvariable=subfaction_var, values=SUBFACTIONS, state='readonly', width=20)
-    subfaction_combo.pack(side=tk.LEFT, padx=5)
-
-    ttk.Label(filter_lf, text="Sector:").pack(side=tk.LEFT, padx=5)
-    sector_combo = ttk.Combobox(filter_lf, textvariable=sector_var, values=SECTORS, state='readonly', width=20)
-    sector_combo.pack(side=tk.LEFT, padx=5)
-
-    ttk.Label(filter_lf, text="Planet:").pack(side=tk.LEFT, padx=5)
-    planet_combo = ttk.Combobox(filter_lf, textvariable=planet_var, values=PLANETS, state='readonly', width=20)
-    planet_combo.pack(side=tk.LEFT, padx=5)
 
     # Load Excel data
     if DEBUG:
@@ -771,7 +790,7 @@ def main():
                     df = df[~df[col].astype(str).isin([str(v) for v in values])]
 
         # Apply sorting if set
-        if sort_column and sort_column in df.columns:
+        if sort_column in df.columns:
             try:
                 df = df.sort_values(by=sort_column, ascending=not sort_reverse, kind='mergesort')
             except Exception:
@@ -865,22 +884,71 @@ def main():
         except Exception as e:
             logging.warning(f"Clipboard copy failed: {e}")
 
-    def copy_selection_as_delimited(row_ids, with_headers=False, delimiter=","):
+    def copy_selection_as_markdown(row_ids, with_headers=True):
         cols = list(table["columns"])
-        lines = []
-        if with_headers:
-            lines.append(delimiter.join(cols))
-        for iid in row_ids:
-            vals = table.item(iid, 'values')
-            # Ensure delimiter-safe by quoting if needed
-            escaped = []
-            for v in vals:
-                s = str(v)
-                if delimiter in s or '"' in s or "\n" in s:
-                    s = '"' + s.replace('"', '""') + '"'
-                escaped.append(s)
-            lines.append(delimiter.join(escaped))
-        copy_to_clipboard("\n".join(lines))
+        # Only use the first selected row for this format
+        if not row_ids:
+            return
+        rid = row_ids[0]
+        vals = list(table.item(rid, 'values'))
+        data = {c: v if v != "" else "N/A" for c, v in zip(cols, vals)}
+        # Section 1: Helldiver Details
+        helldiver_section = [
+            "# Helldiver Details",
+            "### Helldivers: ",
+            data.get("Helldivers", "N/A"),
+            "### Level: ",
+            data.get("Level", "N/A"),
+            "### Title: ",
+            data.get("Title", "N/A"),
+            "### Super Destroyer: ",
+            data.get("Super Destroyer", "N/A"),
+            ""
+        ]
+        # Section 2: Deployments Details
+        deployment_section = [
+            "# Deployments Details",
+            "### Sector: ",
+            data.get("Sector", "N/A"),
+            "### Planet: ",
+            data.get("Planet", "N/A"),
+            "### Enemy Type: ",
+            data.get("Enemy Type", data.get("Enemy", "N/A")),
+            "### Enemy Subfaction: ",
+            data.get("Subfaction", "N/A"),
+            "### Mission Category: ",
+            data.get("Mission Category", "N/A"),
+            "### Mission Type: ",
+            data.get("Mission Type", data.get("Mission", "N/A")),
+            "### Mega City: ",
+            data.get("Mega City", "N/A"),
+            "### Difficulty: ",
+            data.get("Difficulty", "N/A"),
+            "### Major Order: ",
+            data.get("Major Order", "N/A"),
+            "### DSS Active: ",
+            data.get("DSS Active", "N/A"),
+            "### DSS Modifier: ",
+            data.get("DSS Modifier", "N/A"),
+            ""
+        ]
+        # Section 3: Mission Report
+        report_section = [
+            "# Mission Report",
+            "### Kills: ",
+            data.get("Kills", "N/A"),
+            "### Deaths: ",
+            data.get("Deaths", "N/A"),
+            "### Rating: ",
+            data.get("Rating", "N/A"),
+            "### Note: ",
+            data.get("Note", "N/A"),
+            "## Mission Timestamp ",
+            data.get("Time", "N/A"),
+            ""
+        ]
+        markdown = "\n".join(helldiver_section + deployment_section + report_section)
+        copy_to_clipboard(markdown)
 
     def copy_row_as_json(row_id):
         cols = list(table["columns"])
@@ -931,6 +999,12 @@ def main():
         clear_all_excludes() # clears exclude sets
         filter_table()       # ensure refresh after both
 
+    def double_click(event):
+        row_id = table.identify_row(event.y)
+        if row_id:
+            show_row_details(row_id)
+
+
     def on_right_click(event):
         # Identify the row and column under the cursor
         row_id = table.identify_row(event.y)
@@ -979,9 +1053,7 @@ def main():
             )
         # Selection rows for copy operations
         target_ids = get_selected_or_row(row_id)
-        copy_menu.add_command(label="Copy selection (CSV)", command=lambda ids=target_ids: copy_selection_as_delimited(ids, with_headers=False, delimiter=","))
-        copy_menu.add_command(label="Copy selection (CSV + headers)", command=lambda ids=target_ids: copy_selection_as_delimited(ids, with_headers=True, delimiter=","))
-        copy_menu.add_command(label="Copy selection (TSV)", command=lambda ids=target_ids: copy_selection_as_delimited(ids, with_headers=False, delimiter="\t"))
+        copy_menu.add_command(label="Copy selection (Markdown)", command=lambda ids=target_ids: copy_selection_as_markdown(ids, with_headers=True))
         copy_menu.add_separator()
         copy_menu.add_command(label="Copy row as JSON", command=lambda rid=row_id: copy_row_as_json(rid))
         copy_menu.add_command(label="Copy column name", command=lambda n=col_name: copy_to_clipboard(n) if n else None, state=(tk.NORMAL if col_name else tk.DISABLED))
@@ -1045,6 +1117,7 @@ def main():
 
     # Bind right-click on the table
     table.bind("<Button-3>", on_right_click)
+    table.bind("<Double-1>", double_click)
 
     # Populate initially using tagged rows for alternating colors
     filter_table()

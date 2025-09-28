@@ -3,10 +3,18 @@ from tkinter import ttk, messagebox
 import json
 import os
 import re
+import logging
 import sys
 import traceback
 from PIL import Image, ImageTk
 import tkinter.font as tkfont
+from ui_sound import (
+    play_button_click,
+    play_button_hover,
+    init_ui_sounds,
+    register_global_click_binding,
+    set_ui_sounds_enabled,
+)
 
 # ---------- Paths ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -79,10 +87,10 @@ class SettingsPage(tk.Tk):
             self.preview_img = ImageTk.PhotoImage(img)
             self.preview_image_label.config(image=self.preview_img)
         except Exception as e:
-            print(f"[settings] Failed to load preview image: {e}")
+            logging.warning(f"[settings] Failed to load preview image: {e}")
             self.preview_image_label.config(image='')
     def __init__(self):
-        print("[settings] SettingsPage.__init__ start")
+        logging.debug("[settings] SettingsPage.__init__ start")
         super().__init__()
         self.title("Discord Settings")
         self.geometry("900x900")
@@ -127,13 +135,28 @@ class SettingsPage(tk.Tk):
         # Build UI
         self.create_widgets()
 
+        # Global click sound binding (mirror of main.py approach)
+        try:
+            if not getattr(self, '_click_sound_installed', False):
+                def _maybe_play(event):
+                    try:
+                        w = event.widget
+                        if isinstance(w, tk.Text):
+                            return
+                        play_button_click()
+                    except Exception:
+                        pass
+                self.bind_all('<ButtonRelease-1>', _maybe_play, add=True)
+                self._click_sound_installed = True
+        except Exception:
+            pass
+
         # After widgets exist, sync comboboxes with loaded values
         self.sync_comboboxes_from_vars()
         # Live update full ship name preview
         self.shipName1_var.trace_add("write", self._update_full_ship_name)
         self.shipName2_var.trace_add("write", self._update_full_ship_name)
         self._update_full_ship_name()
-        print("[settings] SettingsPage.__init__ end")
 
     # ----- Theme -----
     def apply_theme(self, style: ttk.Style, theme_dict):
@@ -303,7 +326,7 @@ class SettingsPage(tk.Tk):
                 img = img.resize(size, Image.LANCZOS)
                 return ImageTk.PhotoImage(img)
             except Exception as e:
-                print(f"[settings] Failed to load preview image: {e}")
+                logging.warning(f"[settings] Failed to load preview image: {e}")
                 return None
 
         preview_img = load_large_preview_image(os.path.join(BASE_DIR, "./media/SettingsInt/SuperDestroyerWF.png"))
@@ -433,11 +456,16 @@ class SettingsPage(tk.Tk):
         )
         self.add_webhook_logging_btn.image = add_btn_img_tk  # Prevent garbage collection
         self.add_webhook_logging_btn.pack(side=tk.LEFT, padx=5)
-        self.add_webhook_logging_btn.bind("<Button-1>", lambda e: self.add_webhook_logging())
+
+        def play_add_click(e):
+            play_button_click()
+            self.add_webhook_logging()
+        
 
         def on_add_btn_enter(e):
             self.add_webhook_logging_btn.configure(image=add_btn_img_hover_tk)
             self.add_webhook_logging_btn.image = add_btn_img_hover_tk
+            play_button_hover()
 
         def on_add_btn_leave(e):
             self.add_webhook_logging_btn.configure(image=add_btn_img_tk)
@@ -445,6 +473,7 @@ class SettingsPage(tk.Tk):
 
         self.add_webhook_logging_btn.bind("<Enter>", on_add_btn_enter)
         self.add_webhook_logging_btn.bind("<Leave>", on_add_btn_leave)
+        self.add_webhook_logging_btn.bind("<Button-1>", play_add_click)
         # Remove button with hover effect (logging webhooks)
         try:
             def load_remove_btn_img(path):
@@ -469,9 +498,14 @@ class SettingsPage(tk.Tk):
             self.remove_webhook_logging_btn.image = remove_btn_img_tk
             self.remove_webhook_logging_btn.pack(side=tk.LEFT, padx=5)
 
+            def play_remove_click(e):
+                play_button_click()
+                self.remove_webhook_logging()
+
             def on_remove_btn_enter(e):
                 self.remove_webhook_logging_btn.configure(image=remove_btn_img_hover_tk)
                 self.remove_webhook_logging_btn.image = remove_btn_img_hover_tk
+                play_button_hover()
 
             def on_remove_btn_leave(e):
                 self.remove_webhook_logging_btn.configure(image=remove_btn_img_tk)
@@ -479,9 +513,9 @@ class SettingsPage(tk.Tk):
 
             self.remove_webhook_logging_btn.bind("<Enter>", on_remove_btn_enter)
             self.remove_webhook_logging_btn.bind("<Leave>", on_remove_btn_leave)
-            self.remove_webhook_logging_btn.bind("<Button-1>", lambda e: self.remove_webhook_logging())
+            self.remove_webhook_logging_btn.bind("<Button-1>", play_remove_click)
         except Exception as e:
-            print(f"Failed to load remove button image: {e}")
+            logging.warning(f"Failed to load remove button image: {e}")
             fallback_btn = ttk.Button(
             log_controls,
             text="Remove",
@@ -538,6 +572,7 @@ class SettingsPage(tk.Tk):
         def on_add_btn_export_enter(e):
             self.add_webhook_export_btn.configure(image=add_btn_img_export_hover_tk)
             self.add_webhook_export_btn.image = add_btn_img_export_hover_tk
+            play_button_hover()
 
         def on_add_btn_export_leave(e):
             self.add_webhook_export_btn.configure(image=add_btn_img_export_tk)
@@ -567,11 +602,16 @@ class SettingsPage(tk.Tk):
         )
         self.remove_webhook_export_btn.image = remove_btn_img_export_tk
         self.remove_webhook_export_btn.pack(side=tk.LEFT, padx=5)
-        self.remove_webhook_export_btn.bind("<Button-1>", lambda e: self.remove_webhook_export())
+        
+
+        def play_remove_click(e):
+            play_button_click()
+            self.remove_webhook_export()
 
         def on_remove_btn_export_enter(e):
             self.remove_webhook_export_btn.configure(image=remove_btn_img_export_hover_tk)
             self.remove_webhook_export_btn.image = remove_btn_img_export_hover_tk
+            play_button_hover()
 
         def on_remove_btn_export_leave(e):
             self.remove_webhook_export_btn.configure(image=remove_btn_img_export_tk)
@@ -579,7 +619,7 @@ class SettingsPage(tk.Tk):
 
         self.remove_webhook_export_btn.bind("<Enter>", on_remove_btn_export_enter)
         self.remove_webhook_export_btn.bind("<Leave>", on_remove_btn_export_leave)
-
+        self.remove_webhook_export_btn.bind("<Button-1>", play_remove_click)
         self.show_urls_chk = ttk.Checkbutton(hooks_lf, text="Show URLs (otherwise show labels)", variable=self.show_urls_var, command=self.refresh_webhook_listboxes)
         self.show_urls_chk.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
 
@@ -605,11 +645,16 @@ class SettingsPage(tk.Tk):
         )
         self.reset_defaults_btn.image = reset_btn_img_tk
         self.reset_defaults_btn.pack(side=tk.LEFT)
-        self.reset_defaults_btn.bind("<Button-1>", lambda e: self.reset_defaults())
+        
+
+        def play_reset_click(e):
+            play_button_click()
+            self.reset_defaults()
 
         def on_reset_btn_enter(e):
             self.reset_defaults_btn.configure(image=reset_btn_img_hover_tk)
             self.reset_defaults_btn.image = reset_btn_img_hover_tk
+            play_button_hover()
 
         def on_reset_btn_leave(e):
             self.reset_defaults_btn.configure(image=reset_btn_img_tk)
@@ -617,6 +662,7 @@ class SettingsPage(tk.Tk):
 
         self.reset_defaults_btn.bind("<Enter>", on_reset_btn_enter)
         self.reset_defaults_btn.bind("<Leave>", on_reset_btn_leave)
+        self.reset_defaults_btn.bind("<Button-1>", play_reset_click)
         # Load and subsample images for Cancel button
         cancel_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/CancelButton.png"))
         cancel_btn_img = cancel_btn_img.resize((cancel_btn_img.width // 2, cancel_btn_img.height // 2), Image.LANCZOS)
@@ -636,11 +682,15 @@ class SettingsPage(tk.Tk):
         )
         self.cancel_btn.image = cancel_btn_img_tk
         self.cancel_btn.pack(side=tk.RIGHT, padx=5)
-        self.cancel_btn.bind("<Button-1>", lambda e: self.cancel())
+        
+        def play_cancel_click(e):
+            play_button_click()
+            self.cancel()
 
         def on_cancel_btn_enter(e):
             self.cancel_btn.configure(image=cancel_btn_img_hover_tk)
             self.cancel_btn.image = cancel_btn_img_hover_tk
+            play_button_hover()
 
         def on_cancel_btn_leave(e):
             self.cancel_btn.configure(image=cancel_btn_img_tk)
@@ -648,6 +698,7 @@ class SettingsPage(tk.Tk):
 
         self.cancel_btn.bind("<Enter>", on_cancel_btn_enter)
         self.cancel_btn.bind("<Leave>", on_cancel_btn_leave)
+        self.cancel_btn.bind("<Button-1>", play_cancel_click)
         # Load and subsample images for Save Settings button
         save_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/SaveSettingsButton.png"))
         save_btn_img = save_btn_img.resize((save_btn_img.width // 2, save_btn_img.height // 2), Image.LANCZOS)
@@ -667,11 +718,16 @@ class SettingsPage(tk.Tk):
         )
         self.save_settings_btn.image = save_btn_img_tk
         self.save_settings_btn.pack(side=tk.RIGHT, padx=5)
-        self.save_settings_btn.bind("<Button-1>", lambda e: self.save_settings())
+        
+
+        def play_save_click(e):
+            play_button_click()
+            self.save_settings()
 
         def on_save_btn_enter(e):
             self.save_settings_btn.configure(image=save_btn_img_hover_tk)
             self.save_settings_btn.image = save_btn_img_hover_tk
+            play_button_hover()
 
         def on_save_btn_leave(e):
             self.save_settings_btn.configure(image=save_btn_img_tk)
@@ -679,7 +735,7 @@ class SettingsPage(tk.Tk):
 
         self.save_settings_btn.bind("<Enter>", on_save_btn_enter)
         self.save_settings_btn.bind("<Leave>", on_save_btn_leave)
-
+        self.save_settings_btn.bind("<Button-1>", play_save_click)
         # Populate webhook listboxes
         self.refresh_webhook_listboxes()
         # Apply initial UI state for dont-send flag
@@ -749,7 +805,7 @@ class SettingsPage(tk.Tk):
             # Apply UI state changes (disable/enable fields)
             self._apply_dont_send_ui_state()
         except Exception as e:
-            print(f"[settings] on_dont_send_toggle error: {e}")
+            logging.error(f"[settings] on_dont_send_toggle error: {e}")
 
     def _apply_dont_send_ui_state(self):
         disabled = self.dont_send_to_discord_var.get()
@@ -1024,13 +1080,12 @@ class SettingsPage(tk.Tk):
             self.destroy()
 
 if __name__ == "__main__":
-    print("[settings] __main__ start")
+    logging.debug("[settings] __main__ start")
     try:
         app = SettingsPage()
-        print("[settings] mainloop starting")
+        logging.debug("[settings] mainloop starting")
         app.mainloop()
-        print("[settings] mainloop exited")
+        logging.debug("[settings] mainloop exited")
     except Exception as e:
-        print("Fatal error in settings.py:")
+        logging.critical("Fatal error in settings.py:")
         traceback.print_exc()
-        #sys.exit(1)

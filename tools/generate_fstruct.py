@@ -1,5 +1,6 @@
 import json
 import os
+import logging
 from typing import Dict, List
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -62,7 +63,7 @@ def main():
     out_path = os.path.join(out_dir, "FStruct.json")
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(tree, fh, indent=2)
-    print(f"Wrote {os.path.relpath(out_path, ROOT)}")
+    logging.info(f"Wrote {os.path.relpath(out_path, ROOT)}")
 
 if __name__ == "__main__":
     main()

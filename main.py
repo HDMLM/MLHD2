@@ -33,6 +33,14 @@ import random
 import re
 import webbrowser
 import discordrpc
+from ui_sound import (
+    init_ui_sounds,
+    play_button_click,
+    play_button_hover,
+    register_global_click_binding,
+    set_ui_sounds_enabled,
+)
+
 
 def _verify_discordrpc():
     try:
@@ -63,7 +71,7 @@ from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAM
 # Manual Configuration
 GWDay = "Day: 594"
 GWDate = "Date: 24/09/2025"
-VERSION = "1.7.005"
+VERSION = "1.7.006"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -222,6 +230,33 @@ def total_missions():
     return total_rows
 
 class MissionLogGUI:
+    def _install_click_sound(self) -> None:
+        """Bind a global handler to play a click sound for primary button releases.
+
+        We attach to <ButtonRelease-1> at the root level so that all current and future
+        widgets automatically trigger the sound. We skip very high‑frequency widgets
+        (like the Text note box while selecting) by basic widget class filtering.
+        """
+        try:
+            # Guard so we don't bind multiple times (Tkinter can duplicate events otherwise)
+            if getattr(self, '_click_sound_installed', False):
+                return
+
+            def _maybe_play(event):
+                try:
+                    w = event.widget
+                    # Avoid spamming from Text dragging/selecting or frames
+                    skip_classes = {tk.Text, ttk.Frame}
+                    if any(isinstance(w, c) for c in skip_classes):
+                        return
+                    play_button_click()
+                except Exception:
+                    pass
+
+            self.root.bind_all('<ButtonRelease-1>', _maybe_play, add=True)
+            self._click_sound_installed = True
+        except Exception as e:
+            logging.debug(f"Failed installing click sound binding: {e}")
     def update_submit_button_image(self, status: str) -> None:
         """
         Updates the submission button image depending on status.
@@ -267,9 +302,18 @@ class MissionLogGUI:
 
     def __init__(self, *args, **kwargs):
         # Initialize the GUI application.
+        try:
+            init_ui_sounds(preload=True)
+        except Exception:
+            pass
         style = ttk.Style()
         apply_theme(style, DEFAULT_THEME)
         self.root = root
+        # Install global click sound bindings early so newly created widgets are covered
+        try:
+            self._install_click_sound()
+        except Exception as e:
+            logging.debug(f"Failed to install global click sound binding: {e}")
         if not os.path.exists(EXCEL_FILE_PROD):
             columns = [
                 'Super Destroyer', 'Helldivers', 'Level', 'Title', 'Sector', 'Planet', 'Mega City',
@@ -974,7 +1018,11 @@ class MissionLogGUI:
             self.settings_btn_label.pack(side=tk.LEFT, pady=0, padx=(0,6))
 
             def on_settings_btn_enter(e):
-                self.settings_btn_label.configure(image=self.settings_btn_img_hover)
+                    self.settings_btn_label.configure(image=self.settings_btn_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_settings_btn_leave(e):
                 self.settings_btn_label.configure(image=self.settings_btn_img_default)
 
@@ -1016,7 +1064,11 @@ class MissionLogGUI:
             self.help_btn_label.pack(side=tk.LEFT, pady=0, padx=0)
 
             def on_help_btn_enter(e):
-                self.help_btn_label.configure(image=self.help_btn_img_hover)
+                    self.help_btn_label.configure(image=self.help_btn_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_help_btn_leave(e):
                 self.help_btn_label.configure(image=self.help_btn_img_default)
 
@@ -1069,7 +1121,11 @@ class MissionLogGUI:
             self.invite_btn_label.pack(side=tk.TOP, pady=(0,8), padx=(10,0))
 
             def on_invite_btn_enter(e):
-                self.invite_btn_label.configure(image=self.invite_btn_img_hover)
+                    self.invite_btn_label.configure(image=self.invite_btn_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_invite_btn_leave(e):
                 self.invite_btn_label.configure(image=self.invite_btn_img_default)
 
@@ -1369,13 +1425,21 @@ class MissionLogGUI:
             self.submit_label.grid(row=3, column=0, pady=15)
 
             def on_enter(e):
-                self.submit_label.configure(image=self.submit_img_hover)
+                    self.submit_label.configure(image=self.submit_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_leave(e):
                 self.submit_label.configure(image=self._submit_img_state)
 
+            def on_click(e):
+                play_button_click()
+                self.submit_data()
+
             self.submit_label.bind("<Enter>", on_enter)
             self.submit_label.bind("<Leave>", on_leave)
-            self.submit_label.bind("<Button-1>", lambda e: self.submit_data())
+            self.submit_label.bind("<Button-1>", on_click)
         except Exception as e:
             logging.error(f"Failed to load submit button image: {e}")
             submit_button = ttk.Button(content, text="Submit Mission Report", command=self.submit_data, width=130, padding=(0, 30))
@@ -1409,7 +1473,7 @@ class MissionLogGUI:
         export_frame = ttk.LabelFrame(content, text="Exporting", padding=10)
         export_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
-        # Export GUI launcher with image and hover effect
+        # Export GUI launcher with image and hover effect, with sound effect on click
         try:
             def load_export_gui_img(path):
                 pil_img = Image.open(path).convert('RGBA')
@@ -1427,12 +1491,21 @@ class MissionLogGUI:
             self.export_gui_label.grid(row=4, column=0, pady=15, padx=(20,0))  # <-- Increased left padding here
 
             def on_export_gui_enter(e):
-                self.export_gui_label.configure(image=self.export_gui_img_hover)
+                    self.export_gui_label.configure(image=self.export_gui_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_export_gui_leave(e):
                 self.export_gui_label.configure(image=self.export_gui_img_default)
+
+            def on_export_gui_click(e):
+                play_button_click()
+                subprocess.run(['python', 'exportGUI.py'], shell=False)
+
             self.export_gui_label.bind("<Enter>", on_export_gui_enter)
             self.export_gui_label.bind("<Leave>", on_export_gui_leave)
-            self.export_gui_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'exportGUI.py'], shell=False))
+            self.export_gui_label.bind("<Button-1>", on_export_gui_click)
         except Exception as e:
             logging.error(f"Failed to load Export GUI button image: {e}")
             GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=lambda: subprocess.run(['python', 'exportGUI.py'], shell=False), padding=(6,5), width=14)
@@ -1455,12 +1528,21 @@ class MissionLogGUI:
             self.export_planet_label.grid(row=4, column=1, padx=(20,0), pady=15)
 
             def on_export_planet_enter(e):
-                self.export_planet_label.configure(image=self.export_planet_img_hover)
+                    self.export_planet_label.configure(image=self.export_planet_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_export_planet_leave(e):
                 self.export_planet_label.configure(image=self.export_planet_img_default)
+
+            def on_export_planet_click(e):
+                play_button_click()
+                subprocess.run(['python', 'sub.py'], shell=False)
+
             self.export_planet_label.bind("<Enter>", on_export_planet_enter)
             self.export_planet_label.bind("<Leave>", on_export_planet_leave)
-            self.export_planet_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'sub.py'], shell=False))
+            self.export_planet_label.bind("<Button-1>", on_export_planet_click)
         except Exception as e:
             logging.error(f"Failed to load Export Planet button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
@@ -1484,12 +1566,21 @@ class MissionLogGUI:
             self.export_faction_label.grid(row=4, column=2, padx=(20,0), pady=15)
 
             def on_export_faction_enter(e):
-                self.export_faction_label.configure(image=self.export_faction_img_hover)
+                    self.export_faction_label.configure(image=self.export_faction_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_export_faction_leave(e):
                 self.export_faction_label.configure(image=self.export_faction_img_default)
+
+            def on_export_faction_click(e):
+                play_button_click()
+                subprocess.run(['python', 'faction.py'], shell=False)
+
             self.export_faction_label.bind("<Enter>", on_export_faction_enter)
             self.export_faction_label.bind("<Leave>", on_export_faction_leave)
-            self.export_faction_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'faction.py'], shell=False))
+            self.export_faction_label.bind("<Button-1>", on_export_faction_click)
         except Exception as e:
             logging.error(f"Failed to load Export Faction button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
@@ -1512,13 +1603,21 @@ class MissionLogGUI:
             self.export_7days_label.grid(row=4, column=3, padx=(20,0), pady=15)
 
             def on_export_7days_enter(e):
-                self.export_7days_label.configure(image=self.export_7days_img_hover)
+                    self.export_7days_label.configure(image=self.export_7days_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_export_7days_leave(e):
                 self.export_7days_label.configure(image=self.export_7days_img_default)
 
+            def on_export_7days_click(e):
+                play_button_click()
+                subprocess.run(['python', '7days.py'], shell=False)
+
             self.export_7days_label.bind("<Enter>", on_export_7days_enter)
             self.export_7days_label.bind("<Leave>", on_export_7days_leave)
-            self.export_7days_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'expWeek.py'], shell=False))
+            self.export_7days_label.bind("<Button-1>", on_export_7days_click)
 
         except Exception as e:
             logging.error(f"Failed to load Export 7 Days button image: {e}")
@@ -1542,13 +1641,21 @@ class MissionLogGUI:
             self.export_favourites_label.grid(row=4, column=4, padx=(20,0), pady=15)
 
             def on_export_favourites_enter(e):
-                self.export_favourites_label.configure(image=self.export_favourites_img_hover)
+                    self.export_favourites_label.configure(image=self.export_favourites_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_export_favourites_leave(e):
                 self.export_favourites_label.configure(image=self.export_favourites_img_default)
 
+            def on_export_favourites_click(e):
+                play_button_click()
+                subprocess.run(['python', 'favourites.py'], shell=False)
+
             self.export_favourites_label.bind("<Enter>", on_export_favourites_enter)
             self.export_favourites_label.bind("<Leave>", on_export_favourites_leave)
-            self.export_favourites_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'favourites.py'], shell=False))
+            self.export_favourites_label.bind("<Button-1>", on_export_favourites_click)
         except Exception as e:
             logging.error(f"Failed to load Export Favourites button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'favourites.py']), padding=(6,5), width=16)
@@ -1576,13 +1683,21 @@ class MissionLogGUI:
             self.export_achievements_label.grid(row=4, column=5, padx=(20,0), pady=15)
 
             def on_export_achievements_enter(e):
-                self.export_achievements_label.configure(image=self.export_achievements_img_hover)
+                    self.export_achievements_label.configure(image=self.export_achievements_img_hover)
+                    try:
+                        play_button_hover()
+                    except Exception:
+                        pass
             def on_export_achievements_leave(e):
                 self.export_achievements_label.configure(image=self.export_achievements_img_default)
 
+            def on_export_achievements_click(e):
+                play_button_click()
+                subprocess.run(['python', 'achievements.py'], shell=False)
+
             self.export_achievements_label.bind("<Enter>", on_export_achievements_enter)
             self.export_achievements_label.bind("<Leave>", on_export_achievements_leave)
-            self.export_achievements_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'achievements.py'], shell=False))
+            self.export_achievements_label.bind("<Button-1>", on_export_achievements_click)
         except Exception as e:
             logging.error(f"Failed to load Export Achievements button image: {e}")
             export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'achievements.py']), padding=(6,5), width=16)
@@ -1642,10 +1757,14 @@ class MissionLogGUI:
                     logging.warning("Discord RPC object is not initialized.")
             else:
                 small_text = f"Fighting: {enemytype}"
-                from discordrpc import Button
+
+                #handle special shit from planet names
+                rpcplanet = planet.replace("ö", "o")
+                rpcplanet = rpcplanet.replace("-", "_")
+                rpcplanet = rpcplanet.replace("'", "")
                 buttons = Button(
                     "View Galactic War", "https://helldiverscompanion.com/#map",
-                    "More Info", "https://helldiverscompanion.com/#overview"
+                    "More Info", "https://helldiverscompanion.com/#hellpad/planets/{}".format(rpcplanet.replace(" ", "_"))
                 )
                 logging.info(f"set_activity params: state=On sector: {sector} | Planet: {planet}, details=Helldiver: {helldiver} Level: {level} | {title}, large_image=test, large_text=Helldivers 2, small_image={small_image}, small_text={small_text}, act_type=Playing (default), buttons={buttons}")
                 if self.RPC is not None:
@@ -1786,6 +1905,30 @@ class MissionLogGUI:
             
     def _validate_submission(self) -> bool:
     # Validate all required fields before submission.
+        excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+        if os.path.exists(excel_file):
+            df = pd.read_excel(excel_file)
+            last_mission = df.iloc[-1] if not df.empty else None
+
+        last_mission_kills = last_mission['Kills']
+        last_mission_deaths = last_mission['Deaths']
+        last_mission_note = last_mission['Note']
+        last_mission_campaign = last_mission['Mission Category']
+        last_mission_mission = last_mission['Mission Type']
+
+        if (str(self.kills.get()) == str(last_mission_kills) and
+            str(self.deaths.get()) == str(last_mission_deaths) and
+            (self.note.get() or "").strip() == (last_mission_note or "").strip()):
+            result = messagebox.askyesno("ADVISORY", "You appear to be submitting a duplicate mission report. Submit anyway?")
+            if not result:
+                return False
+
+        if ((self.mission_category.get() or "").strip() == (last_mission_campaign or "").strip() and
+            (self.mission_type.get() or "").strip() == (last_mission_mission or "").strip()):
+            result = messagebox.askyesno("ADVISORY", "This report contains the same mission as your last log, is this correct?")
+            if not result:
+                return False
+
         try:
             # Validate numeric fields
             level = int(self.level.get())
@@ -2024,9 +2167,6 @@ class MissionLogGUI:
                         prev_deaths = last_mission['Deaths']
                         current_kills = int(data['Kills'])
                         current_deaths = int(data['Deaths'])
-
-                        print(f"Previous Kills: {prev_kills}, Current Kills: {current_kills}")
-                        print(f"Previous Deaths: {prev_deaths}, Current Deaths: {current_deaths}")
                         
                         # Calculate separate indicators for kills and deaths
                         if current_kills > prev_kills:
