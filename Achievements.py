@@ -337,13 +337,18 @@ achievement_percentage = round((completed_achievements / total_achievements) * 1
 # Add to achievements dictionary
 achievements['completion_percentage'] = achievement_percentage
 
-# Load Webhook URL from config
-# Discord webhook configuration
-WEBHOOK_URLS = {
-    'PROD': config['Webhooks']['BAT'].split(','),
-    'TEST': config['Webhooks']['TEST'].split(',')
-}
-ACTIVE_WEBHOOK = WEBHOOK_URLS['TEST'] if DEBUG else WEBHOOK_URLS['PROD']
+if DEBUG:
+    webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
+else:
+    # Load webhook URLs from DCord.json
+    with open('./JSON/DCord.json', 'r') as f:
+        discord_data = json.load(f)
+        webhook_urls = discord_data.get('discord_webhooks', [])
+        webhook_urls = [
+            (w.get('url') if isinstance(w, dict) else str(w)).strip()
+            for w in webhook_urls
+            if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
+        ]
 
 # Define achievement metadata for messages and titles
 ACHIEVEMENT_DEFS = {
@@ -818,12 +823,6 @@ helldiver_ses = df['Super Destroyer'].iloc[-1]
 helldiver_name = df['Helldivers'].iloc[-1]
 latest_note = df['Note'].iloc[-1] if not pd.isna(df['Note'].iloc[-1]) else "No notes available"
 
-# Discord webhook configuration
-WEBHOOK_URLS = {
-    'PROD': config['Webhooks']['BAT'].split(','),
-    'TEST': config['Webhooks']['TEST'].split(',')
-}
-ACTIVE_WEBHOOK = WEBHOOK_URLS['TEST'] if DEBUG else WEBHOOK_URLS['PROD']
 
 # UID from local DCord.json (user settings)
 try:
