@@ -1919,25 +1919,27 @@ class MissionLogGUI:
         if os.path.exists(excel_file):
             df = pd.read_excel(excel_file)
             last_mission = df.iloc[-1] if not df.empty else None
+        try:
+            last_mission_kills = last_mission['Kills']
+            last_mission_deaths = last_mission['Deaths']
+            last_mission_note = last_mission['Note']
+            last_mission_campaign = last_mission['Mission Category']
+            last_mission_mission = last_mission['Mission Type']
 
-        last_mission_kills = last_mission['Kills']
-        last_mission_deaths = last_mission['Deaths']
-        last_mission_note = last_mission['Note']
-        last_mission_campaign = last_mission['Mission Category']
-        last_mission_mission = last_mission['Mission Type']
+            if (str(self.kills.get()) == str(last_mission_kills) and
+                str(self.deaths.get()) == str(last_mission_deaths) and
+                (self.note.get() or "").strip() == (last_mission_note or "").strip()):
+                result = messagebox.askyesno("ADVISORY", "You appear to be submitting a duplicate mission report. Submit anyway?")
+                if not result:
+                    return False
 
-        if (str(self.kills.get()) == str(last_mission_kills) and
-            str(self.deaths.get()) == str(last_mission_deaths) and
-            (self.note.get() or "").strip() == (last_mission_note or "").strip()):
-            result = messagebox.askyesno("ADVISORY", "You appear to be submitting a duplicate mission report. Submit anyway?")
-            if not result:
-                return False
-
-        if ((self.mission_category.get() or "").strip() == (last_mission_campaign or "").strip() and
-            (self.mission_type.get() or "").strip() == (last_mission_mission or "").strip()):
-            result = messagebox.askyesno("ADVISORY", "This report contains the same mission as your last log, is this correct?")
-            if not result:
-                return False
+            if ((self.mission_category.get() or "").strip() == (last_mission_campaign or "").strip() and
+                (self.mission_type.get() or "").strip() == (last_mission_mission or "").strip()):
+                result = messagebox.askyesno("ADVISORY", "This report contains the same mission as your last log, is this correct?")
+                if not result:
+                    return False
+        except Exception as e:
+            logging.error(f"Error checking for duplicate missions: {e}")
 
         try:
             # Validate numeric fields
