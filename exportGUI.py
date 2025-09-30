@@ -9,6 +9,8 @@ from tkinter import messagebox
 import json
 import os
 
+from main import EXCEL_FILE_PROD, EXCEL_FILE_TEST
+
 # Read configuration from config.config
 config = configparser.ConfigParser()
 config.read('config.config')
@@ -713,10 +715,7 @@ def main():
     ]
 
     # Load Excel data
-    if DEBUG:
-        excel_file = "mission_log_test.xlsx"
-    else:
-        excel_file = "mission_log.xlsx"
+    excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
 
     # Sorting state and helpers for header click sorting
     # Additional dynamic filtering (exclusions) and sorting state will be defined near filter_table

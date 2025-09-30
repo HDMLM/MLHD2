@@ -69,9 +69,9 @@ from PIL import Image, ImageTk
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
 
 # Manual Configuration
-GWDay = "Day: 594"
-GWDate = "Date: 24/09/2025"
-VERSION = "1.7.006"
+GWDay = "Day: 600"
+GWDate = "Date: 30/09/2025"
+VERSION = "1.7.007"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -96,8 +96,13 @@ else:
     PERSISTENCE_FILE = './JSON/persistent.json'
     streak_file = './JSON/streak_data.json'
 
-EXCEL_FILE_PROD = 'mission_log.xlsx'
-EXCEL_FILE_TEST = 'mission_log_test.xlsx'
+# Set up application data paths 
+APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+if not os.path.exists(APP_DATA):
+    os.makedirs(APP_DATA)
+
+EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
 
 
 # Theme System
@@ -225,9 +230,14 @@ def get_hvt_icon(hvt_type: str) -> str:
     return icon
 
 def total_missions():
-    df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
-    total_rows = len(df)
-    return total_rows
+    excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD  # <-- FIXED
+    try:
+        df = pd.read_excel(excel_file)
+        total_rows = len(df)
+        return total_rows
+    except Exception as e:
+        logging.error(f"Error reading Excel file for total missions: {e}")
+        return 0  # Return 0 if file doesn't exist yet
 
 class MissionLogGUI:
     def _install_click_sound(self) -> None:
@@ -2142,8 +2152,8 @@ class MissionLogGUI:
             else:
                     PIco = ''
 
-            # Check mission log for planet visits
-            excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
+            # Check mission log for planet visits - USE APPDATA PATH
+            excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD  # <-- FIXED
             try:
                 df = pd.read_excel(excel_file)
                 bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
@@ -2153,6 +2163,8 @@ class MissionLogGUI:
                 bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
             except Exception as e:
                 logging.error(f"Error checking mission log for planet visits: {e}")
+                # Set default values if file doesn't exist
+                bsuperearth = bcyberstan = bmaleveloncreek = bcalypso = bpopliix = ''
 
             # Dynamic performance tracking icons
             try:

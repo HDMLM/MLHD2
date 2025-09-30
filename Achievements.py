@@ -3,6 +3,7 @@ import configparser
 import requests
 import json
 import logging
+import os
 from logging_config import setup_logging
 from icon import TITLE_ICONS
 from main import VERSION, DEV_RELEASE
@@ -15,13 +16,22 @@ config.read('config.config')
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
 
+# Set up application data paths 
+APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+if not os.path.exists(APP_DATA):
+    os.makedirs(APP_DATA)
+
+EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+
 # Read the Excel file
 import tkinter as tk
 from tkinter import messagebox
 import random
 import sys
 try:
-    df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
+    excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+    df = pd.read_excel(excel_file)
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user

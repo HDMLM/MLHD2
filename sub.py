@@ -11,6 +11,14 @@ from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MI
 from main import VERSION, DEV_RELEASE
 
 
+# Set up application data paths 
+APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+if not os.path.exists(APP_DATA):
+    os.makedirs(APP_DATA)
+
+EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+
 # Read configuration from config.config
 config = configparser.ConfigParser()
 config.read('config.config')
@@ -27,7 +35,8 @@ from tkinter import messagebox
 import random
 import sys
 try:
-    df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
+    excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+    df = pd.read_excel(excel_file)
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user
@@ -276,7 +285,7 @@ else:
 # Check mission log for planet visits
 excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
 try:
-    df = pd.read_excel(excel_file)
+    df = pd.read_excel(os.path.join(APP_DATA, excel_file))
     bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
     bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''

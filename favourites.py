@@ -7,6 +7,15 @@ import json
 from datetime import datetime
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
 from main import VERSION, DEV_RELEASE
+import os
+
+# Set up application data paths 
+APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+if not os.path.exists(APP_DATA):
+    os.makedirs(APP_DATA)
+
+EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
 
 # Read config file
 config = configparser.ConfigParser()
@@ -24,7 +33,8 @@ from tkinter import messagebox
 import random
 import sys
 try:
-    df = pd.read_excel('mission_log_test.xlsx') if DEBUG else pd.read_excel('mission_log.xlsx')
+    excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+    df = pd.read_excel(excel_file)
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user
@@ -232,12 +242,19 @@ planet_stats_df = pd.DataFrame({
 })
 
 # Discord webhook configuration
-WEBHOOK_URLS = {
-    'PROD': config['Webhooks']['BAT'].split(','),
-    'TEST': config['Webhooks']['TEST'].split(',')
-}
-ACTIVE_WEBHOOK = WEBHOOK_URLS['TEST'] if DEBUG else WEBHOOK_URLS['PROD']
-UID = config['Discord']['UID']
+if DEBUG:
+    # Use TEST webhook from config if in debug mode
+    ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
+else:
+    # Use PROD webhook in production mode
+    with open('./JSON/DCord.json', 'r') as f:
+        dcord_data = json.load(f)
+        ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
+        ACTIVE_WEBHOOK = [
+            (w.get('url') if isinstance(w, dict) else str(w)).strip()
+            for w in ACTIVE_WEBHOOK
+            if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
+        ]
 
 # Get latest note
 non_blank_notes = df['Note'].dropna()
@@ -334,7 +351,7 @@ else:
 # Check mission log for planet visits
 excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
 try:
-    df = pd.read_excel(excel_file)
+    df = pd.read_excel(os.path.join(APP_DATA, excel_file))
     bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
     bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
