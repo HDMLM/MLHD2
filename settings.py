@@ -22,7 +22,14 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_DIR = os.path.join(BASE_DIR, "JSON")
 SETTINGS_PATH = os.path.join(JSON_DIR, "settings.json")
 DCORD_PATH = os.path.join(JSON_DIR, "DCord.json")
+PERSISTENT_PATH = os.path.join(JSON_DIR, "persistent.json")
 FORCED_WEBHOOK_URL = "https://discord.com/api/webhooks/1419785470493327420/7XCGBlF3Ya5QQUiypMWP0fWAsNF-fIoui4m-nwfcp11IwWrkJzUN3VwM1uJdxHT2SGYZ"
+
+# Paths for generated media assets
+MEDIA_DIR = os.path.join(BASE_DIR, "media")
+MISC_ITEMS_DIR = os.path.join(MEDIA_DIR, "MiscItems")
+GENERATED_BANNER_FILENAME = "GeneratedBanner.png"
+GENERATED_BANNER_PATH = os.path.join(MISC_ITEMS_DIR, GENERATED_BANNER_FILENAME)
 
 # ---------- Helpers ----------
 def norm(s: str) -> str:
@@ -205,6 +212,13 @@ class SettingsPage(tk.Tk):
                 bg.paste(img, (0, 0))
                 img = bg
             return ImageTk.PhotoImage(img)
+        
+        # Font system: Try to use Insignia font if available, fallback to Arial
+        try:
+            self.fs_sinclair_font = tkfont.Font(family="Insignia", size=14, weight="bold")
+        except Exception:
+            self.fs_sinclair_font = None
+        font_to_use = self.fs_sinclair_font if self.fs_sinclair_font is not None else tkfont.Font(family="Arial", size=14, weight="bold")
 
         # Profile tab images
         self.profile_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/ProfileTabButtonDeactive.png"))
@@ -238,11 +252,24 @@ class SettingsPage(tk.Tk):
         preferences_frame.columnconfigure(1, weight=1)
 
         # Banner generation button
-        self.generate_banner_button = ttk.Button(preferences_frame, text="Generate Banner", command=self.generate_banner)
+        self.generate_banner_button = ttk.Button(preferences_frame, text="Generate Banner", command=self.on_generate_banner)
         self.generate_banner_button.grid(row=1, column=0, columnspan=2, pady=10)
 
-        # banner display label
-        self.banner_display_label = ttk.Label(preferences_frame)
+        # Player Card frame (same style as Webhooks) to wrap the generated image
+        player_card_label = ttk.Label(preferences_frame, text="Player Card", font=self.fs_sinclair_font)
+        self.player_card_lf = ttk.LabelFrame(preferences_frame, labelwidget=player_card_label, padding=10)
+        self.player_card_lf.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.player_card_lf.columnconfigure(0, weight=1)
+
+        # banner display label inside the Player Card frame
+        self.banner_display_label = ttk.Label(self.player_card_lf)
+        self.banner_display_label.grid(row=0, column=0, sticky="nsew")
+
+        # Try loading a previously generated banner if it exists
+        try:
+            self._load_saved_banner_preview()
+        except Exception:
+            pass
 
         # Remove tab border/highlight (like other buttons)
         style = ttk.Style()
@@ -279,13 +306,6 @@ class SettingsPage(tk.Tk):
         notebook.tab(2, sticky="nsew")
         # Set initial images
         update_tab_images()
-
-        # Font system: Try to use Insignia font if available, fallback to Arial
-        try:
-            self.fs_sinclair_font = tkfont.Font(family="Insignia", size=14, weight="bold")
-        except Exception:
-            self.fs_sinclair_font = None
-        font_to_use = self.fs_sinclair_font if self.fs_sinclair_font is not None else tkfont.Font(family="Arial", size=14, weight="bold")
 
         # Identity section (profile tab)
         identity_label = ttk.Label(profile_frame, text="Identity", font=font_to_use)
@@ -880,6 +900,79 @@ class SettingsPage(tk.Tk):
         s2 = (self.shipName2_var.get() or "").strip()
         sep = " " if (s1 and s2) else ""
         self.full_ship_name_var.set(f"{s1}{sep}{s2}")
+
+    # ----- Banner Preview Generation -----
+    def on_generate_banner(self):
+        try:
+            # Load values from settings.json
+            name_val = None
+            ship1_val = None
+            ship2_val = None
+            if os.path.exists(SETTINGS_PATH):
+                try:
+                    with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                        sdata = json.load(f)
+                    name_val = (sdata.get("username") or "").strip() or None
+                    ship1_val = (sdata.get("shipName1") or "").strip() or None
+                    ship2_val = (sdata.get("shipName2") or "").strip() or None
+                except Exception:
+                    pass
+
+            # Load values from persistent.json
+            profile_val = None
+            title_val = ""
+            level_val = 0
+            if os.path.exists(PERSISTENT_PATH):
+                try:
+                    with open(PERSISTENT_PATH, "r", encoding="utf-8") as f:
+                        pdata = json.load(f)
+                    profile_val = (pdata.get("profile_picture") or "").strip() or None
+                    title_val = (pdata.get("title") or "").strip()
+                    try:
+                        level_val = int(pdata.get("level", 0))
+                    except Exception:
+                        level_val = 0
+                except Exception:
+                    pass
+
+            # Fallback to current UI state if files missing/empty
+            name_val = name_val or (self.Helldivers.get() or "Helldiver")
+            ship1_val = ship1_val or (self.shipName1_var.get() or "SES Adjudicator")
+            ship2_val = ship2_val or (self.shipName2_var.get() or "of Allegiance")
+
+            # Generate the banner image using file-driven inputs
+            pil_img = generate_helldiver_banner(
+                name=name_val,
+                title=title_val,
+                level=level_val,
+                shipname1=ship1_val,
+                shipname2=ship2_val,
+                profile=profile_val,
+                base_dir=BASE_DIR,
+                size=(640, 180),
+            )
+            # Ensure destination folder exists and save PNG (overwrite old one)
+            os.makedirs(MISC_ITEMS_DIR, exist_ok=True)
+            try:
+                pil_img.save(GENERATED_BANNER_PATH, format="PNG")
+            except Exception as se:
+                logging.warning(f"[settings] Failed to save generated banner to disk: {se}")
+            # Convert to ImageTk and show on label; keep a reference
+            self._banner_preview_imgtk = ImageTk.PhotoImage(pil_img)
+            self.banner_display_label.configure(image=self._banner_preview_imgtk)
+        except Exception as e:
+            logging.error(f"[settings] Failed generating banner: {e}")
+            messagebox.showerror("Error", f"Failed to generate banner preview: {e}")
+
+    def _load_saved_banner_preview(self):
+        """Load banner preview image from disk if previously generated."""
+        if os.path.exists(GENERATED_BANNER_PATH):
+            try:
+                img = Image.open(GENERATED_BANNER_PATH)
+                self._banner_preview_imgtk = ImageTk.PhotoImage(img)
+                self.banner_display_label.configure(image=self._banner_preview_imgtk)
+            except Exception as e:
+                logging.warning(f"[settings] Could not load saved banner preview: {e}")
 
     # ----- Combobox Selection -----
     def select_combobox_value(self, combo: ttk.Combobox, options: list[str], value: str, var: tk.StringVar):
