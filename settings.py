@@ -15,6 +15,7 @@ from ui_sound import (
     register_global_click_binding,
     set_ui_sounds_enabled,
 )
+from placard import generate_helldiver_banner
 
 # ---------- Paths ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -186,6 +187,8 @@ class SettingsPage(tk.Tk):
         profile_frame = ttk.Frame(notebook, padding="10")
         # Discord tab
         discord_frame = ttk.Frame(notebook, padding="10")
+        # Preferences tab
+        preferences_frame = ttk.Frame(notebook, padding="10")
 
         def load_tab_image(path):
             img = Image.open(path)
@@ -211,9 +214,35 @@ class SettingsPage(tk.Tk):
         self.discord_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/DiscordTabButtonDeactive.png"))
         self.discord_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/DiscordTabButton.png"))
 
+        # Personal preference tab images
+        self.preferences_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/PreferencesTabButtonDeactive.png"))
+        self.preferences_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/PreferencesTabButton.png"))
+
         # Add tabs with images, remove border/padding
         notebook.add(profile_frame, text="", image=self.profile_tab_img_normal, compound=tk.CENTER, padding=0)
         notebook.add(discord_frame, text="", image=self.discord_tab_img_normal, compound=tk.CENTER, padding=0)
+        notebook.add(preferences_frame, text="", image=self.preferences_tab_img_normal, compound=tk.CENTER, padding=0)
+        
+
+        # Simple "Banner" dropdown with 3 values
+        self.banner_var = tk.StringVar(value="Biome Banner")
+        ttk.Label(preferences_frame, text="Banner:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        self.banner_combo = ttk.Combobox(
+            preferences_frame,
+            textvariable=self.banner_var,
+            values=["Biome Banner", "Subfaction Banner", "Helldiver Banner"],
+            state="readonly",
+            width=30,
+        )
+        self.banner_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
+        preferences_frame.columnconfigure(1, weight=1)
+
+        # Banner generation button
+        self.generate_banner_button = ttk.Button(preferences_frame, text="Generate Banner", command=self.generate_banner)
+        self.generate_banner_button.grid(row=1, column=0, columnspan=2, pady=10)
+
+        # banner display label
+        self.banner_display_label = ttk.Label(preferences_frame)
 
         # Remove tab border/highlight (like other buttons)
         style = ttk.Style()
@@ -234,13 +263,20 @@ class SettingsPage(tk.Tk):
             if selected == 0:
                 notebook.tab(0, image=self.profile_tab_img_selected)
                 notebook.tab(1, image=self.discord_tab_img_normal)
-            else:
+                notebook.tab(2, image=self.preferences_tab_img_normal)
+            elif selected == 1:
                 notebook.tab(0, image=self.profile_tab_img_normal)
                 notebook.tab(1, image=self.discord_tab_img_selected)
+                notebook.tab(2, image=self.preferences_tab_img_normal)
+            else:
+                notebook.tab(0, image=self.profile_tab_img_normal)
+                notebook.tab(1, image=self.discord_tab_img_normal)
+                notebook.tab(2, image=self.preferences_tab_img_selected)
 
         notebook.bind("<<NotebookTabChanged>>", update_tab_images)
         notebook.tab(0, sticky="nsew")
         notebook.tab(1, sticky="nsew")
+        notebook.tab(2, sticky="nsew")
         # Set initial images
         update_tab_images()
 
@@ -951,6 +987,7 @@ class SettingsPage(tk.Tk):
             "shipName1": self.shipName1_var.get(),
             "shipName2": self.shipName2_var.get(),
             "username": self.Helldivers.get(),
+            "banner": self.banner_var.get(),
         }
         # Write DCord.json
         def _extract(items):

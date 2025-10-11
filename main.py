@@ -23,6 +23,7 @@ import pandas as pd
 import logging
 from logging_config import setup_logging
 from typing import Dict, List, Optional
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 import time
 import configparser
 import threading
@@ -341,7 +342,6 @@ class MissionLogGUI:
         self.last_rpc_update = 0
         def load_icon():
             try:
-                from PIL import Image, ImageTk
                 pil_icon = Image.open('SuperEarth.png').convert('RGBA')
                 bg_color = (37, 37, 38, 255)  # #252526
                 background = Image.new('RGBA', pil_icon.size, bg_color)
@@ -550,6 +550,7 @@ class MissionLogGUI:
                 settings_data = json.load(f)
                 shipName1_default = settings_data.get('shipName1', "SES Adjudicator")
                 shipName2_default = settings_data.get('shipName2', "of Allegiance")
+                banner_type = settings_data.get('banner', "Biome Banner")
                 self.shipname1_default = shipName1_default
                 self.shipname2_default = shipName2_default
                 self.helldiver_default = settings_data.get('username', "")
@@ -677,40 +678,167 @@ class MissionLogGUI:
             logging.error(f"Failed to load sector preview image: {e}")
 
         # Create label and frame to hold the biome of the planet
-        biome_frame = ttk.LabelFrame(details_frame, text="Planet Biome", padding=5)
+        biome_frame = ttk.LabelFrame(details_frame, text=banner_type, padding=5)
         biome_frame.grid(row=0, column=6, rowspan=6, sticky=tk.N, padx=(20,0))
 
         self.planet_biome_label = tk.Label(biome_frame, borderwidth=0)  # no width/height -> uses image natural size
         self.planet_biome_label.pack(padx=0, pady=0)
 
-        def update_biome_banner(*args,f):
+        def update_biome_banner(*args, f=None):
             try:
-                planet_name = self.planet.get()
-                biome_map = f
-                biome_name = biome_map.get(planet_name, "Mars")
-                logging.debug(f"Planet: {planet_name}, Biome: {biome_name}")
-                self.current_biome = biome_name
+                # Load banner type preference once
+                if not hasattr(self, 'banner_type'):
+                    try:
+                        with open(self.settings_file, 'r', encoding='utf-8') as _sf:
+                            _s = json.load(_sf)
+                        self.banner_type = _s.get('banner', 'Biome Banner')
+                    except Exception:
+                        self.banner_type = 'Biome Banner'
 
-                # Build absolute, cross-platform path to biome banner
                 base_dir = os.path.dirname(os.path.abspath(__file__))
-                banner_path = os.path.join(base_dir, 'media', 'biome_banners', f"{biome_name}.png")
-                if not os.path.isfile(banner_path):
-                    logging.warning(f"Biome banner not found at {banner_path}, falling back to Mars.png")
-                    banner_path = os.path.join(base_dir, 'media', 'biome_banners', 'Mars.png')
 
-                logging.debug(f"Loading biome banner from: {banner_path}")
+                # Resolve current biome for the selected planet
+                planet_name = self.planet.get()
+                biome_map = f or {}
+                if not biome_map:
+                    try:
+                        with open('./JSON/BiomePlanets.json', 'r', encoding='utf-8') as bf:
+                            biome_map = json.load(bf)
+                    except Exception:
+                        biome_map = {}
+                biome_name = biome_map.get(planet_name, "Mars")
+                logging.debug(f"Planet: {planet_name}, Biome: {biome_name}, Banner style: {self.banner_type}")
+                self.current_biome = biome_name
+                pil_banner = None
+                # Style: Subfaction Banner
+                if self.banner_type == "Subfaction Banner":
+                    subfaction = (self.subfaction_type.get() or "Unknown").strip()
+                    subf_clean = subfaction.replace(" ", "_")
+                    candidates = [
+                        os.path.join(base_dir, 'media', 'subfaction_banner', f"{subfaction}.png"),
+                        os.path.join(base_dir, 'media', 'subfaction_banner', f"{subf_clean}.png"),
+                        # Fallback to the small icon if no banner exists
+                        os.path.join(base_dir, 'media', 'subfactions', f"{subf_clean}.png"),
+                    ]
+                    for path in candidates:
+                        if os.path.isfile(path):
+                            img = Image.open(path).convert('RGBA')
+                            # If we used the small icon, place it on a banner canvas
+                            if os.path.join('media', 'subfactions') in path.replace('\\', '/'):
+                                W, H = 640, 180
+                                canvas = Image.new('RGBA', (W, H), (37, 37, 38, 0))
+                                # Simple vertical gradient
+                                draw = ImageDraw.Draw(canvas)
+                                for y in range(H):
+                                    shade = 37 + int((y / max(1, H - 1)) * 18)
+                                    draw.line([(0, y), (W, y)], fill=(shade, shade, shade, 255))
+                                # Scale icon to fit nicely
+                                target_h = H - 40
+                                ratio = target_h / max(1, img.height)
+                                icon_img = img.resize((int(img.width * ratio), target_h), Image.LANCZOS)
+                                x = (W - icon_img.width) // 2
+                                y = (H - icon_img.height) // 2
+                                canvas.paste(icon_img, (x, y), icon_img)
+                                pil_banner = canvas
+                            else:
+                                pil_banner = img
+                            break
 
-                pil_banner = Image.open(banner_path).convert('RGBA')
+                # Style: Helldiver Banner
+                elif self.banner_type == "Helldiver Banner":
+                    try:
+                        idx = random.randint(1, 6)
+                        candidates = [
+                            os.path.join(base_dir, 'media', 'helldiver_banner', f'helldiver{idx}.png'),
+                            os.path.join(base_dir, 'media', 'helldivers', f'helldiver{idx}.png'),
+                            os.path.join(base_dir, f'helldiver{idx}.png'),
+                        ]
+                        hld_path = next((p for p in candidates if os.path.isfile(p)), None)
+                        if hld_path:
+                            img = Image.open(hld_path).convert('RGBA')
+                            W, H = 460, 148
+                            canvas = Image.new('RGBA', (W, H), (37, 37, 38, 0))
+                            # Center without resizing (images are already hard sized)
+                            x = (W - img.width) // 2
+                            y = (H - img.height) // 2
+                            canvas.paste(img, (x, y), img)
+                            pil_banner = canvas
+                    except Exception as e:
+                        logging.error(f"Failed to load Helldiver banner: {e}")
+
+                # Default: Biome Banner
+                if pil_banner is None:
+                    path = os.path.join(base_dir, 'media', 'biome_banners', f"{biome_name}.png")
+                    if not os.path.isfile(path):
+                        logging.warning(f"Biome banner not found at {path}, falling back to Mars.png")
+                        path = os.path.join(base_dir, 'media', 'biome_banners', 'Mars.png')
+                    logging.debug(f"Loading biome banner from: {path}")
+                    pil_banner = Image.open(path).convert('RGBA')
+
+                # Re-render banner whenever HVT changes (bind once)
+                if not getattr(self, "_hvt_banner_trace_bound", False):
+                    try:
+                        self.hvt_type.trace_add("write", lambda *a: update_biome_banner())
+                        self._hvt_banner_trace_bound = True
+                    except Exception:
+                        pass
+
+                # If an HVT is selected, overlay its banner
+                try:
+                    hvt_name = (self.hvt_type.get() or "").strip()
+                    if hvt_name and hvt_name != "No HVTs":
+                        hvt_norm = normalize_hvt_name(hvt_name)  # e.g., "Hive Lords" -> "HiveLords"
+                        hvt_underscored = hvt_name.replace(" ", "_")
+
+                        candidates = [
+                            os.path.join(base_dir, "media", "overlays", f"{hvt_underscored}_Overlay.png"),
+                            os.path.join(base_dir, "media", "overlays", f"{hvt_norm}_Overlay.png"),
+                            os.path.join(base_dir, "media", "overlays", f"{hvt_underscored}.png"),
+                        ]
+
+                        # Legacy fallback for known special cases
+                        if hvt_name == "Hive Lords":
+                            candidates.append(os.path.join(base_dir, "media", "overlays", "Hive_Lords_Overlay.png"))
+                            candidates.append(os.path.join(base_dir, "Hive_Lords_Overlay.png"))
+
+                        overlay_path = next((p for p in candidates if os.path.isfile(p)), None)
+
+                        if overlay_path:
+                            hvt_img = Image.open(overlay_path).convert("RGBA")
+                            if hvt_img.size != pil_banner.size:
+                                hvt_img = hvt_img.resize(pil_banner.size, Image.LANCZOS)
+                            pil_banner.paste(hvt_img, (0, 0), hvt_img)
+                except Exception as e:
+                    logging.error(f"Failed to overlay HVT image: {e}")
+
+                # Composite onto UI background to avoid halo
                 bg_color = (37, 37, 38, 255)
                 background = Image.new('RGBA', pil_banner.size, bg_color)
                 pil_banner = Image.alpha_composite(background, pil_banner)
+
                 self.biome_banner_img = ImageTk.PhotoImage(pil_banner)
                 self.planet_biome_label.configure(image=self.biome_banner_img)
             except Exception as e:
                 logging.error(f"Failed to load biome banner: {e}")
-                #fallback to default
-                banner_path = os.path.join('.\media', 'biome_banners', "Mars.png")
-                self.planet_biome_label.configure(image='')
+                # Fallback to default
+                try:
+                    base_dir = os.path.dirname(os.path.abspath(__file__))
+                    banner_path = os.path.join(base_dir, 'media', 'biome_banners', 'Mars.png')
+                    pil_banner = Image.open(banner_path).convert('RGBA')
+                    bg_color = (37, 37, 38, 255)
+                    background = Image.new('RGBA', pil_banner.size, bg_color)
+                    pil_banner = Image.alpha_composite(background, pil_banner)
+                    self.biome_banner_img = ImageTk.PhotoImage(pil_banner)
+                    self.planet_biome_label.configure(image=self.biome_banner_img)
+                except Exception:
+                    self.planet_biome_label.configure(image='')
+
+        # Keep banner reactive to inputs that affect each style
+        try:
+            self.subfaction_type.trace_add("write", lambda *a: update_biome_banner())
+            self.profile_picture.trace_add("write", lambda *a: update_biome_banner())
+        except Exception:
+            pass
 
         def update_planet_preview(*args):
             try:
@@ -1713,6 +1841,27 @@ class MissionLogGUI:
             export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'achievements.py']), padding=(6,5), width=16)
             export_button.grid(row=4, column=5, padx=(20,0), pady=15)
 
+        def _force_no_faction_for_observing(*_):
+            # Run after other handlers (populate -> then enforce)
+            def _apply():
+                if self.enemy_type.get() == "Observing":
+                    vals = list(subfaction_combo['values']) or []
+                    # Ensure "No Faction" is a valid option
+                    if vals != ["No Faction"]:
+                        subfaction_combo['values'] = ("No Faction",)
+                    # Only override if not already set by persistence
+                    if self.subfaction_type.get() != "No Faction":
+                        try:
+                            subfaction_combo.set("No Faction")
+                            self.subfaction_type.set("No Faction")
+                        except tk.TclError:
+                            pass
+            self.root.after_idle(_apply)
+
+        # Re-apply whenever enemy changes and once after initial setup/persistence load
+        self.enemy_type.trace_add("write", _force_no_faction_for_observing)
+        self.root.after(400, _force_no_faction_for_observing)
+
         ###############################################################
         # END OF GUI SETUP
         ###############################################################
@@ -1772,10 +1921,10 @@ class MissionLogGUI:
                 rpcplanet = planet.replace("ö", "o")
                 rpcplanet = rpcplanet.replace("-", "_")
                 rpcplanet = rpcplanet.replace("'", "")
-                buttons = Button(
-                    "View Galactic War", "https://helldiverscompanion.com/#map",
-                    "More Info", "https://helldiverscompanion.com/#hellpad/planets/{}".format(rpcplanet.replace(" ", "_"))
-                )
+                buttons = [
+                    {"label": "View Galactic War", "url": "https://helldiverscompanion.com/#map"},
+                    {"label": "More Info", "url": "https://helldiverscompanion.com/#hellpad/planets/{}".format(rpcplanet.replace(" ", "_"))}
+                ]
                 logging.info(f"set_activity params: state=On sector: {sector} | Planet: {planet}, details=Helldiver: {helldiver} Level: {level} | {title}, large_image=test, large_text=Helldivers 2, small_image={small_image}, small_text={small_text}, act_type=Playing (default), buttons={buttons}")
                 if self.RPC is not None:
                     self.RPC.set_activity(
