@@ -6,7 +6,7 @@ import requests
 import json
 import os
 import html as html_lib
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
 from main import VERSION, DEV_RELEASE
 
@@ -18,12 +18,15 @@ if not os.path.exists(APP_DATA):
 
 EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
 EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
 config.read('config.config')
 iconconfig = configparser.ConfigParser()
 iconconfig.read('icon.config')
+
+date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
 #Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
@@ -273,6 +276,7 @@ with open('./JSON/DCord.json', 'r') as f:
     user_discord_uid = dcord_data.get('discord_uid', '')
 
 bicon = iconconfig['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+ticon = iconconfig['BadgeIcons']['Test'] if user_discord_uid in ['332209233577771008'] else ''
             
 if dcord_data.get('platform') == 'Steam':
         PIco = iconconfig['BadgeIcons-Platform']['Steam']
@@ -286,6 +290,12 @@ else:
 excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
 try:
     df = pd.read_excel(os.path.join(APP_DATA, excel_file))
+    # Parse and use the known time format when checking for last year's missions
+    times = pd.to_datetime(df['Time'], format=DATE_FORMAT, errors='coerce')
+    if (times.dt.year == datetime.now().year - 1).any():
+        yearico = iconconfig["BadgeIcons"]["1 Year"]
+    else:
+        yearico = ''
     bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
     bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
@@ -348,7 +358,10 @@ embed_data = {
             "title": "",  # Will set below
             "description": primary_description,
             "color": 7257043,
-            "author": {"name": "SEAF Battle Record"},
+            "author": {
+                        "name": f"SEAF Planetary Record\nDate: {date}",
+                        "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&"
+                    },
             "footer": {"text": dcord_data['discord_uid'],"icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode().iloc[0], '')}"},
             "thumbnail": {"url": f"{profile_picture}"}
@@ -591,15 +604,18 @@ def _generate_html_export(df: pd.DataFrame) -> str:
 embed_data_contingency = {
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
             "color": 7257043,
             "fields": [
                 {
-                    "name": f"Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode().iloc[0], '')}",
+                    "name": f"Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}",
                     "value": "\n\nINITIAL TRANSMISSION FAILURE - CONTINGENCY PROTOCOL ACTIVATED\n\nAttention Helldiver,\n\nYour SEAF Battle Record failed to reach your terminal via our Super Earth Command database through the standard uplink procedure, whether due to xeno interference, bureaucratic lag, the amount of data attempting to upload or simple operator inadequacy is irrelevant.\n\nAs per Protocol MLHD2-E2 \"Compliance is Victory\", a SHTML fallback file has been auto-generated to ensure your mission data is preserved and viewable.\n\nReview the document locally and stand by for reclassification procedures.\n\nFor Super Earth. For Democracy. Upload Again.\n\n- Ministry of Intelligence | Automated Systems Division\nSuper Earth Uplink Command"
                 }
             ],
-            "author": {"name": "SEAF Contingency Report"},
+            "author": {
+                        "name": f"SEAF Contingency Report\nDate: {date}",
+                        "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&"
+                    },
             "footer": {"text": f"{discord_data['discord_uid']}   v{VERSION}{DEV_RELEASE}","icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": "https://cdn.discordapp.com/attachments/1340508329977446484/1374329173081985054/Super_Earth_landscape.png?ex=682da748&is=682c55c8&hm=15bd1b8a0ae0ecf08d7159a0602368dc7f27e040000e5c7d6afc391dfab5eb00&"},
             "thumbnail": {"url": f"{profile_picture}"}

@@ -329,7 +329,7 @@ class MissionLogGUI:
             columns = [
                 'Super Destroyer', 'Helldivers', 'Level', 'Title', 'Sector', 'Planet', 'Mega City',
                 'Enemy Type', 'Enemy Subfaction', 'Enemy HVT', 'Major Order', 'DSS Active', 'DSS Modifier',
-                'Mission Category', 'Mission Type', 'Difficulty', 'Kills', 'Deaths', 'Rating', 'Time', 'Note'
+                'Mission Category', 'Mission Type', 'Difficulty', 'Kills', 'Deaths', 'Rating', 'Time', 'Streak', 'Note'
             ]
             df = pd.DataFrame(columns=columns)
             df.to_excel(EXCEL_FILE_PROD, index=False)
@@ -402,6 +402,7 @@ class MissionLogGUI:
         self.shipName2 = tk.StringVar()
         self.FullShipName = tk.StringVar()
         self.profile_picture = tk.StringVar()
+        self.streak = tk.IntVar()
 
         validate_cmd = self.root.register(self._validate_numeric_input)
         self.kills.trace_add("write", lambda *args: self._validate_field(self.kills))
@@ -2200,6 +2201,16 @@ class MissionLogGUI:
             logging.error(f"Failed to read note text: {e}")
             note_value = (self.note.get() or "").strip()
 
+        # Get streak data from streak_data.json
+        try:
+            with open(streak_file, 'r') as f:
+                streak_data = json.load(f)
+                helldiver_name = "Helldiver"
+                current_streak = streak_data.get(helldiver_name, {}).get('streak', 0) + 1
+        except Exception as e:
+            logging.error(f"Error reading streak data: {e}")
+            current_streak = 0
+
         return {
             'Super Destroyer': self.shipname1_default +" "+ self.shipname2_default,
             'Helldivers': self.helldiver_default,
@@ -2221,6 +2232,7 @@ class MissionLogGUI:
             'Deaths': self.deaths.get(),
             'Rating': self.rating.get(),
             'Time': datetime.now().strftime(DATE_FORMAT),
+            'Streak': current_streak,
             'Note': note_value,
         }
 
@@ -2293,6 +2305,7 @@ class MissionLogGUI:
                 user_discord_uid = dcord_data.get('discord_uid', '')
 
             bicon = iconconfig['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+            ticon = iconconfig['BadgeIcons']['Test'] if user_discord_uid in ['332209233577771008'] else ''               
             
             if dcord_data.get('platform') == 'Steam':
                     PIco = iconconfig['BadgeIcons-Platform']['Steam']
@@ -2307,6 +2320,12 @@ class MissionLogGUI:
             excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD  # <-- FIXED
             try:
                 df = pd.read_excel(excel_file)
+                # Parse and use the known time format when checking for last year's missions
+                times = pd.to_datetime(df['Time'], format=DATE_FORMAT, errors='coerce')
+                if (times.dt.year == datetime.now().year - 1).any():
+                    yearico = iconconfig["BadgeIcons"]["1 Year"]
+                else:
+                    yearico = ''
                 bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
                 bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
                 bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
@@ -2436,7 +2455,7 @@ class MissionLogGUI:
             message_content = {
                 "content": None,
                 "embeds": [{
-                    "title": f"{data['Super Destroyer']}\nDeployed {data['Helldivers']}\n{bicon}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
+                    "title": f"{data['Super Destroyer']}\nDeployed {data['Helldivers']}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
                     "description": f"**Level {data['Level']} | {data['Title']} {title_icon}\nMission: {total_missions_main}**\n\n<a:easyshine1:1349110651829747773> <:hd1superearth:1103949794285723658> **Galactic Intel** {planet_icon} <a:easyshine3:1349110648528699422>\n> Sector: {data['Sector']}\n> Planet: {data['Planet']}\n> Mega City: {data['Mega City']}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data['DSS Modifier']} {dss_icon}\n\n",
                     "color": system_color,
                     "fields": [{
