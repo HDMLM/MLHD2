@@ -69,9 +69,9 @@ from PIL import Image, ImageTk
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
 
 # Manual Configuration
-GWDay = "Day: 600"
-GWDate = "Date: 30/09/2025"
-VERSION = "1.7.007"
+GWDay = "Day: 611"
+GWDate = "Date: 11/10/2025"
+VERSION = "1.7.008"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -1623,7 +1623,7 @@ class MissionLogGUI:
 
             def on_export_7days_click(e):
                 play_button_click()
-                subprocess.run(['python', '7days.py'], shell=False)
+                subprocess.run(['python', 'expWeek.py'], shell=False)
 
             self.export_7days_label.bind("<Enter>", on_export_7days_enter)
             self.export_7days_label.bind("<Leave>", on_export_7days_leave)
@@ -1631,7 +1631,7 @@ class MissionLogGUI:
 
         except Exception as e:
             logging.error(f"Failed to load Export 7 Days button image: {e}")
-            export_button = ttk.Button(export_frame, text="Export Last 7 Days\n       Data to\n     Webhook", command=lambda: subprocess.run(['python', '7days.py']), padding=(6,5), width=16)
+            export_button = ttk.Button(export_frame, text="Export Last 7 Days\n       Data to\n     Webhook", command=lambda: subprocess.run(['python', 'expWeek.py']), padding=(6,5), width=16)
             export_button.grid(row=4, column=3, padx=(20,0), pady=15)
 
         # Favourite aggregation export (with image and hover effect)
