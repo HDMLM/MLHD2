@@ -20,6 +20,47 @@ import webbrowser
 iconconfig = configparser.ConfigParser()
 iconconfig.read('icon.config')
 
+# Function to get player's first planet from mission log
+def get_player_homeworld():
+    try:
+        # Set up application data paths 
+        APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+        
+        # Load config to check DEBUG mode
+        config = configparser.ConfigParser()
+        config.read('config.config')
+        DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+        
+        # Choose the appropriate Excel file
+        EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+        EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+        excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+        
+        # Read the mission log
+        if os.path.exists(excel_file):
+            df = pd.read_excel(excel_file)
+            
+            # Check if required columns exist
+            if 'Time' in df.columns and 'Planet' in df.columns and not df.empty:
+                # Convert Time column to datetime and sort by earliest first
+                df['Time'] = pd.to_datetime(df['Time'].astype(str).str.replace('/', '-', regex=False), errors='coerce', dayfirst=True)
+                df_sorted = df.dropna(subset=['Time', 'Planet']).sort_values('Time')
+                
+                # Get the first planet (chronologically)
+                if not df_sorted.empty:
+                    first_planet = df_sorted['Planet'].iloc[0]
+                    return str(first_planet).strip()
+        
+        # Default fallback if no data found
+        return "Super Earth"
+        
+    except Exception as e:
+        logging.error(f"Error reading mission log for homeworld: {e}")
+        return "Super Earth"
+
+# Get player's homeworld planet
+player_homeworld = get_player_homeworld()
+
 ENEMY_ICONS = {
     "Automatons": iconconfig['EnemyIcons']['Automatons'],
     "Terminids": iconconfig['EnemyIcons']['Terminids'],
@@ -46,7 +87,8 @@ SYSTEM_COLORS = {
 }
 
 
-PLANET_ICONS = {
+# Base planet icons without player homeworld
+_BASE_PLANET_ICONS = {
     "Super Earth": iconconfig['PlanetIcons']['Human Homeworld'],
     "Cyberstan": iconconfig['PlanetIcons']['Automaton Homeworld'],
     "Malevelon Creek": iconconfig['PlanetIcons']['Malevelon Creek'],
@@ -90,6 +132,19 @@ PLANET_ICONS = {
     "Wasat": iconconfig['PlanetIcons']['Database One'],
     "Pöpli IX": iconconfig['PlanetIcons']['Popli IX'],
 }
+
+# Create combined PLANET_ICONS with homeworld support
+PLANET_ICONS = _BASE_PLANET_ICONS.copy()
+
+# Add or combine player homeworld icon
+player_homeworld_icon = iconconfig['PlanetIcons']['Player Homeworld']
+if player_homeworld in PLANET_ICONS:
+    # Planet already has an icon, combine them
+    existing_icon = PLANET_ICONS[player_homeworld]
+    PLANET_ICONS[player_homeworld] = f"{existing_icon}{player_homeworld_icon}"
+else:
+    # Planet doesn't have an icon, just add the homeworld icon
+    PLANET_ICONS[player_homeworld] = player_homeworld_icon
 
 
 CAMPAIGN_ICONS = {

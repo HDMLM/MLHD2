@@ -4,7 +4,7 @@ from logging_config import setup_logging
 import configparser
 import requests
 import json
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
 from main import VERSION, DEV_RELEASE
 import os
@@ -16,12 +16,15 @@ if not os.path.exists(APP_DATA):
 
 EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
 EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Read config file
 config = configparser.ConfigParser()
 config.read('config.config')
 iconconfig = configparser.ConfigParser()
 iconconfig.read('icon.config')
+
+date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
 #Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
@@ -339,6 +342,7 @@ with open('./JSON/DCord.json', 'r') as f:
     user_discord_uid = dcord_data.get('discord_uid', '')
 
 bicon = iconconfig['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+ticon = iconconfig['BadgeIcons']['Test'] if user_discord_uid in ['332209233577771008'] else ''
             
 if dcord_data.get('platform') == 'Steam':
         PIco = iconconfig['BadgeIcons-Platform']['Steam']
@@ -352,6 +356,12 @@ else:
 excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
 try:
     df = pd.read_excel(os.path.join(APP_DATA, excel_file))
+    # Parse and use the known time format when checking for last year's missions
+    times = pd.to_datetime(df['Time'], format=DATE_FORMAT, errors='coerce')
+    if (times.dt.year == datetime.now().year - 1).any():
+        yearico = iconconfig["BadgeIcons"]["1 Year"]
+    else:
+        yearico = ''
     bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
     bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
@@ -385,7 +395,7 @@ embed_data = {
     "embeds": [
         {
             "title": "",  # Empty title, will be set below
-            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].mode().iloc[0], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Your Top Favourites <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" +   
+            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Your Top Favourites <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" +   
                         f"> Mission - {df['Mission Type'].mode().iloc[0]} {MISSION_ICONS.get(df['Mission Type'].mode().iloc[0], '')} (x{MissionCount})\n" +
                         f"> Campaign - {df['Mission Category'].mode().iloc[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode().iloc[0], '')} (x{CampaignCount})\n" +
                         f"> Faction - {df['Enemy Type'].mode().iloc[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode().iloc[0], '')} (x{FactionCount})\n" +
@@ -410,7 +420,10 @@ embed_data = {
                         f"> Planet - {search_planet3} {PLANET_ICONS.get(search_planet3, '')} (x{PlanetCount3})\n" +
                         f"> Sector - {search_sector3} (x{SectorCount3})\n",
             "color": 7257043,
-            "author": {"name": "SEAF Battle Record"},
+            "author": {
+                        "name": f"SEAF Favourites Record\nDate: {date}",
+                        "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&"
+                    },
             "footer": {"text": f"{discord_data['discord_uid']}   v{VERSION}{DEV_RELEASE}","icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"},
             "image": {"url": f"https://cdn.discordapp.com/attachments/1340508329977446484/1414378556825538601/favouritesbanner.png?ex=68bf5a2d&is=68be08ad&hm=b27d54aca26e82249e873ab14cdd87a698dcc5242b38d563dc7218522197174c&"},
             "thumbnail": {"url": f"{profile_picture}"}
@@ -420,7 +433,7 @@ embed_data = {
 }
 
 # Update the embed title with name and level
-embed_data["embeds"][0]["title"] = f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}"
+embed_data["embeds"][0]["title"] = f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}"
 
 # Group data by enemy type (faction)
 faction_stats = {}
