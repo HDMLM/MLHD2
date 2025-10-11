@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 from PIL import Image, ImageDraw, ImageFont
 import json
 import pandas as pd
+import unicodedata
 
 __all__ = ["generate_helldiver_banner"]
 
@@ -60,6 +61,7 @@ def generate_helldiver_banner(
             # Special dev badge for known UIDs
             uid = str(dcord.get("discord_uid", "")).strip()
             if uid in {"695767541393653791", "850139032720900116"}:
+                eligible.append("bcal.png")
                 eligible.append("bdev.png")
             elif uid in {"332209233577771008"}:
                 eligible.append("btst.png")
@@ -75,17 +77,48 @@ def generate_helldiver_banner(
 
             if xlsx_path:
                 df = pd.read_excel(xlsx_path)
-                planets = set(map(str, df.get("Planet", [])))
+                # Normalize and robustly detect planet column
+                def _norm_planet(s: object) -> str:
+                    try:
+                        t = str(s or "").strip().lower()
+                        # collapse spaces
+                        t = " ".join(t.split())
+                        # strip diacritics
+                        t = unicodedata.normalize("NFKD", t)
+                        t = "".join(ch for ch in t if not unicodedata.combining(ch))
+                        # keep alphanumerics and spaces only
+                        t = "".join(ch for ch in t if ch.isalnum() or ch.isspace())
+                        return t
+                    except Exception:
+                        return str(s or "").strip().lower()
 
-                planet_to_badge = {
-                    "Calypso": "bcal.png",
-                    "Cyberstan": "bcyb.png",
-                    "Malevelon Creek": "bmal.png",
-                    "Popli IX": "bpop.png",
-                    "Super Earth": "bsup.png",
+                planet_col = None
+                for c in df.columns:
+                    if str(c).strip().lower() == "planet":
+                        planet_col = c
+                        break
+                if planet_col is None:
+                    for c in df.columns:
+                        if "planet" in str(c).strip().lower():
+                            planet_col = c
+                            break
+
+                if planet_col is not None:
+                    planets_raw = df[planet_col].tolist()
+                else:
+                    planets_raw = df.get("Planet", []).tolist() if hasattr(df.get("Planet", []), "tolist") else list(df.get("Planet", []))
+
+                planets = { _norm_planet(p) for p in planets_raw }
+
+                planet_to_badge_norm = {
+                    _norm_planet("Calypso"): "bcal.png",
+                    _norm_planet("Cyberstan"): "bcyb.png",
+                    _norm_planet("Malevelon Creek"): "bmal.png",
+                    _norm_planet("Popli IX"): "bpop.png",  # also matches Pöpli IX after normalization
+                    _norm_planet("Super Earth"): "bsup.png",
                 }
-                for planet, badge in planet_to_badge.items():
-                    if planet in planets and badge not in eligible:
+                for planet_norm, badge in planet_to_badge_norm.items():
+                    if planet_norm in planets and badge not in eligible:
                         eligible.append(badge)
 
                 # Award 1-year service badge by comparing first deployment to today
