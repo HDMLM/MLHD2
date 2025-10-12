@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reviews · MLHD2</title>
+    <meta name="description" content="What players say about MLHD2 — the Helldivers 2 mission logging tool." />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body id="top">
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header" role="banner">
+        <div class="container header-inner">
+            <div class="brand">
+                <img src="favicon.svg" alt="MLHD2 logo" class="logo" />
+                <span class="brand-name">MLHD2</span>
+            </div>
+            <nav class="site-nav" aria-label="primary">
+                <ul>
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="features.html">Features</a></li>
+                    <li><a href="reviews.html" class="active" aria-current="page">Reviews</a></li>
+                    <li><a href="about.html">About</a></li>
+                    <li><a href="download.html">Download</a></li>
+                    <li><a href="getting-started.html" class="btn btn--small">Get started</a></li>
+                    <li><a href="privacy.html" class="muted-link">Privacy</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <div class="hazard hazard--bar" aria-hidden="true"></div>
+
+    <main id="main">
+        <section class="hero hero--sub" aria-labelledby="reviews-title">
+            <div class="container">
+                <h1 id="reviews-title">Reviews</h1>
+                <p class="lede">Feedback from Helldivers using MLHD2 to track their missions.</p>
+                <div id="rating-summary" class="summary-badge" aria-live="polite" aria-atomic="true"></div>
+            </div>
+        </section>
+
+        <section class="section" aria-labelledby="add-review-title">
+            <div class="container">
+                <h2 id="add-review-title">Add your review</h2>
+                <p class="muted" style="margin: .25rem 0 1rem;">Public reviews are submitted via GitHub Issues and appear here after approval by maintainers.</p>
+
+                <form id="review-form" class="card" novalidate aria-describedby="review-help">
+                    <div class="field-group" style="display:grid; gap:.75rem;">
+                        <label for="name">Display name</label>
+                        <input id="name" name="name" type="text" maxlength="40" required placeholder="e.g., NovaStrider" style="padding:.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background: var(--surface); color: var(--text);" />
+
+                        <label>Rating</label>
+                        <fieldset style="border:none; padding:0; margin:0;">
+                            <legend class="visually-hidden">Select a rating from 1 to 5</legend>
+                            <div class="rating" role="radiogroup" aria-label="Rating" style="display:inline-flex; gap:.35rem;">
+                                <input type="radio" id="star5" name="rating" value="5" required />
+                                <label for="star5" title="5 stars">★</label>
+                                <input type="radio" id="star4" name="rating" value="4" />
+                                <label for="star4" title="4 stars">★</label>
+                                <input type="radio" id="star3" name="rating" value="3" />
+                                <label for="star3" title="3 stars">★</label>
+                                <input type="radio" id="star2" name="rating" value="2" />
+                                <label for="star2" title="2 stars">★</label>
+                                <input type="radio" id="star1" name="rating" value="1" />
+                                <label for="star1" title="1 star">★</label>
+                            </div>
+                        </fieldset>
+
+                        <label for="title">Title (optional)</label>
+                        <input id="title" name="title" type="text" maxlength="80" placeholder="e.g., Perfect for post-mission logging" style="padding:.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background: var(--surface); color: var(--text);" />
+
+                        <label for="message">Review</label>
+                        <textarea id="message" name="message" rows="4" maxlength="500" required placeholder="Share your experience..." style="padding:.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background: var(--surface); color: var(--text);"></textarea>
+                        <small id="review-help" class="muted">Submitting opens a GitHub Issue in our repo. Maintainers label it as Approved, Denied, or Awaiting Approval. Approved reviews appear below.</small>
+                    </div>
+                    <div class="cta" style="margin-top: 1rem;">
+                        <button type="submit" class="btn">Submit review (GitHub)</button>
+                    </div>
+                </form>
+            </div>
+        </section>
+
+        <section class="section" aria-labelledby="players-say-title">
+            <div class="container">
+                <h2 id="players-say-title">What players say</h2>
+                <div id="empty-state" class="card" style="display:none;">
+                    <p class="muted">No reviews yet — be the first to leave one above.</p>
+                </div>
+                <ul id="reviews-list" class="feature-list" role="list" aria-live="polite" aria-busy="false"></ul>
+
+                <div class="cta" style="margin-top: 1.25rem;" role="group" aria-label="Call to action">
+                    <a href="download.html" class="btn">Download MLHD2</a>
+                    <a href="getting-started.html" class="btn btn--ghost">Getting started</a>
+                </div>
+            </div>
+        </section>
+
+        <style>
+            /* Minimal rating control styling */
+            .rating input { position: absolute; opacity: 0; width: 1px; height: 1px; }
+            .rating label { cursor: pointer; font-size: 1.25rem; color: #555; filter: drop-shadow(0 0 0 rgba(0,0,0,0)); }
+            .rating input:focus + label { outline: 2px solid rgba(225,15,23,0.6); outline-offset: 2px; border-radius: 4px; }
+            .rating label:hover, .rating label:hover ~ label { color: #888; }
+            .rating input:checked ~ label { color: #444; }
+            /* We'll color by JS on render; form stars stay neutral */
+
+            /* Rating summary badge */
+            .summary-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: .5rem;
+                padding: .4rem .65rem;
+                border-radius: 999px;
+                background: rgba(225,15,23,0.12);
+                border: 1px solid rgba(225,15,23,0.35);
+                font-weight: 600;
+            }
+            .summary-badge .stars { letter-spacing: 1px; }
+        </style>
+
+        <script>
+            (function() {
+                // Configure your GitHub repository (public)
+                const GH_OWNER = 'HDMLM'; // TODO: set organization/user
+                const GH_REPO  = 'MLHD2';  // TODO: set repository name
+                const GH_APPROVED_URL = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/issues?labels=review,Approved&state=open&per_page=100`;
+                const PUBLIC_CACHE_KEY = 'mlhd2.reviews.public.v2';
+                const PUBLIC_CACHE_TTL = 10 * 60 * 1000; // 10 minutes
+
+                /** @typedef {{id:string,name:string,title?:string,message:string,rating:number,date:string}} Review */
+
+                const $list = document.getElementById('reviews-list');
+                const $empty = document.getElementById('empty-state');
+                const $form = document.getElementById('review-form');
+                const $summary = document.getElementById('rating-summary');
+
+                /** Fetch approved public reviews from GitHub Issues */
+                async function fetchApprovedReviews() {
+                    try {
+                        const now = Date.now();
+                        const cached = JSON.parse(localStorage.getItem(PUBLIC_CACHE_KEY) || 'null');
+                        if (cached && now - cached.ts < PUBLIC_CACHE_TTL && Array.isArray(cached.items)) {
+                            return cached.items;
+                        }
+                        const res = await fetch(GH_APPROVED_URL, { headers: { 'Accept': 'application/vnd.github+json' } });
+                        if (!res.ok) throw new Error(`GitHub API ${res.status}`);
+                        const issues = await res.json();
+                        const items = issues
+                            .filter(i => !i.pull_request)
+                            .map(issueToReview)
+                            .filter(r => r.rating >= 1 && r.rating <= 5);
+                        localStorage.setItem(PUBLIC_CACHE_KEY, JSON.stringify({ ts: now, items }));
+                        return items;
+                    } catch {
+                        return [];
+                    }
+                }
+
+                /** Format stars text like ★★★★☆ */
+                function stars(n) {
+                    const full = '★'.repeat(Math.max(0, Math.min(5, n)));
+                    const empty = '☆'.repeat(5 - full.length);
+                    return full + empty;
+                }
+
+                /** Update average and count summary in hero */
+                function updateSummary(items) {
+                    if (!$summary) return;
+                    if (!items || items.length === 0) {
+                        $summary.textContent = 'No reviews yet';
+                        $summary.removeAttribute('title');
+                        $summary.setAttribute('aria-label', 'No reviews yet');
+                        return;
+                    }
+                    const avg = items.reduce((s, r) => s + (Number(r.rating) || 0), 0) / items.length;
+                    const avg10 = Math.round(avg * 10) / 10;
+                    const rounded = Math.round(avg);
+                    const countText = items.length === 1 ? '1 review' : `${items.length} reviews`;
+                    $summary.innerHTML = `<span class="stars" aria-hidden="true">${stars(rounded)}</span><span><strong>${avg10.toFixed(1)}</strong> out of 5 · ${countText}</span>`;
+                    $summary.setAttribute('title', `${avg10.toFixed(1)} average from ${countText}`);
+                    $summary.setAttribute('aria-label', `${avg10.toFixed(1)} out of 5 from ${countText}`);
+                }
+
+                /** Parse Issue Form sections */
+                function parseIssueForm(body) {
+                    const sections = {};
+                    const re = /###\s*(.+?)\n+([\s\S]*?)(?=\n###\s*|$)/g;
+                    let m; while ((m = re.exec(body)) !== null) {
+                        sections[m[1].toLowerCase().trim()] = m[2].trim();
+                    }
+                    return sections;
+                }
+
+                /** Map GitHub Issue to review */
+                function issueToReview(issue) {
+                    const labels = (issue.labels || []).map(l => typeof l === 'string' ? l : (l.name || ''));
+                    const ratingLabel = labels.find(n => /^(1|2|3|4|5)$/.test(n));
+                    const rating = ratingLabel ? Number(ratingLabel) : 0;
+                    const sections = parseIssueForm(issue.body || '');
+                    const name = (sections['display name'] || (issue.user && issue.user.login) || 'Anonymous').trim();
+                    const message = (sections['review'] || issue.body || '').trim();
+                    const title = issue.title?.replace(/^\[Review\]:\s*/i, '') || 'Review';
+                    return { id: `gh-${issue.id}`, name, title, message, rating, date: issue.created_at };
+                }
+
+                /** Render list (Approved issues) */
+                async function render() {
+                    const items = await fetchApprovedReviews();
+                    $list.innerHTML = '';
+                    updateSummary(items);
+                    if (items.length === 0) {
+                        $empty.style.display = 'block';
+                        return;
+                    }
+                    $empty.style.display = 'none';
+                    for (const r of items.sort((a,b)=> new Date(b.date) - new Date(a.date))) {
+                        const li = document.createElement('li');
+                        li.className = 'card';
+                        li.setAttribute('role', 'listitem');
+                        const pStars = document.createElement('p');
+                        pStars.title = `${r.rating}/5`;
+                        pStars.setAttribute('aria-label', `${r.rating} out of 5 stars`);
+                        pStars.textContent = stars(r.rating);
+                        const block = document.createElement('blockquote');
+                        const pMsg = document.createElement('p');
+                        pMsg.textContent = r.message;
+                        const footer = document.createElement('footer');
+                        const nameSpan = document.createElement('span');
+                        nameSpan.textContent = `— ${r.name}`;
+                        const dateSpan = document.createElement('span');
+                        const dt = new Date(r.date);
+                        dateSpan.textContent = ` · ${dt.toLocaleDateString(undefined, { year:'numeric', month:'short', day:'numeric' })}`;
+                        footer.appendChild(nameSpan);
+                        footer.appendChild(dateSpan);
+                        if (r.title) {
+                            const h = document.createElement('h3');
+                            h.style.margin = '0 0 .25rem';
+                            h.textContent = r.title;
+                            block.appendChild(h);
+                        }
+                        block.appendChild(pMsg);
+                        block.appendChild(footer);
+                        li.appendChild(pStars);
+                        li.appendChild(block);
+                        $list.appendChild(li);
+                    }
+                }
+
+                $form.addEventListener('submit', async (e) => {
+                    e.preventDefault();
+                    const fd = new FormData($form);
+                    const name = (fd.get('name') || '').toString().trim().slice(0, 40);
+                    const title = (fd.get('title') || '').toString().trim().slice(0, 80);
+                    const message = (fd.get('message') || '').toString().trim().slice(0, 1000);
+                    const rating = Number(fd.get('rating') || 0);
+                    if (!name || !message || !(rating >= 1 && rating <= 5)) {
+                        alert('Please provide a name, rating, and review.');
+                        return;
+                    }
+                    const url = new URL(`https://github.com/${GH_OWNER}/${GH_REPO}/issues/new`);
+                    url.searchParams.set('template', 'review.yml');
+                    url.searchParams.set('title', `[Review]: ${title || 'Review'}`);
+                    // Labels: review, Awaiting Approval, and numeric rating label (1..5)
+                    url.searchParams.set('labels', `review,Awaiting Approval,${rating}`);
+                    const body = `### Display name\n${name}\n\n### Rating (1–5)\n${rating}\n\n### Review\n${message}`;
+                    url.searchParams.set('body', body);
+                    window.open(url.toString(), '_blank', 'noopener');
+                });
+
+                render();
+            })();
+        </script>
+    </main>
+
+    <footer class="site-footer" role="contentinfo">
+        <div class="container footer-inner">
+            <p>© 2025 MLHD2 · All rights reserved.</p>
+            <a class="back-to-top" href="#top" aria-label="Back to top">↑ Top</a>
+        </div>
+    </footer>
+</body>
+</html>
