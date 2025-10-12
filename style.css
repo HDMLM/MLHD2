@@ -1,0 +1,76 @@
+:root {
+	--bg: #0f1221;
+	--surface: #171a2b;
+	--text: #e6e8f4;
+	--muted: #b7bbd4;
+	--primary: #7c9cff;
+	--primary-700: #5c7cf5;
+	--accent: #4de6c4;
+	--danger: #ff6b6b;
+	--radius: 12px;
+	--shadow-1: 0 1px 2px rgba(0,0,0,0.2), 0 4px 10px rgba(0,0,0,0.15);
+	--shadow-2: 0 6px 20px rgba(0,0,0,0.35);
+}
+
+/* CSS reset (small, opinionated) */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji"; color: var(--text); background: radial-gradient(1200px 800px at 10% 10%, #141833 0%, var(--bg) 60%) fixed; }
+img { max-width: 100%; display: block; }
+a { color: inherit; text-decoration: none; }
+ul,ol { padding-left: 1.25rem; }
+
+.skip-link { position: absolute; left: -999px; top: -999px; background: var(--primary); color: #fff; padding: 0.5rem 0.75rem; border-radius: 6px; }
+.skip-link:focus { left: 1rem; top: 1rem; z-index: 1000; }
+
+.container { max-width: 1100px; margin: 0 auto; padding: 0 1rem; }
+
+/* Header */
+.site-header { position: sticky; top: 0; backdrop-filter: saturate(140%) blur(8px); background: color-mix(in oklab, var(--bg) 85%, transparent); border-bottom: 1px solid rgba(255,255,255,0.08); z-index: 50; }
+.header-inner { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 0.75rem 0; }
+.brand { display: inline-flex; align-items: center; gap: 0.6rem; font-weight: 700; letter-spacing: 0.2px; }
+.brand .logo { width: 28px; height: 28px; }
+.brand-name { font-size: 1.05rem; color: var(--text); }
+.site-nav ul { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 0.75rem; }
+.site-nav a { color: var(--muted); padding: 0.5rem 0.6rem; border-radius: 8px; }
+.site-nav a:hover { color: var(--text); background: rgba(255,255,255,0.06); }
+
+/* Buttons */
+.btn { display: inline-block; padding: 0.75rem 1rem; border-radius: 999px; background: linear-gradient(180deg, var(--primary), var(--primary-700)); color: #fff; box-shadow: var(--shadow-1); font-weight: 600; border: 1px solid rgba(255,255,255,0.08); }
+.btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-2); }
+.btn:active { transform: translateY(0); }
+.btn--ghost { background: transparent; color: var(--text); border: 1px solid rgba(255,255,255,0.2); }
+.btn--small { padding: 0.5rem 0.75rem; font-size: 0.9rem; }
+
+/* Hero */
+.hero { padding: clamp(3rem, 6vw, 6rem) 0; background: radial-gradient(800px 400px at 90% 10%, rgba(124,156,255,0.15), transparent 60%), radial-gradient(600px 300px at 20% 30%, rgba(77,230,196,0.12), transparent 65%); }
+.hero-inner { text-align: center; }
+.hero h1 { font-size: clamp(2rem, 4vw, 3rem); line-height: 1.1; margin: 0 0 0.75rem; }
+.hero .lede { color: var(--muted); font-size: clamp(1rem, 2.2vw, 1.25rem); margin: 0 0 1.25rem; }
+.cta { display: inline-flex; gap: 0.75rem; flex-wrap: wrap; justify-content: center; }
+
+/* Sections */
+.section { padding: 3rem 0; }
+.section--alt { background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0)); border-block: 1px solid rgba(255,255,255,0.06); }
+
+.feature-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; list-style: none; margin: 1rem 0 0; padding: 0; }
+.feature-list li { background: var(--surface); border: 1px solid rgba(255,255,255,0.08); padding: 1rem; border-radius: var(--radius); box-shadow: var(--shadow-1); }
+.feature-list h3 { margin: 0 0 0.35rem; font-size: 1.05rem; }
+.feature-list p { margin: 0; color: var(--muted); }
+
+.steps { margin-top: 0.5rem; }
+.steps li { margin: 0.4rem 0; }
+
+/* Footer */
+.site-footer { border-top: 1px solid rgba(255,255,255,0.08); background: color-mix(in oklab, var(--bg) 92%, transparent); }
+.footer-inner { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; padding: 1rem 0; color: var(--muted); }
+.back-to-top { color: var(--accent); }
+
+/* Small utilities */
+code { background: rgba(255,255,255,0.08); padding: 0.15rem 0.35rem; border-radius: 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
+
+@media (max-width: 520px) {
+	.site-nav ul { gap: 0.25rem; }
+	.site-nav a { padding: 0.4rem 0.5rem; }
+	.brand-name { display: none; }
+}
