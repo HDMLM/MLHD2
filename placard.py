@@ -20,8 +20,8 @@ def generate_helldiver_banner(
     save_to: Optional[str] = None,
     extra_images: Optional[list[str]] = None,
     # QR: subtle-but-scannable overlay in the bottom-right corner
-    qr_data: Optional[str] = "https://github.com/HDMLM/MLHD2",
-    qr_opacity: int = 70,
+    qr_data: Optional[str] = "https://hdmlm.github.io/MLHD2",
+    qr_opacity: int = 120,
 ) -> Image.Image:
 
     def _load_font(size_px: int) -> ImageFont.FreeTypeFont:
