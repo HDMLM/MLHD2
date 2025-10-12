@@ -16,6 +16,9 @@ from ui_sound import (
     set_ui_sounds_enabled,
 )
 from placard import generate_helldiver_banner
+import io
+import requests
+import threading
 
 # ---------- Paths ----------
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -238,27 +241,47 @@ class SettingsPage(tk.Tk):
         notebook.add(preferences_frame, text="", image=self.preferences_tab_img_normal, compound=tk.CENTER, padding=0)
         
 
-        # Simple "Banner" dropdown with 3 values
-        self.banner_var = tk.StringVar(value="Biome Banner")
-        ttk.Label(preferences_frame, text="Banner:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        # "Aestetics" section for banner selection
+        aesth_label = ttk.Label(preferences_frame, text="Aestetics", font=self.fs_sinclair_font)
+        aesth_lf = ttk.LabelFrame(preferences_frame, labelwidget=aesth_label, padding=10)
+        aesth_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        aesth_lf.columnconfigure(1, weight=1)
+
+        # "Banner" dropdown that persists via settings.json
+        banner_options = ["Biome Banner", "Subfaction Banner", "Helldiver Banner"]
+        default_banner = banner_options[0]
+        initial_banner = default_banner
+        try:
+            if os.path.exists(SETTINGS_PATH):
+                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                    sdata = json.load(f)
+                saved_banner = (sdata.get("banner") or "").strip()
+                # Match saved value to one of the options (case-insensitive)
+                for opt in banner_options:
+                    if saved_banner.casefold() == opt.casefold():
+                        initial_banner = opt
+                        break
+        except Exception:
+            # Fall back to default if anything goes wrong
+            initial_banner = default_banner
+
+        self.banner_var = tk.StringVar(value=initial_banner)
+        ttk.Label(aesth_lf, text="Banner:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
         self.banner_combo = ttk.Combobox(
-            preferences_frame,
+            aesth_lf,
             textvariable=self.banner_var,
-            values=["Biome Banner", "Subfaction Banner", "Helldiver Banner"],
+            values=banner_options,
             state="readonly",
             width=30,
         )
         self.banner_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
-        preferences_frame.columnconfigure(1, weight=1)
 
-        # Banner generation button
-        self.generate_banner_button = ttk.Button(preferences_frame, text="Generate Banner", command=self.on_generate_banner)
-        self.generate_banner_button.grid(row=1, column=0, columnspan=2, pady=10)
+        
 
         # Player Card frame (same style as Webhooks) to wrap the generated image
         player_card_label = ttk.Label(preferences_frame, text="Player Card", font=self.fs_sinclair_font)
         self.player_card_lf = ttk.LabelFrame(preferences_frame, labelwidget=player_card_label, padding=10)
-        self.player_card_lf.grid(row=2, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.player_card_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
         self.player_card_lf.columnconfigure(0, weight=1)
 
         # banner display label inside the Player Card frame
@@ -270,6 +293,109 @@ class SettingsPage(tk.Tk):
             self._load_saved_banner_preview()
         except Exception:
             pass
+
+        # Banner generation button
+        self.generate_banner_button = ttk.Button(preferences_frame, text="Generate Banner", command=self.on_generate_banner)
+        self.generate_banner_button.grid(row=2, column=0, columnspan=2, pady=10)
+
+        # Banner export button that sends the generated image to all Export webhooks
+        self.export_banner_button = ttk.Button(
+            preferences_frame,
+            text="Export Banner",
+            command=lambda: _export_banner()
+        )
+        self.export_banner_button.grid(row=3, column=0, columnspan=2, pady=(0, 10))
+
+        # Disable until a banner exists on disk
+        try:
+            if not os.path.exists(GENERATED_BANNER_PATH):
+                self.export_banner_button.state(["disabled"])
+        except Exception:
+            pass
+
+        # Wrap on_generate_banner so the Export button enables after generation
+        try:
+            _orig_on_generate_banner = self.on_generate_banner
+            def _wrapped_on_generate_banner():
+                _orig_on_generate_banner()
+                try:
+                    if os.path.exists(GENERATED_BANNER_PATH):
+                        self.export_banner_button.state(["!disabled"])
+                except Exception:
+                    pass
+            self.on_generate_banner = _wrapped_on_generate_banner
+        except Exception:
+            pass
+
+        def _export_banner():
+            # Validate file
+            if not os.path.exists(GENERATED_BANNER_PATH):
+                messagebox.showerror("Error", "No banner found. Generate a banner first.")
+                return
+
+            # Collect export webhooks
+            urls = []
+            try:
+                for w in self.webhooks_export:
+                    url = str(w.get("url", "")).strip()
+                    if url.lower().startswith(("http://", "https://")):
+                        urls.append(url)
+            except Exception:
+                pass
+
+            if not urls:
+                messagebox.showwarning("No Webhooks", "No export webhooks configured.")
+                return
+
+            # Disable button during export
+            try:
+                self.export_banner_button.state(["disabled"])
+            except Exception:
+                pass
+
+            def _worker():
+                ok = 0
+                errors = []
+                try:
+                    # Read file once into memory
+                    with open(GENERATED_BANNER_PATH, "rb") as f:
+                        data = f.read()
+                    filename = os.path.basename(GENERATED_BANNER_PATH)
+                    for url in urls:
+                        try:
+                            files = {
+                                "file": (filename, io.BytesIO(data), "image/png")
+                            }
+                            payload = {
+                                "content": f"Player Card Banner for {self.Helldivers.get()}",
+                            }
+                            resp = requests.post(url, data=payload, files=files, timeout=15)
+                            if 200 <= resp.status_code < 300:
+                                ok += 1
+                            else:
+                                errors.append(f"{url} -> {resp.status_code}")
+                        except Exception as e:
+                            errors.append(f"{url} -> {e}")
+                finally:
+                    # Re-enable button
+                    try:
+                        self.export_banner_button.state(["!disabled"])
+                    except Exception:
+                        pass
+
+                if ok and not errors:
+                    logging.info(f"[settings] Banner exported to {ok} webhook(s).")
+                elif ok and errors:
+                    logging.warning(f"[settings] Exported to {ok} webhook(s), {len(errors)} failed: " + "; ".join(errors[:5]))
+                else:
+                    logging.error("[settings] Failed to export banner: " + "; ".join(errors[:5]))
+
+            # Run in background to keep UI responsive
+            try:
+                threading.Thread(target=_worker, daemon=True).start()
+            except Exception:
+                # Fallback: run inline
+                _worker()
 
         # Remove tab border/highlight (like other buttons)
         style = ttk.Style()

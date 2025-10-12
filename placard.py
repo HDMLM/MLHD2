@@ -19,6 +19,9 @@ def generate_helldiver_banner(
     size: Tuple[int, int] = (640, 180),
     save_to: Optional[str] = None,
     extra_images: Optional[list[str]] = None,
+    # QR: subtle-but-scannable overlay in the bottom-right corner
+    qr_data: Optional[str] = "https://github.com/HDMLM/MLHD2",
+    qr_opacity: int = 70,
 ) -> Image.Image:
 
     def _load_font(size_px: int) -> ImageFont.FreeTypeFont:
@@ -31,6 +34,99 @@ def generate_helldiver_banner(
         except Exception:
             pass
         return ImageFont.load_default()
+
+    # --- QR (camouflage) helpers -------------------------------------------
+    def _make_qr_modules(data: str):
+        """Return a tuple (modules, width, height) of 0/1 modules (1 = black data), or (None,0,0).
+        Uses high error correction so it stays scannable with low contrast.
+        """
+        try:
+            import qrcode
+            from qrcode.constants import ERROR_CORRECT_H
+
+            qr = qrcode.QRCode(
+                version=None,
+                error_correction=ERROR_CORRECT_H,
+                box_size=1,
+                border=4,  # include quiet zone to improve scanning
+            )
+            qr.add_data(data)
+            qr.make(fit=True)
+            # Standard black modules on white background for reliable thresholding
+            img_qr = qr.make_image(fill_color="black", back_color="white").convert("L")
+            w, h = img_qr.size
+            px = img_qr.load()
+            # 1 = black (data) module, 0 = white background
+            modules = [[1 if px[x, y] < 128 else 0 for x in range(w)] for y in range(h)]
+            return modules, w, h
+        except Exception:
+            return None, 0, 0
+
+    def _draw_camouflaged_qr(img_rgba: Image.Image, data: str, box: Tuple[int, int, int, int], opacity: int = 70) -> None:
+        """Draw a low-contrast QR into the given box on a transparent overlay.
+        - data: text/URL to encode
+        - box: (x0,y0,x1,y1) target rectangle; QR will be centered and scaled
+        - opacity: alpha (0-255) for dark modules
+        The function fails silently if dependencies are missing or box too small.
+        """
+        modules, qr_w, qr_h = _make_qr_modules(str(data))
+        if not modules or qr_w == 0 or qr_h == 0:
+            return
+
+        x0, y0, x1, y1 = [int(v) for v in box]
+        x0 = max(0, min(x0, img_rgba.width))
+        y0 = max(0, min(y0, img_rgba.height))
+        x1 = max(x0, min(x1, img_rgba.width))
+        y1 = max(y0, min(y1, img_rgba.height))
+        w_box = x1 - x0
+        h_box = y1 - y0
+        if w_box < 40 or h_box < 40:
+            return
+
+        # Choose integer module size that fits in the box
+        module = max(2, min(w_box // qr_w, h_box // qr_h))
+        draw_w = module * qr_w
+        draw_h = module * qr_h
+        ox = x0 + (w_box - draw_w) // 2
+        oy = y0 + (h_box - draw_h) // 2
+
+        # Compute a very faint backdrop to boost contrast a touch
+        # Sample average brightness in the target box to pick light/dark blend
+        try:
+            crop = img_rgba.crop((x0, y0, x1, y1)).convert("L")
+            avg = int(sum(crop.getdata()) / (crop.width * crop.height)) if crop.width and crop.height else 128
+        except Exception:
+            avg = 128
+
+        # Always use black modules; add a faint light plate for stability
+        bg_alpha = 20  # make the surrounding rectangle a bit fainter
+        # Respect qr_opacity with a gentle clamp allowing fainter modules
+        mod_alpha = max(50, min(200, int(opacity)))
+        plate = (255, 255, 255, bg_alpha)   # faint light plate behind QR
+        module_fill = (0, 0, 0, mod_alpha)  # actual QR data modules in black
+
+        overlay = Image.new("RGBA", img_rgba.size, (0, 0, 0, 0))
+        od = ImageDraw.Draw(overlay)
+
+        # Rounded plate sized to the drawn QR
+        pad = max(2, module // 2)
+        od.rounded_rectangle(
+            [(ox - pad, oy - pad), (ox + draw_w + pad, oy + draw_h + pad)],
+            radius=max(4, module // 2),
+            fill=plate,
+            outline=None,
+        )
+
+        # Draw dark/light modules
+        for yy in range(qr_h):
+            row = modules[yy]
+            for xx in range(qr_w):
+                if row[xx]:  # draw "dark" modules
+                    xL = ox + xx * module
+                    yT = oy + yy * module
+                    od.rectangle([xL, yT, xL + module - 1, yT + module - 1], fill=module_fill)
+
+        img_rgba.alpha_composite(overlay)
 
     # assign pngs to strings for badges
     #list of badge png names
@@ -823,7 +919,13 @@ def generate_helldiver_banner(
                 # Estimate block height using consistent baseline spacing
                 typical_h = max(heights_stats) if heights_stats else 18
                 block_h = (len(info_lines_stats) - 1) * BASELINE_SPACING + typical_h
-                new_bottom = min(H - 8, stats_start_y + block_h + stats_pad_y)
+                # Include extra bottom padding for descenders (e.g., y,g,p,q,j)
+                try:
+                    asc, desc = font_small.getmetrics()
+                    desc_margin = max(3, int(desc))
+                except Exception:
+                    desc_margin = 4
+                new_bottom = min(H - 8, stats_start_y + block_h + stats_pad_y + desc_margin)
                 # Ensure it still covers the original rectangle
                 box_bottom = max(box_bottom, new_bottom)
         except Exception:
@@ -862,11 +964,14 @@ def generate_helldiver_banner(
             for idx, t in enumerate(info_lines_stats):
                 bb = draw.textbbox((0, 0), t, font=font_small)
                 tw = max(0, bb[2] - bb[0])
+                th = max(0, bb[3] - bb[1])
                 tx = text_x
                 if tx + tw > box_right - 10:
                     tx = max(text_x, box_right - 10 - tw)
+                # Clamp Y so the full text height stays inside the rectangle
+                y_draw = min(max(cur_y, box_top + 6), max(box_top + 6, box_bottom - 6 - th))
                 # Match 'Serving Since' color
-                draw.text((tx, cur_y), t, fill=(190, 190, 190, 210), font=font_small)
+                draw.text((tx, y_draw), t, fill=(190, 190, 190, 210), font=font_small)
                 cur_y += BASELINE_SPACING
     except Exception:
         pass
@@ -1046,6 +1151,16 @@ def generate_helldiver_banner(
             except Exception:
                 pass
 
+    except Exception:
+        pass
+
+    # Subtle but scannable QR in the bottom-right corner
+    try:
+        if qr_data:
+            pad = 10
+            box_w = box_h = max(84, min(140, min(img.width, img.height) // 3))
+            qr_box = (img.width - pad - box_w, img.height - pad - box_h, img.width - pad, img.height - pad)
+            _draw_camouflaged_qr(img, str(qr_data), qr_box, opacity=int(qr_opacity))
     except Exception:
         pass
 
