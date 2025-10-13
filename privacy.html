@@ -6,6 +6,9 @@
 	<title>Privacy · MLHD2</title>
 	<meta name="description" content="Privacy policy and data practices for MLHD2." />
 	<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+	<meta name="theme-color" content="#0b0b0b" />
+	<link rel="preload" href="data/images/assets/blurback.png" as="image" />
+	<style>html,body{background-color:#0b0b0b}</style>
 	<link rel="stylesheet" href="./style.css" />
 </head>
 <body id="top">
@@ -16,14 +19,19 @@
 				<img src="favicon.svg" alt="MLHD2 logo" class="logo" />
 				<span class="brand-name">MLHD2</span>
 			</div>
-			<nav class="site-nav" aria-label="primary">
+			<!-- Mobile hamburger toggle -->
+			<button class="nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+				<span class="sr-only">Toggle navigation</span>
+				<img src="data/images/assets/burger.svg" alt="" class="hamburger" aria-hidden="true" />
+			</button>
+			<nav id="primary-navigation" class="site-nav" aria-label="primary">
 				<ul>
 					<li><a href="index.html">Home</a></li>
 					<li><a href="features.html">Features</a></li>
 					<li><a href="reviews.html">Reviews</a></li>
 					<li><a href="about.html">About</a></li>
 					<li><a href="download.html">Download</a></li>
-					<li><a href="getting-started.html" class="btn btn--small">Get started</a></li>
+					<li><a href="contact.html">Contact Us</a></li>
 					<li><a href="privacy.html" class="active muted-link" aria-current="page">Privacy</a></li>
 				</ul>
 			</nav>
@@ -88,5 +96,7 @@
 			<a class="back-to-top" href="#top" aria-label="Back to top">↑ Top</a>
 		</div>
 	</footer>
+
+	<script src="./nav-toggle.js"></script>
 </body>
 </html>

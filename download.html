@@ -6,6 +6,9 @@
 	<title>Download · MLHD2</title>
 	<meta name="description" content="Download the MLHD2 launcher for Helldivers 2 logging." />
 	<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+	<meta name="theme-color" content="#0b0b0b" />
+	<link rel="preload" href="data/images/assets/blurback.png" as="image" />
+	<style>html,body{background-color:#0b0b0b}</style>
 	<link rel="stylesheet" href="./style.css" />
 </head>
 <body id="top">
@@ -16,14 +19,19 @@
 				<img src="favicon.svg" alt="MLHD2 logo" class="logo" />
 				<span class="brand-name">MLHD2</span>
 			</div>
-			<nav class="site-nav" aria-label="primary">
+			<!-- Mobile hamburger toggle -->
+			<button class="nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+				<span class="sr-only">Toggle navigation</span>
+				<img src="data/images/assets/burger.svg" alt="" class="hamburger" aria-hidden="true" />
+			</button>
+			<nav id="primary-navigation" class="site-nav" aria-label="primary">
 				<ul>
 					<li><a href="index.html">Home</a></li>
 					<li><a href="features.html">Features</a></li>
 					<li><a href="reviews.html">Reviews</a></li>
 					<li><a href="about.html">About</a></li>
 					<li><a href="download.html" class="active" aria-current="page">Download</a></li>
-					<li><a href="getting-started.html" class="btn btn--small">Get started</a></li>
+					<li><a href="contact.html">Contact Us</a></li>
 					<li><a href="privacy.html" class="muted-link">Privacy</a></li>
 				</ul>
 			</nav>
@@ -33,13 +41,52 @@
 	<div class="hazard hazard--bar" aria-hidden="true"></div>
 
 	<main id="main">
-		<section class="hero hero--sub" aria-label="Download">
+
+		<section class="hero hero--sub" aria-labelledby="gs-title">
 			<div class="container">
-				<h1>Download MLHD2</h1>
-				<p class="lede">Grab the latest launcher to start logging your Helldivers 2 sessions.</p>
+				<h1 id="gs-title">Getting Started</h1>
+				<p class="lede">Follow these steps to install MLHD2 and start logging.</p>
 			</div>
 		</section>
 
+		<section class="section" aria-labelledby="steps-title">
+			<div class="container">
+				<h2 id="steps-title">Steps</h2>
+				<ol class="steps">
+					<li>
+						<strong>Download:</strong> Get the latest launcher from the <a href="download.html">download page</a>.
+					</li>
+					<li>
+						<strong>Install:</strong> Run the installer. If Windows SmartScreen warns you, select "More info" then "Run anyway" while we work on code-signing (it's really expensive dude...).
+					</li>
+					<li>
+						<strong>Launch:</strong> Start MLHD2 alongside Helldivers 2.
+					</li>
+					<li>
+						<strong>Log missions:</strong> After each mission, record your results.
+					</li>
+					<li>
+						<strong>Export:</strong> Generate a summary to share on Discord or analyze in your favorite tool.
+					</li>
+				</ol>
+
+				<h2>FAQ</h2>
+				<details>
+					<summary><b>Does MLHD2 read or modify game files?</b></summary>
+					<p>No. MLHD2 is a separate logging app and avoids touching game files.</p>
+				</details>
+				<details>
+					<summary><b>Do I have to share to Discord?</b></summary>
+					<p>Partially. For transparency, due to the nature of this program, the Discord integration is nested rather deep into our code, there is an option to disable public display. <br>
+						This will then only send the log to a private server only the team can access simply to ensure the program has recognised that the log has been sent correctly.<br>
+						However for your own use, you are not forced to provide a webhook URL to the program to send to.</p>
+				</details>
+				<details>
+					<summary><b>Where are my logs stored?</b></summary>
+					<p>Logs are stored locally on your machine. You choose what to export or share.</p>
+				</details>
+			</div>
+		</section>
 		<section class="section" aria-label="Download options">
 			<div class="container">
 				<div class="feature-list" role="list">
@@ -57,11 +104,26 @@
                 <div role="region" aria-label="Checksum and version" class="card">
                     <h3>Checksum and Version</h3>
                     <p>SHA-256 (MLHD2-Launcher.exe)</p>
-                    <pre style="margin-top:.75rem; max-width:100%;"><code>1bc30dcecaea3eb8c88ca504800e11ff5f768353e21b3ec66c7afd00107de018</code></pre>
+					<pre class="desktop-only" style="margin-top:.75rem; max-width:100%; display:none;" id="checksum"><code>1bc30dcecaea3eb8c88ca504800e11ff5f768353e21b3ec66c7afd00107de018</code></pre>
+					<pre class="mobile-only" style="margin-top:.75rem; max-width:100%; display:none;" id="checksum-mobile"><code>1bc30dce...</code></pre>
+					<script>
+						function updateChecksumVisibility() {
+							if (window.matchMedia("(max-width: 600px)").matches) {
+								document.getElementById('checksum').style.display = 'none';
+								document.getElementById('checksum-mobile').style.display = 'block';
+							} else {
+								document.getElementById('checksum').style.display = 'block';
+								document.getElementById('checksum-mobile').style.display = 'none';
+							}
+						}
+						updateChecksumVisibility();
+						window.addEventListener('resize', updateChecksumVisibility);
+					</script>
                     <p style="color: var(--muted); margin-top:.5rem;">Version: 1.7.000</p>
                 </div>
 			</div>
 		</section>
+		
 	</main>
 
 	<footer class="site-footer" role="contentinfo">
@@ -70,5 +132,7 @@
 			<a class="back-to-top" href="#top" aria-label="Back to top">↑ Top</a>
 		</div>
 	</footer>
+
+	<script src="./nav-toggle.js"></script>
 </body>
 </html>

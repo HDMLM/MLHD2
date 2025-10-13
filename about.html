@@ -4,8 +4,11 @@
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width, initial-scale=1" />
 	<title>About · MLHD2</title>
-	<meta name="description" content="Learn more about MLHD2, the Helldivers 2 mission logging tool." />
+	<meta name="description" content="Learn more about MLHD2, the HELLDIVERS 2™ mission logging tool." />
 	<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+	<meta name="theme-color" content="#0b0b0b" />
+	<link rel="preload" href="data/images/assets/blurback.png" as="image" />
+	<style>html,body{background-color:#0b0b0b}</style>
 	<link rel="stylesheet" href="./style.css" />
 </head>
 <body id="top">
@@ -16,14 +19,19 @@
 				<img src="favicon.svg" alt="MLHD2 logo" class="logo" />
 				<span class="brand-name">MLHD2</span>
 			</div>
-			<nav class="site-nav" aria-label="primary">
+			<!-- Mobile hamburger toggle -->
+			<button class="nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+				<span class="sr-only">Toggle navigation</span>
+				<img src="data/images/assets/burger.svg" alt="" class="hamburger" aria-hidden="true" />
+			</button>
+			<nav id="primary-navigation" class="site-nav" aria-label="primary">
 				<ul>
 					<li><a href="index.html">Home</a></li>
 					<li><a href="features.html">Features</a></li>
 					<li><a href="reviews.html">Reviews</a></li>
 					<li><a href="about.html" class="active" aria-current="page">About</a></li>
 					<li><a href="download.html">Download</a></li>
-					<li><a href="getting-started.html" class="btn btn--small">Get started</a></li>
+					<li><a href="contact.html">Contact Us</a></li>
 					<li><a href="privacy.html" class="muted-link">Privacy</a></li>
 				</ul>
 			</nav>
@@ -65,9 +73,9 @@
 					<br />
 					<b>We are not affiliated with Arrowhead Game Studios or Sony Interactive Entertainment.</b>
 				</p>
-				<h3 style="color: red; font-weight: bold; margin-bottom: -15px;">Lead Developer / Founder</h3>
+				<h3 style="color: rgb(171, 38, 38); font-weight: bold; margin-bottom: -15px;">Lead Developer / Founder</h3>
 					<p>Alreapha</p>
-				<h3 style="color: red; font-weight: bold; margin-bottom: -15px;">Lead Designer / Co-Founder / Developer</h3>
+				<h3 style="color: rgb(171, 38, 38); font-weight: bold; margin-bottom: -15px;">Lead Designer / Co-Founder / Developer</h3>
 					<p>CalamitusXIII</p>
 				<h2>Credits</h2>
 				<p>We would like to thank all of the testers and the community that have joined us to help test out our program and give feedback on what we can improve and suggestions for future implementations to our program.<br /><br />
@@ -85,5 +93,7 @@
 			<a class="back-to-top" href="#top" aria-label="Back to top">↑ Top</a>
 		</div>
 	</footer>
+
+	<script src="./nav-toggle.js"></script>
 </body>
 </html>

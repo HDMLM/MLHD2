@@ -6,6 +6,14 @@
 	<title>Features · MLHD2</title>
 	<meta name="description" content="Explore MLHD2 features: stats, exports, privacy-first design, and lightweight footprint." />
 	<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+	<meta name="theme-color" content="#0b0b0b" />
+	<link rel="preload" href="data/images/assets/blurback.png" as="image" />
+	<link rel="preload" href="data/images/features/mainScreen.png" as="image" />
+	<link rel="preload" href="data/images/features/exportViewerScreen.png" as="image" />
+	<link rel="preload" href="data/images/features/settingsScreen.png" as="image" />
+	<link rel="preload" href="data/images/features/launcher.png" as="image" />
+	<link rel="preload" href="data/images/features/embedScreen.png" as="image" />
+	<style>html,body{background-color:#0b0b0b}</style>
 	<link rel="stylesheet" href="./style.css" />
 </head>
 <body id="top">
@@ -16,14 +24,19 @@
 				<img src="favicon.svg" alt="MLHD2 logo" class="logo" />
 				<span class="brand-name">MLHD2</span>
 			</div>
-			<nav class="site-nav" aria-label="primary">
+			<!-- Mobile hamburger toggle -->
+			<button class="nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+				<span class="sr-only">Toggle navigation</span>
+				<img src="data/images/assets/burger.svg" alt="" class="hamburger" aria-hidden="true" />
+			</button>
+			<nav id="primary-navigation" class="site-nav" aria-label="primary">
 				<ul>
 					<li><a href="index.html">Home</a></li>
 					<li><a href="features.html" class="active" aria-current="page">Features</a></li>
 					<li><a href="reviews.html">Reviews</a></li>
 					<li><a href="about.html">About</a></li>
 					<li><a href="download.html">Download</a></li>
-					<li><a href="getting-started.html" class="btn btn--small">Get started</a></li>
+					<li><a href="contact.html">Contact Us</a></li>
 					<li><a href="privacy.html" class="muted-link">Privacy</a></li>
 				</ul>
 			</nav>
@@ -36,7 +49,7 @@
 		<section class="hero hero--sub" aria-labelledby="features-title">
 			<div class="container">
 				<h1 id="features-title">Features</h1>
-				<p class="lede">Everything you need to log, summarize, and share Helldivers 2 missions.</p>
+				<p class="lede">Everything you need to log, summarize, and share HELLDIVERS 2™ missions.</p>
 			</div>
 		</section>
 
@@ -91,5 +104,7 @@
 			<a class="back-to-top" href="#top" aria-label="Back to top">↑ Top</a>
 		</div>
 	</footer>
+
+	<script src="./nav-toggle.js"></script>
 </body>
 </html>

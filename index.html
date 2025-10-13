@@ -13,6 +13,11 @@
 		<meta property="og:image" content="favicon.svg" />
 
 		<link rel="icon" href="favicon.svg" type="image/svg+xml" />
+		<!-- Inline minimal background color + preload to avoid white flash between page loads -->
+		<meta name="theme-color" content="#0b0b0b" />
+		<link rel="preload" href="data/images/assets/blurback.png" as="image" />
+		<link rel="preload" href="data/images/assets/image.png" as="image" />
+		<style>html,body{background-color:#0b0b0b}</style>
 		<link rel="stylesheet" href="./style.css" />
 	</head>
 		<body id="top">
@@ -24,14 +29,19 @@
 					<img src="favicon.svg" alt="MLHD2 logo" class="logo" />
 					<span class="brand-name">MLHD2</span>
 				</div>
-				<nav class="site-nav" aria-label="primary">
+				<!-- Mobile hamburger toggle -->
+				<button class="nav-toggle" aria-controls="primary-navigation" aria-expanded="false">
+						<span class="sr-only">Toggle navigation</span>
+						<img src="data/images/assets/burger.svg" alt="" class="hamburger" aria-hidden="true" />
+				</button>
+				<nav id="primary-navigation" class="site-nav" aria-label="primary">
 					<ul>
 						<li><a href="index.html" class="active" aria-current="page">Home</a></li>
 						<li><a href="features.html">Features</a></li>
 						<li><a href="reviews.html">Reviews</a></li>
 						<li><a href="about.html">About</a></li>
 						<li><a href="download.html">Download</a></li>
-						<li><a href="getting-started.html" class="btn btn--small">Get started</a></li>
+						<li><a href="contact.html">Contact Us</a></li>
 						<li><a href="privacy.html" class="muted-link">Privacy</a></li>
 					</ul>
 				</nav>
@@ -47,9 +57,9 @@
 							<p class="lede">MLHD2 helps you track missions, summarize results, and share highlights.</p>
 					<div class="cta">
 						<a href="data/MLHD2-Launcher.exe" class="btn" download="MLHD2-Launcher.exe">Download Launcher</a>
-						<a href="getting-started.html" class="btn btn--ghost">Read the guide</a>
+						<a href="contact.html" class="btn btn--ghost">Read the guide</a>
 						<a href="features.html" class="btn btn--ghost">See features</a>
-						<img src="data/images/assets/GUIBanner.svg" alt="MLHD2 GUI Banner" style="margin-top: 5em;"/>
+						<img src="data/images/assets/GUIBanner.png" alt="MLHD2 GUI Banner" style="margin-top: 5em;"/>
 					</div>
 				</div>
 			</section>
@@ -101,5 +111,7 @@
 				<a class="back-to-top" href="#top" aria-label="Back to top">↑ Top</a>
 			</div>
 		</footer>
+
+	<script src="./nav-toggle.js"></script>
 	</body>
 	</html>
