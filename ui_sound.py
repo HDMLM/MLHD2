@@ -5,6 +5,7 @@ import os
 import time
 import threading
 import logging
+import platform
 from typing import Optional, Callable
 
 __all__ = [
@@ -26,7 +27,7 @@ _button_player: Optional[Callable[[], object]] = None
 _hover_player: Optional[Callable[[], object]] = None
 _button_init_attempted = False
 _hover_init_attempted = False
-_enabled = True
+_enabled = True  # Disabled by default; use set_ui_sounds_enabled(True)
 _lock = threading.Lock()
 _preload_started = False
 
@@ -54,9 +55,33 @@ def _init_player(kind: str) -> None:
             if not wav_path:
                 return
             try:
-                import simpleaudio as sa  # type: ignore
-                wave_obj = sa.WaveObject.from_wave_file(wav_path)
-                _button_player = lambda: wave_obj.play()
+                # Prefer a very low-latency native backend on Windows
+                if platform.system() == "Windows":
+                    try:
+                        import winsound  # type: ignore
+
+                        def _win_click():
+                            try:
+                                winsound.PlaySound(wav_path, winsound.SND_ASYNC | winsound.SND_FILENAME | winsound.SND_NODEFAULT)
+                            except Exception:
+                                # Fallback to simpleaudio below if winsound fails
+                                raise
+
+                        _button_player = _win_click
+                    except Exception:
+                        # Fall through to simpleaudio fallback
+                        pass
+                if _button_player is None:
+                    import simpleaudio as sa  # type: ignore
+                    wave_obj = sa.WaveObject.from_wave_file(wav_path)
+                    # Capture wave_obj locally to avoid lookup cost at play time
+                    def _sa_click():
+                        try:
+                            wave_obj.play()
+                        except Exception:
+                            pass
+
+                    _button_player = _sa_click
             except Exception as e:
                 logging.debug(f"UI sound: failed to init click sound: {e}")
         else:
@@ -67,9 +92,31 @@ def _init_player(kind: str) -> None:
             if not wav_path:
                 return
             try:
-                import simpleaudio as sa  # type: ignore
-                wave_obj = sa.WaveObject.from_wave_file(wav_path)
-                _hover_player = lambda: wave_obj.play()
+                # Windows winsound fast-path
+                if platform.system() == "Windows":
+                    try:
+                        import winsound  # type: ignore
+
+                        def _win_hover():
+                            try:
+                                winsound.PlaySound(wav_path, winsound.SND_ASYNC | winsound.SND_FILENAME | winsound.SND_NODEFAULT)
+                            except Exception:
+                                raise
+
+                        _hover_player = _win_hover
+                    except Exception:
+                        pass
+                if _hover_player is None:
+                    import simpleaudio as sa  # type: ignore
+                    wave_obj = sa.WaveObject.from_wave_file(wav_path)
+
+                    def _sa_hover():
+                        try:
+                            wave_obj.play()
+                        except Exception:
+                            pass
+
+                    _hover_player = _sa_hover
             except Exception as e:
                 logging.debug(f"UI sound: failed to init hover sound: {e}")
 
@@ -102,7 +149,8 @@ def play_button_click() -> None:
     global _btn_last_play
     if not _enabled:
         return
-    now = time.time()
+    # Use monotonic clock for robust interval checks
+    now = time.monotonic()
     if now - _btn_last_play < _BTN_MIN_INTERVAL:
         return
     if _button_player is None:
@@ -112,6 +160,7 @@ def play_button_click() -> None:
         return
     _btn_last_play = now
     try:
+        # Call the prepared player callable directly (very cheap)
         player()
     except Exception:
         pass
@@ -121,7 +170,7 @@ def play_button_hover() -> None:
     global _hover_last_play
     if not _enabled:
         return
-    now = time.time()
+    now = time.monotonic()
     if now - _hover_last_play < _HOVER_MIN_INTERVAL:
         return
     if _hover_player is None:
@@ -145,7 +194,8 @@ def register_global_click_binding(root, filter_text_widgets: bool = True) -> Non
 
     def _maybe(ev):
         try:
-            if filter_text_widgets and isinstance(ev.widget, tk.Text):
+            # Filter typical text-entry widgets so typing/caret clicks don't trigger sounds
+            if filter_text_widgets and isinstance(ev.widget, (tk.Text, tk.Entry, tk.Spinbox)):
                 return
             play_button_click()
         except Exception:
