@@ -21,7 +21,7 @@ iconconfig = configparser.ConfigParser()
 iconconfig.read('icon.config')
 
 # Function to get player's first planet from mission log
-def get_player_homeworld():
+def get_first_ingress():
     try:
         # Set up application data paths 
         APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
@@ -59,7 +59,7 @@ def get_player_homeworld():
         return "Super Earth"
 
 # Get player's homeworld planet
-player_homeworld = get_player_homeworld()
+first_ingress = get_first_ingress()
 
 ENEMY_ICONS = {
     "Automatons": iconconfig['EnemyIcons']['Automatons'],
@@ -87,7 +87,7 @@ SYSTEM_COLORS = {
 }
 
 
-# Base planet icons without player homeworld
+# Base planet icons without First Ingress
 _BASE_PLANET_ICONS = {
     "Super Earth": iconconfig['PlanetIcons']['Human Homeworld'],
     "Cyberstan": iconconfig['PlanetIcons']['Automaton Homeworld'],
@@ -110,6 +110,9 @@ _BASE_PLANET_ICONS = {
     "Socorro III": iconconfig['PlanetIcons']['Gloom'],
     "Esker": iconconfig['PlanetIcons']['Gloom'],
     "Overgoe Prime": iconconfig['PlanetIcons']['Gloom'],
+    "Partion": iconconfig['PlanetIcons']['Gloom'],
+    "Estanu": iconconfig['PlanetIcons']['Gloom'],
+    "Erata Prime": iconconfig['PlanetIcons']['Gloom'],
     "Aurora Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Widow's Harbor": iconconfig['PlanetIcons']['Free Springs Retreat'],
@@ -131,21 +134,70 @@ _BASE_PLANET_ICONS = {
     "Alairt III": iconconfig['PlanetIcons']['Illuminate Stronghold'],
     "Wasat": iconconfig['PlanetIcons']['Database One'],
     "Pöpli IX": iconconfig['PlanetIcons']['Popli IX'],
+    "Rogue 5": iconconfig['PlanetIcons']['Rogue 5']
 }
 
 # Create combined PLANET_ICONS with homeworld support
 PLANET_ICONS = _BASE_PLANET_ICONS.copy()
 
-# Add or combine player homeworld icon
-player_homeworld_icon = iconconfig['PlanetIcons']['Player Homeworld']
-if player_homeworld in PLANET_ICONS:
+# Add or combine First Ingress icon
+first_ingress_icon = iconconfig['PlanetIcons']['First Ingress']
+if first_ingress in PLANET_ICONS:
     # Planet already has an icon, combine them
-    existing_icon = PLANET_ICONS[player_homeworld]
-    PLANET_ICONS[player_homeworld] = f"{existing_icon}{player_homeworld_icon}"
+    existing_icon = PLANET_ICONS[first_ingress]
+    PLANET_ICONS[first_ingress] = f"{existing_icon}{first_ingress_icon}"
 else:
     # Planet doesn't have an icon, just add the homeworld icon
-    PLANET_ICONS[player_homeworld] = player_homeworld_icon
+    PLANET_ICONS[first_ingress] = first_ingress_icon
 
+    # Function to get player's most played planet from mission log
+    def get_most_played_planet():
+        try:
+            # Set up application data paths 
+            APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+            
+            # Load config to check DEBUG mode
+            config = configparser.ConfigParser()
+            config.read('config.config')
+            DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+            
+            # Choose the appropriate Excel file
+            EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+            EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+            excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+            
+            # Read the mission log
+            if os.path.exists(excel_file):
+                df = pd.read_excel(excel_file)
+                
+                # Check if Planet column exists
+                if 'Planet' in df.columns and not df.empty:
+                    # Count occurrences of each planet and get the most frequent
+                    planet_counts = df['Planet'].value_counts()
+                    
+                    if not planet_counts.empty:
+                        most_played_planet = planet_counts.index[0]
+                        return str(most_played_planet).strip()
+            
+            # Default fallback if no data found
+            return "Super Earth"
+            
+        except Exception as e:
+            logging.error(f"Error reading mission log for most played planet: {e}")
+            return "Super Earth"
+
+    # Get player's most played planet
+    most_played_planet = get_most_played_planet()
+
+    # Add or combine Favourite Planet icon
+    favourite_planet_icon = iconconfig['PlanetIcons']['Favourite Planet']
+    if most_played_planet in PLANET_ICONS:
+        # Planet already has an icon, combine them
+        existing_icon = PLANET_ICONS[most_played_planet]
+        PLANET_ICONS[most_played_planet] = f"{existing_icon}{favourite_planet_icon}"
+    else:
+        # Planet doesn't have an icon, just add the favourite planet icon
+        PLANET_ICONS[most_played_planet] = favourite_planet_icon
 
 CAMPAIGN_ICONS = {
     "Defense": iconconfig['CampaignIcons']['Defense'],
@@ -481,6 +533,31 @@ BIOME_BANNERS = {
     "Mars": iconconfig['BiomeBanners']['Mars']
 }
 
+SUBFACTION_BANNERS = {
+    "Automaton Legion": iconconfig['SubfactionBanners'].get('AutomatonLegion', ''),
+    "Terminid Horde": iconconfig['SubfactionBanners'].get('TerminidHorde', ''),
+    "Illuminate Cult": iconconfig['SubfactionBanners'].get('IlluminateCult', ''),
+    "Jet Brigade": iconconfig['SubfactionBanners'].get('JetBrigade', ''),
+    "Predator Strain": iconconfig['SubfactionBanners'].get('PredatorStrain', ''),
+    "Incineration Corps": iconconfig['SubfactionBanners'].get('IncinerationCorps', ''),
+    "Jet Brigade & Incineration Corps": iconconfig['SubfactionBanners'].get('JetBrigadeIncinerationCorps', ''),
+	"Spore Burst Strain": iconconfig['SubfactionBanners'].get('SporeBurstStrain', ''),
+	"The Great Host": iconconfig['SubfactionBanners'].get('TheGreatHost', ''),
+	"Rupture Strain": iconconfig['SubfactionBanners'].get('RuptureStrain', ''),
+	"Dragonroach": iconconfig['SubfactionBanners'].get('Dragonroach', ''),
+	"Predator Strain & Dragonroach": iconconfig['SubfactionBanners'].get('PredatorStrainDragonroach', ''),
+	"Spore Burst Strain & Dragonroach": iconconfig['SubfactionBanners'].get('SporeBurstStrainDragonroach', ''),
+	"Rupture Strain & Dragonroach": iconconfig['SubfactionBanners'].get('RuptureStrainDragonroach', '')
+}
+
+HELLDIVER_BANNERS = {
+    "Helldiver1": iconconfig['HelldiverBanners']['Helldiver1'],
+    "Helldiver2": iconconfig['HelldiverBanners']['Helldiver2'],
+	"Helldiver3": iconconfig['HelldiverBanners']['Helldiver3'],
+	"Helldiver4": iconconfig['HelldiverBanners']['Helldiver4'],
+	"Helldiver5": iconconfig['HelldiverBanners']['Helldiver5'],
+	"Helldiver6": iconconfig['HelldiverBanners']['Helldiver6']
+}
 
 SUBFACTION_ICONS = {
     "Automaton Legion": iconconfig['SubfactionIcons']['AutomatonLegion'],
