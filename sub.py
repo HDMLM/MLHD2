@@ -155,6 +155,174 @@ planet_stats_df = pd.DataFrame({
     "Last Date": [planet_last_date_dict[planet] for planet in planets]
 })
 
+# Prepare deployments for the last 30 days as a small JSON payload to allow the
+# HTML template to render a compact time-series chart client-side. We'll emit a
+# list of events {date: 'YYYY-MM-DD', planet: 'Planet Name'} for every
+# deployment in the last 30 days (including today).
+deployments_30d_events = []
+try:
+    if 'Time' in df.columns:
+        times = pd.to_datetime(df['Time'], format=DATE_FORMAT, errors='coerce')
+        df_times = df.copy()
+        df_times['__time_parsed'] = times
+        now = pd.Timestamp.now().normalize()
+        start = now - pd.Timedelta(days=29)  # include today -> 30 days
+        mask = df_times['__time_parsed'].notna() & (df_times['__time_parsed'] >= start) & (df_times['__time_parsed'] <= (now + pd.Timedelta(days=1)))
+        recent = df_times.loc[mask]
+        for _, r in recent.iterrows():
+            dt = r['__time_parsed']
+            if pd.isna(dt):
+                continue
+            date_str = pd.Timestamp(dt).strftime('%Y-%m-%d')
+            planet_name = r['Planet'] if 'Planet' in r and not pd.isna(r['Planet']) else 'Unknown'
+            enemy_name = r['Enemy Type'] if 'Enemy Type' in r and not pd.isna(r['Enemy Type']) else 'Unknown'
+            deployments_30d_events.append({
+                'date': date_str,
+                'planet': str(planet_name),
+                'enemy': str(enemy_name)
+            })
+        # ensure stable ordering (by date asc)
+        deployments_30d_events.sort(key=lambda x: x['date'])
+except Exception:
+    deployments_30d_events = []
+
+# Serialize safe-for-embedding JSON (avoid closing script tags if any text contains </)
+try:
+    deployments_30d_json = json.dumps(deployments_30d_events, ensure_ascii=False).replace('</', '<\\/')
+except Exception:
+    deployments_30d_json = '[]'
+
+# Also prepare a full history payload (all deployments) so the client can choose ranges
+deployments_all_events = []
+try:
+    if 'Time' in df.columns:
+        times_all = pd.to_datetime(df['Time'], format=DATE_FORMAT, errors='coerce')
+        for idx, row in df.assign(__time_parsed=times_all).iterrows():
+            t = row.get('__time_parsed')
+            if pd.isna(t):
+                continue
+            date_str = pd.Timestamp(t).strftime('%Y-%m-%d')
+            planet = row.get('Planet') if 'Planet' in row and pd.notna(row.get('Planet')) else 'Unknown'
+            enemy = row.get('Enemy Type') if 'Enemy Type' in row and pd.notna(row.get('Enemy Type')) else 'Unknown'
+            deployments_all_events.append({'date': date_str, 'planet': planet, 'enemy': enemy})
+    # stable ordering
+    deployments_all_events.sort(key=lambda x: x['date'])
+except Exception:
+    deployments_all_events = []
+
+try:
+    deployments_all_json = json.dumps(deployments_all_events, ensure_ascii=False).replace('</', '<\/')
+except Exception:
+    deployments_all_json = '[]'
+
+# Build an explicit enemy-type payload to make client-side rendering reliable
+enemy_type_counts = []
+try:
+    if 'Enemy Type' in df.columns:
+        et_counts = df['Enemy Type'].fillna('Unknown').astype(str).value_counts()
+        # deterministic palette for stable colors across exports
+        palette = ['#ff6b6b','#ffd36b','#6bffd3','#6bbcff','#b86bff','#ff6bb0','#ffd36b','#9fb7c9']
+        # preferred explicit mapping requested by UI: Automotons=red, Illuminate=purple, Terminids=dark yellow
+        preferred = {'automatons':'#ff6b6b', 'illuminate':'#8b6bff', 'terminids':'#b88600'}
+        for i, (et, cnt) in enumerate(et_counts.items()):
+            et_key = str(et).strip()
+            color = preferred.get(et_key.lower(), palette[i % len(palette)])
+            enemy_type_counts.append({'enemy': et_key, 'count': int(cnt), 'color': color})
+except Exception:
+    enemy_type_counts = []
+
+try:
+    enemy_type_json = json.dumps(enemy_type_counts, ensure_ascii=False).replace('</', '<\/')
+except Exception:
+    enemy_type_json = '[]'
+
+# Build a server-side planet->enemy histogram and dominant enemy mapping to avoid client scanning
+planet_enemy_hist = {}
+planet_dominant = {}
+try:
+    if 'Planet' in df.columns and 'Enemy Type' in df.columns:
+        for _, row in df.iterrows():
+            p = row.get('Planet') if 'Planet' in row and pd.notna(row.get('Planet')) else 'Unknown'
+            e = row.get('Enemy Type') if 'Enemy Type' in row and pd.notna(row.get('Enemy Type')) else 'Unknown'
+            p = str(p)
+            e = str(e)
+            hist = planet_enemy_hist.setdefault(p, {})
+            hist[e] = hist.get(e, 0) + 1
+        # compute dominant per planet
+        for p, hist in planet_enemy_hist.items():
+            dominant = None
+            maxc = -1
+            for e, c in hist.items():
+                if c > maxc:
+                    maxc = c
+                    dominant = e
+            planet_dominant[p] = dominant or 'Unknown'
+except Exception:
+    planet_enemy_hist = {}
+    planet_dominant = {}
+
+try:
+    planet_dominant_json = json.dumps(planet_dominant, ensure_ascii=False).replace('</', '<\/')
+except Exception:
+    planet_dominant_json = '{}'
+
+# Build a simple server-side HTML fallback for the 30-day chart so the export
+# displays the chart even if client-side JS is blocked or doesn't run.
+def _build_deployments_30d_chart_html(events):
+    try:
+        # Prepare date keys (last 30 days)
+        now = pd.Timestamp.now().normalize()
+        keys = [(now - pd.Timedelta(days=i)).strftime('%Y-%m-%d') for i in reversed(range(30))]
+        # Aggregate counts per day/planet
+        day_map = {k: {} for k in keys}
+        for ev in events:
+            d = ev.get('date')
+            p = ev.get('planet', 'Unknown')
+            if d in day_map:
+                day_map[d][p] = day_map[d].get(p, 0) + 1
+        # choose top planets by total count across 30 days
+        planet_totals = {}
+        for d in keys:
+            for p, c in day_map[d].items():
+                planet_totals[p] = planet_totals.get(p, 0) + c
+        top_planets = sorted(planet_totals.items(), key=lambda x: x[1], reverse=True)[:8]
+        planets = [p for p, _ in top_planets]
+        # compute max total for scale
+        totals_per_day = [sum(day_map[d].values()) for d in keys]
+        max_total = max(1, max(totals_per_day))
+        # color palette
+        palette = ['#ff6b6b','#ffb86b','#ffd36b','#b6ff6b','#6bffb8','#6bd1ff','#8b6bff','#ff6be1']
+        # build columns HTML
+        cols = []
+        for d in keys:
+            parts = []
+            total = sum(day_map[d].values())
+            if total == 0:
+                parts_html = '<div style="height:6px;width:8px;opacity:.06;margin:0 auto"></div>'
+            else:
+                # stack planets segments from bottom to top
+                segs = []
+                for idx, p in enumerate(planets):
+                    cnt = day_map[d].get(p, 0)
+                    if cnt <= 0:
+                        continue
+                    h = max(6, round((cnt / max_total) * 90))
+                    color = palette[idx % len(palette)]
+                    segs.append(f'<div title="{html_lib.escape(p)}: {cnt}" style="width:100%;height:{h}px;background:{color};border-radius:2px;margin-bottom:2px"></div>')
+                parts_html = ''.join(segs)
+            cols.append(f'<div style="display:flex;flex-direction:column;justify-content:flex-end;align-items:center;width:12px">{parts_html}</div>')
+        chart_html = f'<div id="deployments-30d-chart-server" style="height:110px;display:flex;gap:4px;align-items:end;padding-bottom:6px">{"".join(cols)}</div>'
+        # legend
+        legend_items = []
+        for idx, p in enumerate(planets):
+            legend_items.append(f'<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px"><span style="width:12px;height:12px;background:{palette[idx%len(palette)]};border-radius:3px;display:inline-block"></span>{html_lib.escape(p)}</span>')
+        legend_html = f'<div id="deployments-30d-legend-server" style="margin-top:6px;font-size:.75rem;color:var(--text-soft)">{"".join(legend_items)}</div>'
+        return chart_html + legend_html
+    except Exception:
+        return '<div class="muted" style="padding:10px 0">No deployments in the last 30 days</div>'
+
+deployments_30d_chart_html = _build_deployments_30d_chart_html(deployments_30d_events)
+
 # Discord webhook configuration
 if DEBUG:
     # Use TEST webhook from config if in debug mode
@@ -470,7 +638,7 @@ for enemy_type, planet_list in enemy_planets.items():
             f"> Major Order Deployments - {planet_data['Major Order'].astype(int).sum()}\n"
             f"> Kills - {planet_data['Kills'].sum()}\n"
             f"> Deaths - {planet_data['Deaths'].sum()}\n"
-            f"> KDR - {(planet_data['Kills'].sum() / planet_data['Deaths'].sum()):.2f}\n"
+            f"> KDR - {(planet_data['Kills'].sum() / planet_data['Deaths'].sum()):.2f}\n" if planet_data['Deaths'].sum() != 0 else f"> KDR - N/A\n"
             f"> Last Deployment - {get_last_deployment(planet_data, enemy_type)}\n"
         )
     planets_description = "\n".join(planets_description_parts)
@@ -532,21 +700,6 @@ def _generate_html_export(df: pd.DataFrame) -> str:
     else:
         template = ""
 
-    if not template:
-        template = """<!DOCTYPE html><html lang='en'><head><meta charset='utf-8'>
-<title>Helldiver Mission Export</title>
-<meta name='viewport' content='width=device-width,initial-scale=1'>
-<style>body{font-family:Segoe UI,Arial,sans-serif;background:#0f1215;color:#e5e7eb;margin:0;padding:1.25rem;}h1{margin:.2rem 0 .5rem;font-size:1.4rem;}table{border-collapse:collapse;width:100%;font-size:.72rem;margin-top:1rem;}th,td{border:1px solid #222;padding:4px 6px;text-align:left;}th{background:#1e2630;position:sticky;top:0;}tbody tr:nth-child(odd){background:#141b1f;}tbody tr:nth-child(even){background:#10161c;}code{background:#1e2630;padding:2px 4px;border-radius:4px;}footer{margin-top:2rem;font-size:.6rem;color:#6b7280;text-align:center;}section{margin-top:1.2rem;}h2{font-size:1rem;margin:.2rem 0 .4rem;border-bottom:1px solid #1e2630;padding-bottom:2px;}ul{margin:.3rem 0 .6rem;padding-left:1.1rem;font-size:.65rem;}li{margin:0 0 .25rem;} .pill{display:inline-block;background:#243b55;border-radius:12px;padding:2px 10px;font-size:.6rem;margin-left:8px;}</style>
-</head><body>
-<h1>Helldiver Mission Export <span class='pill'>v{{VERSION}}</span></h1>
-<div style='font-size:.7rem;'>Generated {{GENERATED_AT}} | Rows: {{ROW_COUNT}}</div>
-<section><h2>Summary</h2><pre style='white-space:pre-wrap;font-size:.65rem;background:#12171d;padding:.5rem;border:1px solid #1e2630;border-radius:4px;'>{{PRIMARY_DESCRIPTION}}</pre></section>
-<section><h2>Planet Statistics</h2>{{PLANET_TABLE}}</section>
-<section><h2>Enemy Fronts</h2>{{ENEMY_SECTIONS}}</section>
-<section><h2>Raw Data</h2>{{DATA_TABLE}}</section>
-<footer>Generated by Helldiver Mission Log Manager HTML fallback. Customize: mission_export_template.html</footer>
-</body></html>"""
-
     # Planet stats table
     planet_rows = []
     for planet in planets:
@@ -590,6 +743,12 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         )
     data_table_html = f"<table><thead><tr>{header_html}</tr></thead><tbody>{''.join(data_rows)}</tbody></table>"
 
+    # ensure server-side chart html is available (compute on-demand if needed)
+    try:
+        deployments_30d_chart = deployments_30d_chart_html
+    except NameError:
+        deployments_30d_chart = _build_deployments_30d_chart_html(deployments_30d_events)
+
     rendered = (template
         .replace("{{VERSION}}", "1.0")
         .replace("{{GENERATED_AT}}", datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
@@ -598,6 +757,11 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         .replace("{{PLANET_TABLE}}", planet_table)
         .replace("{{ENEMY_SECTIONS}}", enemy_sections_html)
         .replace("{{DATA_TABLE}}", data_table_html)
+        .replace("{{DEPLOYMENTS_30D_JSON}}", deployments_30d_json)
+        .replace("{{DEPLOYMENTS_ALL_JSON}}", deployments_all_json)
+        .replace("{{DEPLOYMENTS_30D_CHART_HTML}}", deployments_30d_chart)
+        .replace("{{ENEMY_TYPE_JSON}}", enemy_type_json)
+        .replace("{{PLANET_DOMINANT_JSON}}", planet_dominant_json)
     )
     return rendered
 
