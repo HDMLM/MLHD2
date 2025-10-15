@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
+
 <head>
 	<meta charset="utf-8" />
 	<meta name="viewport" content="width=device-width,initial-scale=1" />
 	<meta name="color-scheme" content="dark light" />
 	<title>Helldiver Mission Export</title>
+	<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+	<script src="https://unpkg.com/clusterize.js@0.18.1/clusterize.min.js"></script>
 	<style>
 		/* Brand font (shipped with the app) */
 		@font-face {
@@ -12,166 +15,878 @@
 			src: url('LaunchMedia/Insignia.ttf') format('truetype');
 			font-display: swap;
 		}
+
 		:root {
-			/* Dark theme aligned with app (DEFAULT_THEME / exportGUI) */
-			--bg: #252526;        /* app background */
-			--bg-alt: #2a2a2a;    /* subtle section backdrop */
-			--bg-alt2: #2e2e2e;   /* deeper surfaces */
-			--panel: #232323;     /* cards/panels like Treeview rows */
-			--border: #3a3d41;    /* VS Code-like border */
-			--border-soft: #2b2d30;
-			--text: #ffffff;      /* foreground */
-			--text-soft: #cfcfcf; /* muted text */
-			--accent: #65b6ff;    /* primary blue accent */
-			--accent-accent: #7dc7ff;
+			/* Theme updated to match site: https://hdmlm.github.io/MLHD2 */
+			--bg: #0b0f14;
+			/* deep background */
+			--bg-alt: #0f1418;
+			/* subtle section backdrop */
+			--bg-alt2: #12161a;
+			/* deeper surfaces */
+			--panel: linear-gradient(180deg, #0f1519, #0b0f14);
+			/* cards/panels */
+			--border: rgba(255, 255, 255, 0.06);
+			--border-soft: rgba(255, 255, 255, 0.04);
+			--text: #e6f0f8;
+			/* foreground */
+			--text-soft: #9fb7c9;
+			/* muted text */
+			--accent: #e11d23;
+			/* site red accent */
+			--accent-accent: #ff5b5b;
 			--accent-warn: #f59e0b;
 			--accent-bad: #ef4444;
 			--accent-good: #10b981;
-			--radius-sm: 4px;
-			--radius: 6px;
-			--shadow: 0 1px 2px rgba(0,0,0,.35), 0 6px 18px -10px rgba(0,0,0,.55);
-			--font-stack: 'Insignia', system-ui, -apple-system, BlinkMacSystemFont, Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', Arial, sans-serif;
+			--radius-sm: 6px;
+			--radius: 14px;
+			--shadow: 0 6px 20px rgba(3, 6, 10, .6), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+			--font-stack: 'Insignia', Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 			--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
 
-			/* Buttons resembling app’s darker controls */
-			--btn-bg: #4c4c4c;
-			--btn-bg-hover: #5a5a5a;
-			--btn-border: #3a3d41;
-			--btn-fg: #ffffff;
+			/* Buttons */
+			--btn-bg: rgba(255, 255, 255, 0.03);
+			--btn-bg-hover: rgba(255, 255, 255, 0.05);
+			--btn-border: rgba(255, 255, 255, 0.06);
+			--btn-fg: var(--text);
 		}
-		* { box-sizing: border-box; }
-		html,body { margin:0; padding:0; font-family: var(--font-stack); background: var(--bg); color: var(--text); }
-		body { line-height:1.35; -webkit-font-smoothing: antialiased; }
-		h1,h2,h3 { font-weight:600; line-height:1.2; letter-spacing:.6px; }
-		h1 { font-size: clamp(1.25rem, 1.05rem + 1vw, 1.8rem); margin:.1rem 0 .55rem; text-transform: uppercase; }
-		h2 { font-size:1.05rem; margin:0 0 .6rem; display:flex; align-items:center; gap:.5rem; }
-		h3 { font-size:.9rem; margin:.2rem 0 .35rem; }
-		p { margin:.35rem 0; }
-		a { color: var(--accent); text-decoration:none; }
-		a:hover { text-decoration:underline; }
-		code, pre { font-family: var(--mono); }
-		pre { background: var(--panel); padding:.75rem .9rem; border:1px solid var(--border); border-radius: var(--radius); overflow:auto; max-height:50vh; }
-		header { position:sticky; top:0; backdrop-filter: blur(10px); background: linear-gradient(140deg, rgba(49,49,51,.92), rgba(37,37,39,.9)); border-bottom:1px solid var(--border); z-index:50; padding:.7rem 1.1rem .55rem; }
-		.brandline { display:flex; align-items:center; gap:.8rem; flex-wrap:wrap; }
-		.brandline .brand { font-family:'Insignia', var(--font-stack); letter-spacing:1.2px; text-transform:uppercase; color:#ffffff; text-shadow:0 1px 0 rgba(0,0,0,.4); }
-		.brandline .tag { color: var(--text-soft); font-weight:600; letter-spacing:.9px; text-transform:uppercase; opacity:.9; }
-		.meta { font-size:.65rem; letter-spacing:.5px; text-transform:uppercase; font-weight:500; color:var(--text-soft); display:flex; flex-wrap:wrap; gap:.75rem; }
-		.pill { display:inline-flex; align-items:center; gap:.3ch; background: linear-gradient(90deg,#2a2d31,#24262a); border:1px solid var(--border); padding:2px 10px 3px; font-size:.6rem; font-weight:700; letter-spacing:.6px; border-radius:999px; color: var(--text-soft); }
-		.layout { display:grid; grid-template-columns: 310px 1fr; gap:1.1rem; padding:1rem 1.15rem 2.5rem; }
-		@media (max-width: 1000px) { .layout { grid-template-columns: 1fr; } .sidebar { position:static; top:auto; } }
-		.panel { background: var(--panel); border:1px solid var(--border); border-radius: var(--radius); padding:.5rem .8rem .8rem; box-shadow: var(--shadow); position:relative; }
-		.panel + .panel { margin-top:.9rem; }
-		.panel h2 { margin:.1rem 0 .45rem; }
-		.panel-head { display:flex; align-items:center; justify-content:space-between; gap:.6rem; margin-bottom:.35rem; }
-		.panel .toggle { cursor:pointer; background: var(--btn-bg); color: var(--btn-fg); border:1px solid var(--btn-border); border-radius:4px; font-size:.6rem; padding:.25rem .45rem; line-height:1; }
-		.panel .toggle:hover { background: var(--btn-bg-hover); }
-		.panel-body { margin-top:.35rem; }
-		.panel.collapsed .panel-body { display:none; }
-		.sidebar { display:flex; flex-direction:column; gap:.9rem; align-self:start; position:sticky; top:72px; max-height: calc(100vh - 82px); overflow:auto; scrollbar-width: thin; }
-		.sidebar::-webkit-scrollbar { width:8px; } .sidebar::-webkit-scrollbar-track { background:transparent; } .sidebar::-webkit-scrollbar-thumb { background:#3a3d41; border-radius:4px; }
-		.badge-row { display:flex; flex-wrap:wrap; gap:6px; margin:.35rem 0 .2rem; }
-		.badge { background:#2a2a2a; color:var(--text-soft); padding:2px 8px 3px; border-radius:6px; font-size:.55rem; letter-spacing:.5px; border:1px solid #3a3d41; font-weight:500; }
-		.actions { display:flex; flex-wrap:wrap; gap:.5rem; margin-top:.4rem; }
-		button { cursor:pointer; background: var(--btn-bg); color: var(--btn-fg); border:1px solid var(--btn-border); border-radius:6px; font-size:.65rem; padding:.45rem .75rem; font-weight:600; letter-spacing:.3px; transition: background .15s, border-color .15s, transform .15s, box-shadow .15s; display:inline-flex; gap:.4rem; align-items:center; box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
-		button:hover { background: var(--btn-bg-hover); border-color: var(--btn-border); }
-		button:active { transform:translateY(1px); }
-		button.accent { background: linear-gradient(90deg,#2e6aa4,#235cc1); border-color:#235cc1; color:#eaf4ff; }
-		button.accent:hover { background: linear-gradient(90deg,#245985,#1e4aa2); }
-		.search-box { width:100%; display:flex; align-items:center; gap:.4rem; margin:.45rem 0 .2rem; }
-		.search-box input { background: var(--bg-alt); border:1px solid var(--border); border-radius:6px; padding:.45rem .6rem; font-size:.65rem; color:var(--text); flex:1; }
-		.search-box input:focus { outline:2px solid rgba(101,182,255,.6); outline-offset:1px; }
-		table { border-collapse: separate; border-spacing:0; width:100%; font-size:.63rem; line-height:1.15; background: var(--panel); border:1px solid var(--border); border-radius: var(--radius); overflow:hidden; }
-		thead th { background:#252526; color:var(--text); font-weight:600; text-align:left; padding:6px 8px; position:sticky; top:0; z-index:2; border-bottom:1px solid var(--border); cursor:pointer; white-space:nowrap; }
-		thead th.sort-asc:after, thead th.sort-desc:after { content:""; margin-left:4px; border:4px solid transparent; display:inline-block; }
-		thead th.sort-asc:after { border-bottom-color: var(--accent); transform: translateY(-2px); }
-		thead th.sort-desc:after { border-top-color: var(--accent); transform: translateY(2px); }
-		tbody td { padding:5px 8px; border-bottom:1px solid #2b2b2b; border-right:1px solid #2b2b2b; }
-		tbody td:last-child { border-right:none; }
-		tbody tr:last-child td { border-bottom:none; }
-		tbody tr:nth-child(odd) { background:#232323; }
-		tbody tr:nth-child(even) { background:#1e1e1e; }
-		tbody tr.highlight { background:#4c4c4c !important; }
-		.table-wrapper { max-height:55vh; overflow:auto; border-radius: var(--radius); }
-		.scroll-fade { position:relative; }
-		.scroll-fade:after { content:""; position:absolute; left:0; right:0; bottom:0; height:25px; pointer-events:none; background:linear-gradient(to bottom, rgba(31,32,34,0), var(--bg) 70%); }
-		details { background: var(--panel); border:1px solid var(--border); border-radius: var(--radius); padding:.7rem .85rem; }
-		details + details { margin-top:.7rem; }
-		summary { cursor:pointer; list-style:none; font-weight:600; letter-spacing:.5px; }
-		summary::-webkit-details-marker { display:none; }
-		footer { margin-top:2.5rem; font-size:.58rem; text-align:center; color:var(--text-soft); padding:1.5rem 0 3rem; opacity:.75; }
-		mark { background:#2e3d24; color:#b3ff93; padding:0 4px; border-radius:3px; }
-		.grid-cards { display:grid; grid-template-columns: repeat(auto-fill,minmax(210px,1fr)); gap:.65rem; }
-		.stat-card { background: linear-gradient(160deg,#192129,#12171d); border:1px solid var(--border); padding:.6rem .65rem .7rem; border-radius: var(--radius-sm); position:relative; overflow:hidden; }
-		.stat-card h4 { margin:.1rem 0 .35rem; font-size:.62rem; font-weight:600; letter-spacing:.7px; text-transform:uppercase; color: var(--text-soft); }
-		.stat-card .value { font-size:.95rem; font-weight:600; letter-spacing:.5px; color: var(--text); }
-		.stat-card small { display:block; margin-top:2px; font-size:.5rem; letter-spacing:.5px; color: var(--text-soft); }
-		.hidden { display:none !important; }
-		.fade-in { animation: fade .4s ease; }
-		@keyframes fade { from { opacity:0; transform: translateY(3px);} to { opacity:1; transform: translateY(0);} }
-		.muted { color: var(--text-soft); }
-		.mono { font-family: var(--mono); font-size:.58rem; }
-		.divider { margin:1.2rem 0; height:1px; background: linear-gradient(90deg, rgba(255,255,255,0), #25313d 35%, #25313d 65%, rgba(255,255,255,0)); border:none; }
+
+		* {
+			box-sizing: border-box;
+		}
+
+		html,
+		body {
+			margin: 0;
+			padding: 0;
+			font-family: var(--font-stack);
+			background: radial-gradient(ellipse at center, rgba(225, 29, 35, 0.03), var(--bg) 30%), var(--bg);
+			color: var(--text);
+		}
+
+		body {
+			line-height: 1.35;
+			-webkit-font-smoothing: antialiased;
+		}
+
+		h1,
+		h2,
+		h3 {
+			font-weight: 600;
+			line-height: 1.2;
+			letter-spacing: .6px;
+		}
+
+		h1 {
+			font-size: clamp(1.25rem, 1.05rem + 1vw, 1.8rem);
+			margin: .1rem 0 .55rem;
+			text-transform: uppercase;
+		}
+
+		h2 {
+			font-size: 1.05rem;
+			margin: 0 0 .6rem;
+			display: flex;
+			align-items: center;
+			gap: .5rem;
+		}
+
+		h3 {
+			font-size: .9rem;
+			margin: .2rem 0 .35rem;
+		}
+
+		p {
+			margin: .35rem 0;
+		}
+
+		a {
+			color: var(--accent);
+			text-decoration: none;
+		}
+
+		a:hover {
+			text-decoration: underline;
+		}
+
+		code,
+		pre {
+			font-family: var(--mono);
+		}
+
+		pre {
+			background: var(--panel);
+			padding: .75rem .9rem;
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			overflow: auto;
+
+		}
+
+		header {
+			position: sticky;
+			top: 0;
+			backdrop-filter: blur(6px);
+			background: linear-gradient(180deg, rgba(18, 8, 8, 0.95), rgba(6, 6, 6, 0.98));
+			border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+			z-index: 50;
+			/* leave room for the warning tape at the bottom */
+			padding: 1rem 0 calc(1rem + 6px);
+		}
+
+		header::before {
+			/* Warning tape: placed at the bottom of the header so it sits under the title but above page content */
+			content: "";
+			position: absolute;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			height: 6px;
+			background: repeating-linear-gradient(90deg, #e11d23 0 14px, #000 14px 28px);
+			opacity: 0.95;
+			pointer-events: none;
+		}
+
+		.brandline {
+			display: flex;
+			align-items: center;
+			gap: 1rem;
+			flex-wrap: wrap;
+		}
+
+		.header-banner {
+			display: block;
+			max-width: 100%;
+			height: 80px;
+			object-fit: cover;
+			border-radius: 6px;
+			box-shadow: inset 0 -30px 50px rgba(0, 0, 0, 0.55);
+		}
+
+		.brandline .brand {
+			font-family: 'Insignia', var(--font-stack);
+			letter-spacing: 1.6px;
+			text-transform: uppercase;
+			color: var(--text);
+			font-size: 1.08rem;
+			text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+		}
+
+		.brandline .tag {
+			color: var(--text-soft);
+			font-weight: 600;
+			letter-spacing: .9px;
+			text-transform: uppercase;
+			opacity: .95;
+			font-size: .675rem
+		}
+
+		.meta {
+			font-size: .65rem;
+			letter-spacing: .5px;
+			text-transform: uppercase;
+			font-weight: 500;
+			color: var(--text-soft);
+			display: flex;
+			flex-wrap: wrap;
+			gap: .75rem;
+		}
+
+		.pill {
+			display: inline-flex;
+			align-items: center;
+			gap: .3ch;
+			background: rgba(14, 165, 214, 0.06);
+			border: 1px solid rgba(14, 165, 214, 0.28);
+			padding: 4px 12px;
+			font-size: .63rem;
+			font-weight: 800;
+			letter-spacing: .9px;
+			border-radius: 999px;
+			color: var(--accent);
+			box-shadow: 0 2px 10px rgba(14, 165, 214, 0.06) inset, 0 2px 8px rgba(14, 165, 214, 0.03);
+		}
+
+		.layout {
+			display: grid;
+			grid-template-columns: 1fr;
+			gap: 1.25rem;
+			padding: 1.15rem 0 2.5rem;
+			max-width: 980px;
+			margin-left: 0;
+			margin-right: auto;
+		}
+
+		@media (max-width: 1000px) {
+			.layout {
+				grid-template-columns: 1fr;
+			}
+		}
+
+		/* responsive: stack enemy-type pie under fronts on narrow viewports */
+		@media (max-width: 900px) {
+			#enemy-type-chart-wrap {
+				flex: 1 1 100% !important;
+				min-width: auto;
+				max-width: none;
+				height: auto;
+				flex-direction: column;
+			}
+
+			#enemy-type-chart-wrap>div:first-child {
+				order: 1;
+				width: 80%;
+			}
+
+			#enemy-type-legend {
+				width: 100%;
+				padding-left: 0;
+				margin-top: 10px;
+				order: 2;
+			}
+		}
+
+		/* Enemy fronts list: allow the container to shrink and let items wrap naturally
+			  Use min-width:0 to allow flex children to shrink in modern browsers. */
+		/* Constrain the enemy-fronts column so it doesn't steal space from the pie.
+				 Use a percentage max so the pie can occupy the rest; on small screens the
+				 media query below will allow full width. */
+		#enemy-fronts {
+			min-width: 0;
+			max-width: 46%;
+			/* make fronts area scrollable when content exceeds available height */
+			display: flex;
+			flex-direction: column;
+			/* allow the list to occupy up to panel height but not grow indefinitely */
+			/* we'll size based on the sibling chart's height; leave container free to stretch */
+			height: 100%;
+			overflow: hidden;
+		}
+
+		#enemy-fronts .enemy-fronts-list {
+			overflow-y: auto;
+			padding-right: 6px; /* give some breathing room for scrollbar */
+			/* limit the list to ~35 lines before scrolling; line-height on li below is 1.25em */
+			max-height: calc(45 * 1.25em);
+			display: block;
+		}
+
+		#enemy-fronts ul {
+			list-style: none;
+			padding-left: 0;
+			margin: 0;
+			margin-right: 6px;
+		}
+
+		#enemy-fronts ul li {
+			display: block;
+			white-space: nowrap;
+			overflow: visible;
+			overflow-wrap: normal;
+			text-overflow: clip;
+			/* set a predictable line-height to calculate max-height for scrolling */
+			line-height: 1.25em;
+			margin-bottom: .35rem;
+		}
+
+		#enemy-fronts h3 {
+			margin-bottom: .25rem;
+		}
+
+		/* on narrow screens let the enemy-fronts take full width and wrap text */
+		@media (max-width: 900px) {
+			#enemy-fronts {
+				max-width: 100%;
+				min-width: 0;
+			}
+
+			/* disable scroll on narrow screens so content wraps naturally */
+			#enemy-fronts {
+				max-height: none;
+				overflow: visible;
+			}
+
+			#enemy-fronts ul li {
+				white-space: normal;
+				overflow-wrap: anywhere;
+				word-break: break-word;
+			}
+		}
+
+		.panel {
+			background: linear-gradient(180deg, rgba(20, 12, 12, 0.6), rgba(6, 6, 6, 0.6));
+			border: 1px solid rgba(255, 255, 255, 0.03);
+			border-radius: var(--radius);
+			padding: .9rem 1rem 1rem;
+			box-shadow: var(--shadow);
+			position: relative;
+			overflow: hidden;
+		}
+
+		.panel:before {
+			content: "";
+			position: absolute;
+			left: 0;
+			right: 0;
+			top: 0;
+			height: 1px;
+			background: linear-gradient(90deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0));
+			pointer-events: none;
+		}
+
+		.panel+.panel {
+			margin-top: .9rem;
+		}
+
+		.panel h2 {
+			margin: .1rem 0 .45rem;
+		}
+
+		.panel-head {
+			display: flex;
+			align-items: center;
+			justify-content: space-between;
+			gap: .6rem;
+			margin-bottom: .35rem;
+		}
+
+		.panel .toggle {
+			cursor: pointer;
+			background: rgba(255, 255, 255, 0.015);
+			color: var(--text-soft);
+			border: 1px solid rgba(255, 255, 255, 0.04);
+			border-radius: 999px;
+			font-size: .62rem;
+			padding: .3rem .55rem;
+			line-height: 1;
+			min-width: 56px;
+			text-align: center;
+		}
+
+		.panel .toggle:hover {
+			background: var(--btn-bg-hover);
+		}
+
+		.panel-body {
+			margin-top: .35rem;
+		}
+
+		.panel.collapsed .panel-body {
+			display: none;
+		}
+
+
+
+		.badge-row {
+			display: flex;
+			flex-wrap: wrap;
+			gap: 6px;
+			margin: .35rem 0 .2rem;
+		}
+
+		.badge {
+			background: rgba(255, 255, 255, 0.02);
+			color: var(--text-soft);
+			padding: 4px 10px;
+			border-radius: 8px;
+			font-size: .62rem;
+			letter-spacing: .5px;
+			border: 1px solid rgba(255, 255, 255, 0.02);
+			font-weight: 600;
+		}
+
+		.actions {
+			display: flex;
+			flex-wrap: wrap;
+			gap: .5rem;
+			margin-top: .4rem;
+		}
+
+		button {
+			cursor: pointer;
+			background: linear-gradient(180deg, rgba(255, 255, 255, 0.02), rgba(255, 255, 255, 0.015));
+			color: var(--btn-fg);
+			border: 1px solid var(--btn-border);
+			border-radius: 8px;
+			font-size: .75rem;
+			padding: .5rem .85rem;
+			font-weight: 700;
+			letter-spacing: .3px;
+			transition: background .12s, transform .09s, box-shadow .12s;
+			display: inline-flex;
+			gap: .5rem;
+			align-items: center;
+		}
+
+		button:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 6px 18px rgba(2, 6, 10, 0.6);
+		}
+
+		button:active {
+			transform: translateY(1px);
+		}
+
+		button.accent {
+			background: linear-gradient(90deg, #e11d23, #ff5b5b);
+			border-color: rgba(225, 29, 35, 0.16);
+			color: #fff;
+			box-shadow: 0 10px 30px rgba(225, 29, 35, 0.16), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+		}
+
+		button.accent:hover {
+			transform: translateY(-1px) scale(1.02);
+			filter: brightness(1.06);
+		}
+
+		.search-box {
+			width: 100%;
+			display: flex;
+			align-items: center;
+			gap: .4rem;
+			margin: .45rem 0 .2rem;
+		}
+
+		.search-box input {
+			background: var(--bg-alt);
+			border: 1px solid var(--border);
+			border-radius: 6px;
+			padding: .45rem .6rem;
+			font-size: .65rem;
+			color: var(--text);
+			flex: 1;
+		}
+
+		.search-box input:focus {
+			outline: 2px solid rgba(101, 182, 255, .6);
+			outline-offset: 1px;
+		}
+
+		table {
+			border-collapse: separate;
+			border-spacing: 0;
+			width: 100%;
+			font-size: .7rem;
+			line-height: 1.25;
+			background: transparent;
+			border-radius: var(--radius);
+			overflow: hidden;
+		}
+
+		thead th {
+			background: linear-gradient(180deg, rgba(255, 255, 255, 0.01), rgba(255, 255, 255, 0.005));
+			color: var(--text);
+			font-weight: 700;
+			text-align: left;
+			padding: 10px 12px;
+			position: sticky;
+			top: 0;
+			z-index: 2;
+			border-bottom: 1px solid var(--border-soft);
+			cursor: pointer;
+			white-space: nowrap;
+			text-transform: uppercase;
+			letter-spacing: 1px;
+			font-size: .68rem;
+		}
+
+		thead th.sort-asc:after,
+		thead th.sort-desc:after {
+			content: "";
+			margin-left: 4px;
+			border: 4px solid transparent;
+			display: inline-block;
+		}
+
+		thead th.sort-asc:after {
+			border-bottom-color: var(--accent);
+			transform: translateY(-2px);
+		}
+
+		thead th.sort-desc:after {
+			border-top-color: var(--accent);
+			transform: translateY(2px);
+		}
+
+		tbody td {
+			padding: 10px 14px;
+			border-bottom: 1px solid rgba(255, 255, 255, 0.02);
+		}
+
+		tbody td:last-child {
+			border-right: none;
+		}
+
+		tbody tr:last-child td {
+			border-bottom: none;
+		}
+
+		tbody tr:nth-child(odd) {
+			background: rgba(255, 255, 255, 0.01);
+		}
+
+		tbody tr:nth-child(even) {
+			background: transparent;
+		}
+
+		tbody tr.highlight {
+			background: linear-gradient(90deg, rgba(225, 29, 35, 0.08), rgba(225, 29, 35, 0.03)) !important;
+		}
+
+		.table-wrapper {
+			max-height: 70vh;
+			overflow: auto;
+			border-radius: var(--radius);
+		}
+
+		.scroll-fade {
+			position: relative;
+		}
+
+		.scroll-fade:after {
+			content: "";
+			position: absolute;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			height: 25px;
+			pointer-events: none;
+			background: linear-gradient(to bottom, rgba(31, 32, 34, 0), var(--bg) 70%);
+		}
+
+		details {
+			background: var(--panel);
+			border: 1px solid var(--border);
+			border-radius: var(--radius);
+			padding: .7rem .85rem;
+		}
+
+		details+details {
+			margin-top: .7rem;
+		}
+
+		summary {
+			cursor: pointer;
+			list-style: none;
+			font-weight: 600;
+			letter-spacing: .5px;
+		}
+
+		summary::-webkit-details-marker {
+			display: none;
+		}
+
+		footer {
+			margin-top: 2.5rem;
+			font-size: .58rem;
+			text-align: center;
+			color: var(--text-soft);
+			padding: 1.5rem 0 3rem;
+			opacity: .75;
+		}
+
+		mark {
+			background: #2e3d24;
+			color: #b3ff93;
+			padding: 0 4px;
+			border-radius: 3px;
+		}
+
+		.grid-cards {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+			gap: .65rem;
+		}
+
+		.stat-card {
+			background: linear-gradient(160deg, #081018, #071018);
+			border: 1px solid rgba(255, 255, 255, 0.03);
+			padding: .7rem .75rem .85rem;
+			border-radius: var(--radius-sm);
+			position: relative;
+			overflow: hidden;
+		}
+
+		.grid-analytics {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+			gap: .6rem;
+		}
+
+		/* sparkline removed */
+
+		.stat-card h4 {
+			margin: .1rem 0 .35rem;
+			font-size: .62rem;
+			font-weight: 600;
+			letter-spacing: .7px;
+			text-transform: uppercase;
+			color: var(--text-soft);
+		}
+
+		.stat-card .value {
+			font-size: .95rem;
+			font-weight: 600;
+			letter-spacing: .5px;
+			color: var(--text);
+		}
+
+		.stat-card small {
+			display: block;
+			margin-top: 2px;
+			font-size: .5rem;
+			letter-spacing: .5px;
+			color: var(--text-soft);
+		}
+
+		.hidden {
+			display: none !important;
+		}
+
+		.fade-in {
+			animation: fade .4s ease;
+		}
+
+		@keyframes fade {
+			from {
+				opacity: 0;
+				transform: translateY(3px);
+			}
+
+			to {
+				opacity: 1;
+				transform: translateY(0);
+			}
+		}
+
+		.muted {
+			color: var(--text-soft);
+			font-size: .85rem;
+			margin-top: -0.3rem;
+		}
+
+		.divider {
+			margin: 1.2rem 0;
+			height: 1px;
+			background: linear-gradient(90deg, rgba(255, 255, 255, 0), #25313d 35%, #25313d 65%, rgba(255, 255, 255, 0));
+			border: none;
+		}
+
+		/* Toolbar removed: styles cleaned up */
+
+		/* Compact rows: reduces padding/line-height for dense table view */
+		.compact tbody td {
+			padding: 6px 8px;
+			font-size: .62rem;
+		}
+
+		.compact thead th {
+			padding: 6px 8px;
+			font-size: .62rem;
+		}
+
+
+
+		/* Fullscreen table mode */
+		.body-table-fullscreen main,
+		.table-fullscreen .layout {
+			padding: 0;
+		}
+
+		.table-fullscreen .layout {
+			grid-template-columns: 1fr;
+		}
+
+		.table-fullscreen section {
+			padding: 1rem 1.25rem;
+		}
+
+		.table-fullscreen .table-wrapper {
+			max-height: calc(100vh - 140px);
+		}
+
+
 
 		/* Print-friendly: light background, no shadows, always expanded */
 		@media print {
-			:root { --text:#000; --text-soft:#333; }
-			html, body { background:#fff !important; color:#000 !important; }
-			header { background:#fff !important; border-bottom:1px solid #ccc !important; }
-			.panel { background:#fff !important; border:1px solid #ccc !important; box-shadow:none !important; }
-			.table-wrapper { max-height:none !important; overflow:visible !important; }
-			.scroll-fade:after { display:none !important; }
-			.panel .toggle { display:none !important; }
-			.panel.collapsed .panel-body { display:block !important; }
+			:root {
+				--text: #000;
+				--text-soft: #333;
+			}
+
+			html,
+			body {
+				background: #fff !important;
+				color: #000 !important;
+			}
+
+			header {
+				background: #fff !important;
+				border-bottom: 1px solid #ccc !important;
+			}
+
+			.panel {
+				background: #fff !important;
+				border: 1px solid #ccc !important;
+				box-shadow: none !important;
+			}
+
+			.table-wrapper {
+				max-height: none !important;
+				overflow: visible !important;
+			}
+
+			.scroll-fade:after {
+				display: none !important;
+			}
+
+			.panel .toggle {
+				display: none !important;
+			}
+
+			.panel.collapsed .panel-body {
+				display: block !important;
+			}
 		}
 	</style>
 </head>
+
 <body>
+
+
+	<!-- Floating filter moved into toolbar (see .toolbar-inner) -->
+
+	<!-- Legend / Help Modal -->
+	<div id="legend-modal" class="hidden" role="dialog" aria-modal="true" aria-hidden="true"
+		style="position:fixed;left:0;right:0;top:20%;margin:0 auto;max-width:520px;background:var(--panel);border:1px solid var(--border);padding:1rem;border-radius:8px;z-index:2000;box-shadow:var(--shadow);">
+		<button id="legend-close" style="float:right">✖</button>
+		<h3>Legend</h3>
+		<ul style="font-size:.9rem;line-height:1.4;margin-top:.6rem">
+			<li><strong>Sortable Tables:</strong> Click a column header to sort.</li>
+			<li><strong>Shift+Click:</strong> Multi-column sort (priority order).</li>
+			<li><strong>Raw Data:</strong> Limited to first 2000 rows for performance.</li>
+			<li><strong>Export:</strong> Use browser Print &gt; Save as PDF.</li>
+		</ul>
+	</div>
 	<header>
-		<div class="brandline">
-			<h1 class="brand" style="margin:0">HD2 Mission Logger — Mission Export</h1>
-			<span class="pill">v{{VERSION}}</span>
-			<span class="tag">Super Earth Command</span>
-		</div>
-		<div class="meta">
-			<span>Generated <strong>{{GENERATED_AT}}</strong></span>
-			<span>Rows <strong>{{ROW_COUNT}}</strong></span>
+		<div style="display:flex;align-items:center;gap:1rem;justify-content:center;flex-direction:column;">
+			<picture>
+				<img src="https://raw.githubusercontent.com/HDMLM/MLHD2/frontend/data/images/assets/GUIBanner.svg"
+					alt="MLHD2 Banner" class="header-banner" onerror="this.style.display='none'" />
+			</picture>
+			<div class="brandline">
+				<h1 class="brand" style="margin:0">HD2 Mission Logger — Mission Export</h1>
+				<span class="pill" style="color:#fff;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.18);">v{{VERSION}}</span>
+				<span class="tag">Super Earth Command</span>
+			</div>
 		</div>
 	</header>
 	<main class="layout">
-		<!-- SIDEBAR -->
-		<aside class="sidebar">
-			<div class="panel" id="summary-panel">
-				<h2>Summary</h2>
-				<pre id="primary-description">{{PRIMARY_DESCRIPTION}}</pre>
-				<div class="actions">
-					<button id="copy-summary" title="Copy summary text">Copy Summary</button>
-					<button id="toggle-light">Theme</button>
-				</div>
-			</div>
-			<div class="panel">
-				<h2>Quick Tools</h2>
-				<div class="search-box">
-					<input type="search" id="row-filter" placeholder="Filter raw data (live)" />
-				</div>
-				<div class="actions">
-					<button id="clear-filter">Clear Filter</button>
-					<button id="expand-raw" class="accent">Toggle Raw Data</button>
-				</div>
-				<p class="muted" style="margin-top:.6rem;">Filtering hides rows (client-side only).</p>
-			</div>
-			<div class="panel">
-				<h2>Legend</h2>
-				<ul style="margin:.15rem 0 0; padding-left:1rem; font-size:.55rem; line-height:1.2;">
-					<li><strong>Sortable Tables:</strong> Click a column header to sort.</li>
-					<li><strong>Shift+Click:</strong> Multi-column sort (priority order).</li>
-					<li><strong>Raw Data:</strong> Limited to first 2000 rows for performance.</li>
-					<li><strong>Export:</strong> Use browser Print > Save as PDF.</li>
-				</ul>
-			</div>
-		</aside>
+		<!-- MAIN CONTENT (sidebar removed; panels moved inline) -->
+		<section style="display:flex; flex-direction:column; gap:1.1rem; width:100%;">
 
-		<!-- MAIN CONTENT -->
-		<section style="display:flex; flex-direction:column; gap:1.1rem;">
+
+			<div class="panel" id="analytics-panel" data-collapsible="1">
+				<div class="panel-head">
+					<h2>Lightweight Analytics</h2>
+					<button class="toggle" aria-expanded="true" title="Collapse section">Collapse</button>
+				</div>
+				<div class="panel-body">
+					<div class="grid-analytics">
+						<div class="stat-card">
+							<h4>Total Planets</h4>
+							<div id="analytics-total-planets" class="value">0</div>
+						</div>
+						<div class="stat-card">
+							<h4>Deployments</h4>
+							<div id="analytics-total-deploy" class="value">0</div>
+						</div>
+						<div class="stat-card">
+							<h4>Kills</h4>
+							<div id="analytics-total-kills" class="value">0</div>
+						</div>
+						<div class="stat-card">
+							<h4>Deaths</h4>
+							<div id="analytics-total-deaths" class="value">0</div>
+						</div>
+						<div class="stat-card">
+							<h4>K / D</h4>
+							<div id="analytics-kd" class="value">-</div>
+						</div>
+						<div class="stat-card">
+							<h4>Top Deploy</h4>
+							<div id="analytics-top-deploy" class="value">—</div>
+						</div>
+						<div class="stat-card">
+							<h4>Top Kills</h4>
+							<div id="analytics-top-kills" class="value">—</div>
+						</div>
+					</div>
+
+					<!-- sparkline removed -->
+					<div style="margin-top:.6rem">
+						<h4 style="margin:.2rem 0 .5rem">Deployment Timeline</h4>
+						<!-- JSON data injected by server: -->
+						<script id="deployments-30d-data" type="application/json">{{DEPLOYMENTS_30D_JSON}}</script>
+						<!-- Full history payload for client-side range selection -->
+						<script id="deployments-all-data" type="application/json">{{DEPLOYMENTS_ALL_JSON}}</script>
+						<!-- Enemy-type counts (server-provided) -->
+						<script id="enemy-type-data" type="application/json">{{ENEMY_TYPE_JSON}}</script>
+						<script id="planet-dominant-data" type="application/json">{{PLANET_DOMINANT_JSON}}</script>
+						<div id="deployments-30d-chart-server">{{DEPLOYMENTS_30D_CHART_HTML}}</div>
+						<!-- Client-side Chart.js canvas (hidden when server fallback is used) -->
+						<div style="margin-top:.6rem">
+							<!-- range selector and fixed-size canvas to prevent autosizing/overflow -->
+							<label for="deployments-range" style="font-size:.85rem;margin-right:8px">Show last:</label>
+							<select id="deployments-range" style="font-size:.85rem;padding:2px 6px;margin-right:12px">
+								<option value="7">7 days</option>
+								<option value="14">14 days</option>
+								<option value="30" selected>30 days</option>
+								<option value="90">90 days</option>
+								<option value="all">All</option>
+							</select>
+							<div id="deployments-30d-canvas-wrap"
+								style="height:320px;width:100%;margin:8px 0 12px 0;display:block;">
+								<canvas id="deployments-30d-canvas"
+									style="display:block;width:100%;height:100%;"></canvas>
+							</div>
+							<div id="deployments-30d-legend"
+								style="margin-top:8px;font-size:.85rem;color:var(--text-soft);display:flex;flex-wrap:wrap;gap:10px">
+							</div>
+							<!-- debug status (visible) to help diagnose empty chart or dropdown not updating -->
+							<div id="deployments-30d-debug"
+								style="margin-top:8px;font-size:.8rem;color:var(--text-muted);">Status: ready</div>
+						</div>
+					</div>
+				</div>
+			</div>
+
+
+			<div class="panel" data-collapsible="1" id="panel-fronts">
+				<div class="panel-head">
+					<h2>Enemy Fronts</h2>
+					<button class="toggle" aria-expanded="true" title="Collapse section">Collapse</button>
+				</div>
+				<div class="panel-body">
+					<div style="display:flex;gap:12px;align-items:stretch;">
+						<div id="enemy-fronts" style="flex: 0 0 40%; min-width: 260px; max-width: 60%; height:100%;">
+							<div class="enemy-fronts-list">{{ENEMY_SECTIONS}}</div>
+						</div>
+						<div id="enemy-type-chart-wrap"
+							style="flex: 0 0 60%; min-width: 260px; max-width: 900px; height: 840px; display: flex; align-items: center; justify-content: center; flex-direction: column-reverse; margin-left: 10%;">
+							<!-- make the pie area larger: let the left child take more proportional space and allow a large square canvas -->
+							<div
+								style="flex:1 1 72%;display:flex;align-items:center;justify-content:center;padding:8px;">
+								<!-- Force the canvas to render at 800x800px; CSS caps size to viewport on small screens -->
+								<canvas id="enemy-type-pie" width="800" height="800"
+									style="width:800px;height:800px;max-width:92vw;max-height:92vh;display:block"></canvas>
+							</div>
+							<div id="enemy-type-legend" style="width:180px;padding-left:16px;align-self:center"></div>
+						</div>
+					</div>
+				</div>
+			</div>
+
 			<div class="panel" data-collapsible="1" id="panel-planets">
 				<div class="panel-head">
 					<h2>Planet Statistics</h2>
@@ -182,185 +897,885 @@
 				</div>
 			</div>
 
-			<div class="panel" data-collapsible="1" id="panel-fronts">
-				<div class="panel-head">
-					<h2>Enemy Fronts</h2>
-					<button class="toggle" aria-expanded="true" title="Collapse section">Collapse</button>
-				</div>
-				<div class="panel-body">
-					<div id="enemy-fronts">{{ENEMY_SECTIONS}}</div>
-				</div>
-			</div>
-
 			<div class="panel" id="raw-data-panel" data-collapsible="1">
 				<div class="panel-head">
 					<h2>Raw Data</h2>
 					<button class="toggle" aria-expanded="true" title="Collapse section">Collapse</button>
 				</div>
 				<div class="panel-body">
-					<p class="muted" style="margin-top:-.3rem;">Only first 2000 rows shown. Columns sortable. Use filter in sidebar.</p>
+					<p class="muted" style="margin-top:-.3rem;">Only first 2000 rows shown. Columns sortable. Use filter
+						in sidebar.</p>
 					<div class="table-wrapper" id="data-table-wrapper">{{DATA_TABLE}}</div>
 				</div>
 			</div>
 
-			<div class="panel" id="analytics-panel" data-collapsible="1">
-				<div class="panel-head">
-					<h2>Lightweight Analytics</h2>
-					<button class="toggle" aria-expanded="true" title="Collapse section">Collapse</button>
-				</div>
-				<div class="panel-body">
-					<div id="analytics-output" class="mono muted">Computing basic aggregates...</div>
-				</div>
-			</div>
+
 		</section>
 	</main>
 	<footer>
-		Generated by Helldiver Mission Log Manager — Customize this layout by editing <code>mission_export_template.html</code>. Unused placeholders remain literal.<br />
-		Theme + interactions are client-side only. &copy; Super Earth Command.
+		<div class="meta" style="display: flex; justify-content: center; align-items: center;">
+			<span>
+				Generated at
+				<strong>
+					<script>
+						(function() {
+							var raw = "{{GENERATED_AT}}";
+							// Expecting format: YYYY-MM-DD HH:MM:SS
+							var m = raw.match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/);
+							if (m) {
+								var formatted = m[4] + ':' + m[5] + ' on ' + m[3] + '-' + m[2] + '-' + m[1];
+								document.write(formatted);
+							} else {
+								document.write(raw);
+							}
+						})();
+					</script>
+				</strong>
+			</span>
+			<span>by MLHD2 Contingency Report System</span>
+		</div>
 	</footer>
 
 	<script>
-	(function(){
-		'use strict';
-		const qs = sel => document.querySelector(sel);
-		const qsa = sel => Array.from(document.querySelectorAll(sel));
+		(function () {
+			'use strict';
+			const qs = sel => document.querySelector(sel);
+			const qsa = sel => Array.from(document.querySelectorAll(sel));
 
-		// THEME
-		const themeBtn = qs('#toggle-light');
-		function applyTheme(mode){
-			if(mode === 'light') document.documentElement.setAttribute('data-theme','light');
-			else document.documentElement.setAttribute('data-theme','dark');
-		}
-		function toggleTheme(){
-			const current = document.documentElement.getAttribute('data-theme');
-			const next = current === 'dark' ? 'light' : 'dark';
-			applyTheme(next);
-			localStorage.setItem('hd_theme', next);
-		}
-		themeBtn && themeBtn.addEventListener('click', toggleTheme);
-		applyTheme(localStorage.getItem('hd_theme') || 'dark');
+			// THEME
+			const themeBtn = qs('#toggle-light');
+			function applyTheme(mode) {
+				if (mode === 'light') document.documentElement.setAttribute('data-theme', 'light');
+				else document.documentElement.setAttribute('data-theme', 'dark');
+			}
+			function toggleTheme() {
+				const current = document.documentElement.getAttribute('data-theme');
+				const next = current === 'dark' ? 'light' : 'dark';
+				applyTheme(next);
+				localStorage.setItem('hd_theme', next);
+			}
+			themeBtn && themeBtn.addEventListener('click', toggleTheme);
+			applyTheme(localStorage.getItem('hd_theme') || 'dark');
 
-		// SUMMARY COPY
-		const copyBtn = qs('#copy-summary');
-		copyBtn && copyBtn.addEventListener('click', () => {
-			const text = qs('#primary-description')?.innerText || '';
-			navigator.clipboard.writeText(text).then(()=>{
-				copyBtn.textContent = 'Copied ✔';
-				setTimeout(()=> copyBtn.textContent='Copy Summary', 1800);
+			// SUMMARY COPY
+			const copyBtn = qs('#copy-summary');
+			copyBtn && copyBtn.addEventListener('click', () => {
+				const text = qs('#primary-description')?.innerText || '';
+				navigator.clipboard.writeText(text).then(() => {
+					copyBtn.textContent = 'Copied ✔';
+					setTimeout(() => copyBtn.textContent = 'Copy Summary', 1800);
+				});
 			});
-		});
 
-		// RAW DATA TOGGLE
-		const rawPanel = qs('#raw-data-panel');
-		const expandBtn = qs('#expand-raw');
-		expandBtn && expandBtn.addEventListener('click', () => {
-			rawPanel.classList.toggle('hidden');
-		});
-
-		// FILTER RAW TABLE
-		const filterInput = qs('#row-filter');
-		const clearFilterBtn = qs('#clear-filter');
-		let lastFilter = '';
-		function filterRows(){
-			const val = filterInput.value.trim().toLowerCase();
-			if(val === lastFilter) return; // cheap micro-opt
-			lastFilter = val;
-			const table = rawPanel.querySelector('table');
-			if(!table) return;
-			const rows = Array.from(table.tBodies[0].rows);
-			let shown = 0;
-			rows.forEach(r => {
-				if(!val){ r.classList.remove('hidden'); shown++; return; }
-				const match = r.innerText.toLowerCase().includes(val);
-				if(match){ r.classList.remove('hidden'); shown++; } else r.classList.add('hidden');
+			// RAW DATA TOGGLE
+			const rawPanel = qs('#raw-data-panel');
+			const expandBtn = qs('#expand-raw');
+			expandBtn && expandBtn.addEventListener('click', () => {
+				rawPanel.classList.toggle('hidden');
 			});
-			filterInput.dataset.count = shown;
-		}
-		filterInput && filterInput.addEventListener('input', () => { window.requestAnimationFrame(filterRows); });
-		clearFilterBtn && clearFilterBtn.addEventListener('click', () => { filterInput.value=''; filterRows(); });
 
-		// SORTABLE TABLES
-		function makeSortable(table){
-			if(!table || table.dataset.sortable) return; table.dataset.sortable = '1';
-			const headers = Array.from(table.tHead?.rows[0].cells || []);
-			const directions = new Map();
-			headers.forEach((th, i) => {
-				th.addEventListener('click', (evt) => {
-					const multi = evt.shiftKey; // multi-column chain sort
-					const dir = directions.get(i) === 'asc' ? 'desc' : 'asc';
-					if(!multi){
-						headers.forEach(h => h.classList.remove('sort-asc','sort-desc'));
-						directions.clear();
+			// Enemy type pie chart (counts of missions per enemy type)
+			(function () {
+				const canvas = qs('#enemy-type-pie');
+				if (!canvas) return;
+				let pieInstance = null;
+
+				function gatherEnemyCounts() {
+					// Prefer server-provided structured payload (includes colors)
+					try {
+						const script = document.getElementById('enemy-type-data');
+						if (script && script.textContent && !script.textContent.includes('{{')) {
+							const arr = JSON.parse(script.textContent || '[]');
+							// normalize to array of {enemy, count, color}
+							return { fromServer: true, items: arr.map(o => ({ enemy: o.enemy, count: o.count || 0, color: o.color || null })) };
+						}
+					} catch (e) { }
+
+					// Fallback: scan raw table for counts
+					const counts = new Map();
+					try {
+						const table = document.querySelector('#data-table-wrapper table');
+						if (table && table.tBodies[0] && table.tHead) {
+							const headers = Array.from(table.tHead.rows[0].cells).map(h => h.innerText.trim().toLowerCase());
+							const enemyIdx = headers.findIndex(h => h.includes('enemy') || h.includes('enemies') || h.includes('enemy type'));
+							if (enemyIdx >= 0) {
+								Array.from(table.tBodies[0].rows).forEach(r => {
+									const txt = (r.cells[enemyIdx]?.innerText || '').trim();
+									if (!txt) return; counts.set(txt, (counts.get(txt) || 0) + 1);
+								});
+							}
+						}
+					} catch (e) { }
+					return { fromServer: false, items: Array.from(counts.entries()).map(([enemy, count]) => ({ enemy, count })) };
+				}
+
+				function renderPie() {
+					const payload = gatherEnemyCounts();
+					let labels = [];
+					let data = [];
+					if (payload && payload.fromServer) {
+						labels = payload.items.map(it => it.enemy);
+						data = payload.items.map(it => it.count || 0);
+					} else if (payload && Array.isArray(payload.items)) {
+						labels = payload.items.map(it => it.enemy);
+						data = payload.items.map(it => it.count || 0);
+					} else if (payload instanceof Map) {
+						labels = Array.from(payload.keys());
+						data = labels.map(l => payload.get(l));
+					} else {
+						// nothing found
+						labels = [];
+						data = [];
 					}
+					if (!labels.length) {
+						const wrap = qs('#enemy-type-chart-wrap'); if (wrap) wrap.innerHTML = '<div class="muted" style="padding:8px">No enemy type data</div>';
+						return;
+					}
+					try { if (pieInstance) pieInstance.destroy(); } catch (e) { }
+					const ctx = canvas.getContext('2d');
+					// Prefer server colors when available
+					const srv = document.getElementById('enemy-type-data');
+					let bg = [];
+					try {
+						const srvPayload = gatherEnemyCounts();
+						if (srvPayload && srvPayload.fromServer) {
+							// use server order and colors
+							const items = srvPayload.items.filter(it => labels.includes(it.enemy));
+							const mapColor = new Map(items.map(it => [it.enemy, it.color || null]));
+							// fallback palette and explicit mapping
+							const palette = ['#ff6b6b', '#ffd36b', '#6bffd3', '#6bbcff', '#b86bff', '#ff6bb0', '#ffd36b', '#9fb7c9'];
+							const preferred = { 'automatons': '#ff6b6b', 'illuminate': '#8b6bff', 'terminids': '#b88600' };
+							bg = labels.map((l, i) => mapColor.get(l) || preferred[l.toLowerCase()] || palette[i % palette.length]);
+						} else {
+							// fallback local mapping
+							const preferred = { 'automatons': '#ff6b6b', 'illuminate': '#8b6bff', 'terminids': '#b88600' };
+							const palette = ['#ff6b6b', '#ffd36b', '#6bffd3', '#6bbcff', '#b86bff', '#ff6bb0', '#ffd36b', '#9fb7c9'];
+							bg = labels.map((l, i) => preferred[l.toLowerCase()] || palette[i % palette.length]);
+						}
+					} catch (e) {
+						const palette = ['#ff6b6b', '#ffd36b', '#6bffd3', '#6bbcff', '#b86bff', '#ff6bb0', '#ffd36b', '#9fb7c9'];
+						bg = labels.map((l, i) => palette[i % palette.length]);
+					}
+					pieInstance = new Chart(ctx, {
+						type: 'pie',
+						data: { labels, datasets: [{ data, backgroundColor: bg }] },
+						options: {
+							responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, onClick: (evt, elems) => {
+								if (!elems || !elems.length) return;
+								const idx = elems[0].index; const label = labels[idx];
+								// filter table rows to show only this enemy label
+								const table = document.querySelector('#data-table-wrapper table');
+								if (table) {
+									const headers = Array.from(table.tHead.rows[0].cells).map(h => h.innerText.trim().toLowerCase());
+									const enemyIdx = headers.findIndex(h => h.includes('enemy'));
+									Array.from(table.tBodies[0].rows).forEach(r => {
+										const txt = (r.cells[enemyIdx]?.innerText || '').trim();
+										if (txt === label) r.classList.remove('hidden'); else r.classList.add('hidden');
+									});
+									// if renderForRange exists, call it to update deployments chart to show filtered subset
+									if (typeof renderForRange === 'function') renderForRange(document.getElementById('deployments-range')?.value || '30');
+								}
+							}
+						}
+					});
+					// build custom legend to the right
+					const legendWrap = document.getElementById('enemy-type-legend');
+					if (legendWrap) {
+						legendWrap.innerHTML = '';
+						labels.forEach((lab, i) => {
+							const sw = document.createElement('div');
+							sw.style.display = 'flex'; sw.style.alignItems = 'center'; sw.style.gap = '8px'; sw.style.marginBottom = '8px';
+							sw.innerHTML = `<div style="width:12px;height:12px;background:${bg[i]};border-radius:3px"></div><div style="font-size:.85rem">${lab} (${data[i]})</div>`;
+							sw.addEventListener('click', () => {
+								// simulate slice click
+								const meta = pieInstance.getDatasetMeta(0);
+								const el = { index: i };
+								pieInstance.options.onClick(null, [el]);
+							});
+							legendWrap.appendChild(sw);
+						});
+					}
+				}
+
+				// Ensure Chart.js is loaded before trying to create charts (it may be included later)
+				function initWhenReady(retries) {
+					retries = retries || 0;
+					if (typeof Chart === 'undefined') {
+						if (retries > 30) return; // give up after ~3s
+						return setTimeout(() => initWhenReady(retries + 1), 100);
+					}
+					renderPie();
+					setTimeout(renderPie, 400);
+				}
+				initWhenReady(0);
+			})();
+
+			// FILTER RAW TABLE
+			const filterInput = qs('#row-filter');
+			const clearFilterBtn = qs('#clear-filter');
+			let lastFilter = '';
+			function filterRows() {
+				// prefer toolbar input if present (moved filter to toolbar), otherwise use legacy filterInput
+				const toolbarInput = qs('#toolbar-row-filter');
+				const valSrc = toolbarInput ? toolbarInput : filterInput;
+				const val = (valSrc && valSrc.value) ? valSrc.value.trim().toLowerCase() : '';
+				if (val === lastFilter) return; // cheap micro-opt
+				lastFilter = val;
+				const table = rawPanel.querySelector('table');
+				if (!table) return;
+				const rows = Array.from(table.tBodies[0].rows);
+				let shown = 0;
+				rows.forEach(r => {
+					if (!val) { r.classList.remove('hidden'); shown++; return; }
+					const match = r.innerText.toLowerCase().includes(val);
+					if (match) { r.classList.remove('hidden'); shown++; } else r.classList.add('hidden');
+				});
+				filterInput.dataset.count = shown;
+			}
+			// legacy filter input hookup remains (toolbar removed)
+			if (filterInput) filterInput.addEventListener('input', () => { window.requestAnimationFrame(filterRows); });
+
+			// SORTABLE TABLES
+			function makeSortable(table) {
+				if (!table || table.dataset.sortable) return; table.dataset.sortable = '1';
+				const headers = Array.from(table.tHead?.rows[0].cells || []);
+				const directions = new Map();
+				headers.forEach((th, i) => {
+					th.addEventListener('click', (evt) => {
+						const multi = evt.shiftKey; // multi-column chain sort
+						const dir = directions.get(i) === 'asc' ? 'desc' : 'asc';
+						if (!multi) {
+							headers.forEach(h => h.classList.remove('sort-asc', 'sort-desc'));
+							directions.clear();
+						}
 						directions.set(i, dir);
-						th.classList.remove('sort-asc','sort-desc');
+						th.classList.remove('sort-asc', 'sort-desc');
 						th.classList.add(dir === 'asc' ? 'sort-asc' : 'sort-desc');
 						const bodyRows = Array.from(table.tBodies[0].rows);
 						const chain = Array.from(directions.entries());
-						const collator = new Intl.Collator(undefined, {numeric:true, sensitivity:'base'});
-						bodyRows.sort((a,b)=>{
-							for(const [col, d] of chain){
+						const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+						bodyRows.sort((a, b) => {
+							for (const [col, d] of chain) {
 								let aa = a.cells[col]?.innerText.trim();
 								let bb = b.cells[col]?.innerText.trim();
-								const an = parseFloat(aa.replace(/,/g,''));
-								const bn = parseFloat(bb.replace(/,/g,''));
+								const an = parseFloat(aa.replace(/,/g, ''));
+								const bn = parseFloat(bb.replace(/,/g, ''));
 								const num = !isNaN(an) && !isNaN(bn);
 								let cmp = 0;
-								if(num) cmp = an === bn ? 0 : (an < bn ? -1 : 1);
+								if (num) cmp = an === bn ? 0 : (an < bn ? -1 : 1);
 								else cmp = collator.compare(aa, bb);
-								if(cmp !== 0) return d === 'asc' ? cmp : -cmp;
+								if (cmp !== 0) return d === 'asc' ? cmp : -cmp;
 							}
 							return 0;
 						});
 						const frag = document.createDocumentFragment();
 						bodyRows.forEach(r => frag.appendChild(r));
 						table.tBodies[0].appendChild(frag);
+					});
+				});
+			}
+			qsa('table').forEach(makeSortable);
+
+			// COLLAPSIBLE PANELS
+			qsa('.panel[data-collapsible]').forEach(panel => {
+				const btn = panel.querySelector('.toggle');
+				if (!btn) return;
+				btn.addEventListener('click', () => {
+					const isExpanded = btn.getAttribute('aria-expanded') === 'true';
+					btn.setAttribute('aria-expanded', String(!isExpanded));
+					btn.textContent = isExpanded ? 'Expand' : 'Collapse';
+					panel.classList.toggle('collapsed', isExpanded);
 				});
 			});
-		}
-		qsa('table').forEach(makeSortable);
-
-		// COLLAPSIBLE PANELS
-		qsa('.panel[data-collapsible]').forEach(panel => {
-			const btn = panel.querySelector('.toggle');
-			if (!btn) return;
-			btn.addEventListener('click', () => {
-				const isExpanded = btn.getAttribute('aria-expanded') === 'true';
-				btn.setAttribute('aria-expanded', String(!isExpanded));
-				btn.textContent = isExpanded ? 'Expand' : 'Collapse';
-				panel.classList.toggle('collapsed', isExpanded);
-			});
-		});
 
 
-		// BASIC ANALYTICS (derives quick summaries from Planet table)
-		const analyticsOut = qs('#analytics-output');
-		function runAnalytics(){
-			try {
-				const pTable = qs('#planet-table-wrapper table');
-				if(!pTable || !pTable.tBodies[0]) { analyticsOut.textContent = 'Planet table not available.'; return; }
-				const rows = Array.from(pTable.tBodies[0].rows);
-				const stats = rows.map(r=>({
-					planet: r.cells[0]?.innerText.trim(),
-					deployments: parseInt(r.cells[1]?.innerText.replace(/,/g,''))||0,
-					kills: parseInt(r.cells[2]?.innerText.replace(/,/g,''))||0,
-					deaths: parseInt(r.cells[3]?.innerText.replace(/,/g,''))||0,
-					orders: parseInt(r.cells[4]?.innerText.replace(/,/g,''))||0
-				}));
-				if(!stats.length){ analyticsOut.textContent='No data rows present.'; return; }
-				const totalDeploy = stats.reduce((a,b)=>a+b.deployments,0);
-				const totalKills = stats.reduce((a,b)=>a+b.kills,0);
-				const totalDeaths = stats.reduce((a,b)=>a+b.deaths,0);
-				const kd = totalDeaths ? (totalKills/totalDeaths).toFixed(2) : '∞';
-				const topDeploy = stats.slice().sort((a,b)=>b.deployments - a.deployments)[0];
-				const topKills = stats.slice().sort((a,b)=>b.kills - a.kills)[0];
-				analyticsOut.textContent = `Planets: ${stats.length} | Deployments: ${totalDeploy} | Kills: ${totalKills} | Deaths: ${totalDeaths} | K/D: ${kd} | Top Deployments: ${topDeploy.planet} (${topDeploy.deployments}) | Top Kills: ${topKills.planet} (${topKills.kills})`;
-			} catch (e) {
-				analyticsOut.textContent = 'Analytics error: ' + e.message;
+			// BASIC ANALYTICS (derives quick summaries from Planet table)
+			const analyticsOut = qs('#analytics-output');
+			function runAnalytics() {
+				try {
+					const pTable = qs('#planet-table-wrapper table');
+					if (!pTable || !pTable.tBodies[0]) { analyticsOut.textContent = 'Planet table not available.'; return; }
+					const rows = Array.from(pTable.tBodies[0].rows);
+					const stats = rows.map(r => ({
+						planet: r.cells[0]?.innerText.trim(),
+						deployments: parseInt(r.cells[1]?.innerText.replace(/,/g, '')) || 0,
+						kills: parseInt(r.cells[2]?.innerText.replace(/,/g, '')) || 0,
+						deaths: parseInt(r.cells[3]?.innerText.replace(/,/g, '')) || 0,
+						orders: parseInt(r.cells[4]?.innerText.replace(/,/g, '')) || 0
+					}));
+					if (!stats.length) { analyticsOut.textContent = 'No data rows present.'; return; }
+					const totalDeploy = stats.reduce((a, b) => a + b.deployments, 0);
+					const totalKills = stats.reduce((a, b) => a + b.kills, 0);
+					const totalDeaths = stats.reduce((a, b) => a + b.deaths, 0);
+					const kd = totalDeaths ? (totalKills / totalDeaths).toFixed(2) : '∞';
+					const topDeploy = stats.slice().sort((a, b) => b.deployments - a.deployments)[0];
+					const topKills = stats.slice().sort((a, b) => b.kills - a.kills)[0];
+					// populate widgets
+					qs('#analytics-total-planets').textContent = String(stats.length);
+					qs('#analytics-total-deploy').textContent = String(totalDeploy);
+					qs('#analytics-total-kills').textContent = String(totalKills);
+					qs('#analytics-total-deaths').textContent = String(totalDeaths);
+					qs('#analytics-kd').textContent = String(kd);
+					qs('#analytics-top-deploy').textContent = `${topDeploy.planet} (${topDeploy.deployments})`;
+					qs('#analytics-top-kills').textContent = `${topKills.planet} (${topKills.kills})`;
+					// render simple sparkline (bars) for top 8 deployments
+					// sparkline removed
+					analyticsOut.textContent = `Planets: ${stats.length} | Deployments: ${totalDeploy} | Kills: ${totalKills} | Deaths: ${totalDeaths} | K/D: ${kd}`;
+				} catch (e) {
+					analyticsOut.textContent = 'Analytics error: ' + e.message;
+				}
 			}
-		}
-		runAnalytics();
-	})();
+			runAnalytics();
+
+			// Render the 30-day deployments chart (reads injected JSON payload)
+			function renderDeployments30d() {
+				try {
+					const script = qs('#deployments-30d-data');
+					if (!script) return;
+					const events = JSON.parse(script.textContent || '[]');
+					console.debug('deployments-30d events parsed', events && events.length ? events.length : 0);
+					const chart = qs('#deployments-30d-chart');
+					const legend = qs('#deployments-30d-legend');
+					if (!chart) return;
+					chart.innerHTML = '';
+					// If embedded JSON isn't present or empty, try to build events by
+					// scanning the raw data table (if the page was opened directly
+					// from the template or if the placeholder wasn't replaced).
+					if (!events || events.length === 0) {
+						try {
+							const dataTable = qs('#data-table-wrapper table');
+							if (dataTable && dataTable.tBodies[0] && dataTable.tHead) {
+								const headers = Array.from(dataTable.tHead.rows[0].cells).map(h => h.innerText.trim().toLowerCase());
+								const timeIdx = headers.findIndex(h => h.includes('time'));
+								const planetIdx = headers.findIndex(h => h.includes('planet'));
+								if (timeIdx >= 0 && planetIdx >= 0) {
+									const built = [];
+									Array.from(dataTable.tBodies[0].rows).forEach(r => {
+										try {
+											const t = r.cells[timeIdx]?.innerText.trim();
+											const p = r.cells[planetIdx]?.innerText.trim() || 'Unknown';
+											if (!t) return;
+											// attempt parse via Date()
+											const dt = new Date(t.replace(/\//g, '-'));
+											if (isNaN(dt)) return;
+											const dateStr = dt.toISOString().slice(0, 10);
+											built.push({ date: dateStr, planet: p });
+										} catch (e) { /* ignore row parse errors */ }
+									});
+									if (built.length) events.splice(0, events.length, ...built);
+								}
+							}
+						} catch (e) { /* ignore fallback errors */ }
+					}
+					if (!events || events.length === 0) {
+						chart.innerHTML = '<div class="muted" style="padding:10px 0">No deployments in the last 30 days</div>';
+						if (legend) legend.innerHTML = '';
+						return;
+					}
+					// build map: date -> planet -> { enemy -> count }
+					const dateMap = new Map();
+					const planetsSet = new Set();
+					const today = new Date();
+					// Create last 30 days keys (YYYY-MM-DD)
+					const keys = [];
+					for (let i = 29; i >= 0; i--) {
+						const d = new Date(today);
+						d.setDate(d.getDate() - i);
+						keys.push(d.toISOString().slice(0, 10));
+					}
+					keys.forEach(k => dateMap.set(k, {}));
+					events.forEach(ev => {
+						const d = ev.date;
+						const p = ev.planet || 'Unknown';
+						const e = ev.enemy || 'Unknown';
+						planetsSet.add(p);
+						if (!dateMap.has(d)) return; // ignore out-of-range
+						const obj = dateMap.get(d);
+						if (!obj[p]) obj[p] = {};
+						obj[p][e] = (obj[p][e] || 0) + 1;
+					});
+					const planets = Array.from(planetsSet).slice(0, 8); // limit legend
+					if (!planets.length) {
+						chart.innerHTML = '<div class="muted" style="padding:10px 0">No planet-specific deployments to show</div>';
+						if (legend) legend.innerHTML = '';
+						return;
+					}
+					// choose colors deterministically
+					function colorFor(i) { const palette = ['#ff6b6b', '#ffb86b', '#ffd36b', '#b6ff6b', '#6bffb8', '#6bd1ff', '#8b6bff', '#ff6be1']; return palette[i % palette.length]; }
+
+					// For stacked bars we need totals per day and per planet segments
+					// Each day/planet cell can contain multiple enemy types; if so we'll use a gradient
+					keys.forEach((k) => {
+						const dayObj = dateMap.get(k) || {};
+						// compute total deployments for this day
+						let total = 0;
+						Object.values(dayObj).forEach(pv => { if (typeof pv === 'object') total += Object.values(pv).reduce((a, b) => a + b, 0); else total += pv || 0; });
+						total = total || 0;
+						const col = document.createElement('div');
+						col.style.display = 'flex';
+						col.style.flexDirection = 'column';
+						col.style.justifyContent = 'flex-end';
+						col.style.alignItems = 'center';
+						col.style.width = '12px';
+						col.title = `${k} — ${total} deployments`;
+						if (total === 0) { const empty = document.createElement('div'); empty.style.height = '6px'; empty.style.width = '8px'; empty.style.opacity = '0.06'; col.appendChild(empty); chart.appendChild(col); return; }
+						planets.forEach((p, idx) => {
+							const pcell = dayObj[p] || {};
+							const entries = Object.entries(pcell);
+							const count = entries.reduce((a, b) => a + (b[1] || 0), 0);
+							if (count <= 0) return;
+							// build stacked segment with height proportional to count
+							const seg = document.createElement('div');
+							seg.style.width = '100%';
+							const h = Math.max(6, Math.round((count / Math.max(1, total)) * 90));
+							seg.style.height = h + 'px';
+							seg.title = `${p}: ${count}`;
+							seg.style.borderRadius = '2px';
+							seg.style.marginBottom = '2px';
+							// determine background: single enemy -> solid color; multiple -> gradient
+							if (entries.length === 1) {
+								const enemy = entries[0][0];
+								seg.style.background = colorFor(enemy);
+							} else {
+								// build a CSS linear-gradient string from top->bottom based on enemy proportions
+								const sum = entries.reduce((a, b) => a + (b[1] || 0), 0) || 1;
+								let acc = 0;
+								const stops = [];
+								entries.forEach(([enm, cnt], j) => {
+									const color = colorFor(enm);
+									const startPct = (acc / sum) * 100;
+									acc += cnt || 0;
+									const endPct = (acc / sum) * 100;
+									// add two stops to create a solid block for this slice
+									stops.push(`${color} ${startPct.toFixed(2)}%`, `${color} ${endPct.toFixed(2)}%`);
+								});
+								const cssGrad = `linear-gradient(to bottom, ${stops.join(', ')})`;
+								seg.style.background = cssGrad;
+							}
+							col.appendChild(seg);
+						});
+						chart.appendChild(col);
+					});
+					// legend
+					if (legend) {
+						legend.innerHTML = planets.map((p, i) => `<span style="display:inline-flex;align-items:center;gap:6px;margin-right:10px"><span style="width:12px;height:12px;background:${colorFor(i)};border-radius:3px;display:inline-block"></span>${p}</span>`).join('');
+					}
+				} catch (e) { /* no-op on errors */ }
+			}
+			renderDeployments30d();
+
+			// LAYOUT CONTROLS: compact rows, fullscreen table
+			const toggleCompactBtn = qs('#toggle-compact');
+			const tableFullscreenBtn = qs('#table-fullscreen');
+			const bodyEl = document.body;
+
+			function updateRowCount() {
+				const table = qs('#data-table-wrapper table') || qs('#planet-table-wrapper table');
+				const count = table ? (table.tBodies[0]?.rows.length || 0) : 0;
+				const el = qs('#live-row-count'); if (el) el.textContent = String(count);
+			}
+			updateRowCount();
+
+			// header image load hookups (no toolbar present)
+			qsa('header img').forEach(img => {
+				if (img.complete) return; img.addEventListener('load', () => { /* no-op: images loaded */ });
+			});
+
+
+
+			toggleCompactBtn && toggleCompactBtn.addEventListener('click', () => {
+				const tables = qsa('.table-wrapper table');
+				tables.forEach(t => t.classList.toggle('compact'));
+				toggleCompactBtn.classList.toggle('active');
+				toggleCompactBtn.textContent = toggleCompactBtn.classList.contains('active') ? 'Compact Rows ✓' : 'Compact Rows';
+			});
+
+			tableFullscreenBtn && tableFullscreenBtn.addEventListener('click', () => {
+				bodyEl.classList.toggle('table-fullscreen');
+				tableFullscreenBtn.textContent = bodyEl.classList.contains('table-fullscreen') ? 'Exit Fullscreen' : 'Table Fullscreen';
+				positionToolbar();
+			});
+
+			// Ensure sortable and analytics run after toggles (defensive)
+			window.addEventListener('resize', () => { qsa('table').forEach(makeSortable); runAnalytics(); updateRowCount(); positionToolbar(); });
+
+			// HELP MODAL
+			const helpBtn = qs('#help-legend');
+			const legendModal = qs('#legend-modal');
+			const legendClose = qs('#legend-close');
+			helpBtn && helpBtn.addEventListener('click', () => {
+				if (!legendModal) return; legendModal.classList.remove('hidden'); legendModal.setAttribute('aria-hidden', 'false');
+			});
+			legendClose && legendClose.addEventListener('click', () => { legendModal.classList.add('hidden'); legendModal.setAttribute('aria-hidden', 'true'); });
+
+			// KEYBOARD SHORTCUTS
+			document.addEventListener('keydown', (e) => {
+				if (e.key === 'f' || e.key === 'F') { tableFullscreenBtn && tableFullscreenBtn.click(); }
+				if (e.key === 'c' || e.key === 'C') { toggleCompactBtn && toggleCompactBtn.click(); }
+				if (e.key === '?') { helpBtn && helpBtn.click(); }
+			});
+
+			// Legend modal: focus trap and ESC to close
+			(function () {
+				let lastFocused = null;
+				function openLegend() {
+					lastFocused = document.activeElement;
+					legendModal.classList.remove('hidden'); legendModal.setAttribute('aria-hidden', 'false');
+					const focusable = legendModal.querySelectorAll('button, a, input, [tabindex]');
+					if (focusable.length) focusable[0].focus();
+					document.addEventListener('keydown', trapKey);
+				}
+				function closeLegend() {
+					legendModal.classList.add('hidden'); legendModal.setAttribute('aria-hidden', 'true');
+					document.removeEventListener('keydown', trapKey);
+					if (lastFocused) lastFocused.focus();
+				}
+				function trapKey(e) {
+					if (e.key === 'Escape') return closeLegend();
+					if (e.key !== 'Tab') return;
+					const focusable = Array.from(legendModal.querySelectorAll('button, a, input, [tabindex]')).filter(el => !el.hasAttribute('disabled'));
+					if (!focusable.length) return;
+					const first = focusable[0]; const last = focusable[focusable.length - 1];
+					if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+					else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+				}
+				helpBtn && helpBtn.addEventListener('click', openLegend);
+				legendClose && legendClose.addEventListener('click', closeLegend);
+			})();
+
+			// If a legacy #row-filter exists, keep it functional
+			const rowFilter = qs('#row-filter');
+			if (rowFilter) rowFilter.addEventListener('input', () => { filterInput && (filterInput.value = rowFilter.value); filterRows(); });
+
+			// Clusterize virtual scrolling for raw data
+			let clusterize = null;
+			function initClusterize() {
+				const wrapper = document.getElementById('data-table-wrapper');
+				if (!wrapper) return;
+				const table = wrapper.querySelector('table');
+				if (!table) return;
+				const tbody = table.tBodies[0];
+				if (!tbody) return;
+				// extract rows HTML
+				const rows = Array.from(tbody.rows).map(r => r.outerHTML);
+				// Create clusterize structure
+				const scrollEl = document.createElement('div'); scrollEl.style.maxHeight = '70vh'; scrollEl.style.overflow = 'auto';
+				const contentEl = document.createElement('table');
+				contentEl.className = table.className;
+				scrollEl.appendChild(contentEl);
+				wrapper.innerHTML = '';
+				wrapper.appendChild(scrollEl);
+				clusterize = new Clusterize({ rows: rows, scrollElem: scrollEl, contentElem: contentEl });
+			}
+			// initialize clusterize after a short delay (if table generated server-side)
+			setTimeout(initClusterize, 300);
+		})();
+	</script>
+
+	<!-- Chart.js (lightweight CDN) -->
+	<script src="https://cdn.jsdelivr.net/npm/chart.js@4.3.0/dist/chart.umd.min.js"></script>
+	<script>
+		(function () {
+			// Prevent this script from executing multiple times in the same page
+			if (window._hd_deployments30d_rendered) return;
+			window._hd_deployments30d_rendered = true;
+			'use strict';
+
+			// Parse the full-history JSON payload if present, otherwise fall back to 30d payload
+			const allJsonEl = document.getElementById('deployments-all-data');
+			const jsonEl = document.getElementById('deployments-30d-data');
+			let eventsFull = [];
+			let sourceUsed = null;
+			try {
+				const allText = allJsonEl?.textContent?.trim();
+				const shortText = jsonEl?.textContent?.trim();
+				// ignore unreplaced template markers like "{{DEPLOYMENTS_ALL_JSON}}"
+				if (allText && allText.length && !allText.includes('{{')) {
+					try {
+						eventsFull = JSON.parse(allText);
+						sourceUsed = 'all';
+					} catch (e) {
+						console.debug('deployments-30d: parse all-data failed', e);
+						eventsFull = [];
+					}
+				}
+				// If no valid all-data, try the 30-day payload
+				if ((!eventsFull || eventsFull.length === 0) && shortText && shortText.length && !shortText.includes('{{')) {
+					try {
+						eventsFull = JSON.parse(shortText);
+						sourceUsed = '30d';
+					} catch (e) {
+						console.debug('deployments-30d: parse 30d-data failed', e);
+						eventsFull = [];
+					}
+				}
+			} catch (e) {
+				console.debug('deployments-30d: unexpected parse error', e);
+				eventsFull = [];
+			}
+			console.debug('deployments-30d: payload sourceUsed=', sourceUsed, 'eventsFull.length=', eventsFull.length);
+
+			function getLastNDates(n) {
+				// produce an array of YYYY-MM-DD strings for the last n consecutive days
+				const out = [];
+				const now = new Date();
+				now.setHours(0, 0, 0, 0);
+				for (let i = n - 1; i >= 0; --i) {
+					const d = new Date(now);
+					d.setDate(now.getDate() - i);
+					out.push(d.toISOString().slice(0, 10));
+				}
+				return out;
+			}
+
+			const palette = ['#ff6b6b', '#ffb86b', '#ffd36b', '#7bd389', '#6bbcff', '#b86bff', '#ff6bb0', '#6bffd3', '#ffd36b', '#9fb7c9'];
+			function colorFor(s) {
+				let h = 0;
+				for (let i = 0; i < s.length; i++) h = ((h << 5) - h) + s.charCodeAt(i);
+				return palette[Math.abs(h) % palette.length];
+			}
+
+			// Build faction color map from server-provided enemy-type-data if present
+			const enemyTypeScript = document.getElementById('enemy-type-data');
+			let factionColorMap = new Map();
+			try {
+				if (enemyTypeScript && enemyTypeScript.textContent && !enemyTypeScript.textContent.includes('{{')) {
+					const et = JSON.parse(enemyTypeScript.textContent);
+					et.forEach(item => {
+						if (item && item.enemy) factionColorMap.set(String(item.enemy).toLowerCase(), item.color || colorFor(item.enemy || ''));
+					});
+				}
+			} catch (e) { console.debug('enemy-type-data parse failed', e); }
+
+			function factionColorFor(enemyName) {
+				if (!enemyName) return '#888888';
+				const key = String(enemyName).toLowerCase();
+				return factionColorMap.get(key) || colorFor(enemyName);
+			}
+
+			// Server-provided planet->dominant mapping (optional)
+			let planetDominantMap = new Map();
+			try {
+				const pdEl = document.getElementById('planet-dominant-data');
+				if (pdEl && pdEl.textContent && !pdEl.textContent.includes('{{')) {
+					const pd = JSON.parse(pdEl.textContent);
+					Object.keys(pd).forEach(k => planetDominantMap.set(k, pd[k]));
+				}
+			} catch (e) { console.debug('planet-dominant-data parse failed', e); }
+
+			function eachDateBetween(startISO, endISO) {
+				const out = [];
+				let cur = new Date(startISO + 'T00:00:00');
+				cur.setHours(0, 0, 0, 0);
+				const end = new Date(endISO + 'T00:00:00');
+				end.setHours(0, 0, 0, 0);
+				while (cur <= end) {
+					out.push(cur.toISOString().slice(0, 10));
+					cur.setDate(cur.getDate() + 1);
+				}
+				return out;
+			}
+
+			function aggregateForLabels(events, labelsSet) {
+				const map = new Map();
+				events.forEach(ev => {
+					const date = ev.date;
+					if (!labelsSet.has(date)) return;
+					const planet = ev.planet || 'Unknown';
+					if (!map.has(planet)) map.set(planet, new Map());
+					const pm = map.get(planet);
+					pm.set(date, (pm.get(date) || 0) + 1);
+				});
+				// ensure every planet has an entry for each label (fill zeros)
+				map.forEach((pm) => {
+					labelsSet.forEach(l => { if (!pm.has(l)) pm.set(l, 0); });
+				});
+				return map;
+			}
+
+			let chartInstance = null;
+
+			function renderForRange(daysOrAll) {
+				console.debug('deployments-30d: renderForRange called ->', daysOrAll);
+				console.debug('deployments-30d: eventsFull length', eventsFull.length, 'sample', eventsFull.slice(0, 6));
+				let labels = [];
+				if (daysOrAll === 'all') {
+					const s = new Set(eventsFull.map(e => e.date));
+					labels = Array.from(s).sort();
+				} else {
+					labels = getLastNDates(Number(daysOrAll));
+				}
+
+				const labelsSet = new Set(labels);
+				const map = aggregateForLabels(eventsFull, labelsSet);
+				console.debug('deployments-30d: labels count', labels.length, 'labels sample', labels.slice(0, 6));
+				console.debug('deployments-30d: aggregated planets', Array.from(map.keys()).slice(0, 12));
+
+				// nothing to draw -> keep server fallback visible
+				if (map.size === 0) {
+					const server = document.getElementById('deployments-30d-chart-server');
+					if (server) server.style.display = '';
+					const legend = document.getElementById('deployments-30d-legend');
+					if (legend) legend.innerHTML = '';
+					if (chartInstance) { try { chartInstance.destroy(); } catch (e) { } chartInstance = null; }
+					const dbg = document.getElementById('deployments-30d-debug');
+					if (dbg) dbg.innerText = `Status: no data for range (${daysOrAll}), labels=${labels.length}`;
+					return;
+				}
+
+				// build datasets sorted by total desc
+				const planets = Array.from(map.keys()).sort((a, b) => {
+					const sa = Array.from(map.get(a).values()).reduce((x, y) => x + y, 0);
+					const sb = Array.from(map.get(b).values()).reduce((x, y) => x + y, 0);
+					return sb - sa;
+				});
+
+				// choose a faction color per planet based on dominant enemy across the selected labels
+				const datasets = planets.map(p => {
+					// If the server provided a dominant mapping, use it (fast). Fallback to scanning eventsFull.
+					let dominant = null;
+					if (planetDominantMap.size && planetDominantMap.has(p)) {
+						dominant = planetDominantMap.get(p);
+					} else {
+						const enemyCounts = new Map();
+						labels.forEach(d => {
+							for (const ev of eventsFull) {
+								if (!ev) continue;
+								if (ev.planet === p && ev.date === d) {
+									const e = (ev.enemy || 'Unknown');
+									enemyCounts.set(e, (enemyCounts.get(e) || 0) + 1);
+								}
+							}
+						});
+						let maxc = -1;
+						enemyCounts.forEach((cnt, en) => { if (cnt > maxc) { maxc = cnt; dominant = en; } });
+					}
+					const bg = dominant ? factionColorFor(dominant) : colorFor(p);
+					return {
+						label: p,
+						data: labels.map(d => map.get(p).get(d) || 0),
+						backgroundColor: bg,
+						stack: 'stack0',
+						borderRadius: 3,
+						maxBarThickness: 28
+					};
+				});
+
+				const canvas = document.getElementById('deployments-30d-canvas');
+				if (!canvas) return;
+
+				try {
+					const prior = (typeof Chart?.getChart === 'function') ? Chart.getChart(canvas) : null;
+					if (prior) prior.destroy();
+					if (chartInstance) { try { chartInstance.destroy(); } catch (e) { } chartInstance = null; }
+				} catch (e) { /* ignore */ }
+
+				const ctx = canvas.getContext('2d');
+				chartInstance = new Chart(ctx, {
+					type: 'bar',
+					data: { labels: labels.map(d => d.slice(5)), datasets },
+					options: {
+						responsive: true,
+						maintainAspectRatio: false,
+						interaction: { mode: 'nearest', axis: 'x', intersect: false },
+						plugins: {
+							tooltip: {
+								enabled: true,
+								// filter out items with zero value so planets with 0 deployments are not shown
+								filter: (tooltipItem) => {
+									// tooltipItem.parsed?.y available in Chart.js v3+; fall back to raw value
+									const val = (tooltipItem.parsed && typeof tooltipItem.parsed.y !== 'undefined') ? tooltipItem.parsed.y : (tooltipItem.raw || 0);
+									return Number(val) > 0;
+								},
+								callbacks: {
+									label: ctx => `${ctx.dataset.label}: ${ctx.parsed?.y ?? ctx.raw ?? 0}`
+								}
+							},
+							legend: { display: false }
+						},
+						layout: { padding: { left: 0, right: 12, top: 0, bottom: 0 } },
+						scales: { x: { stacked: true, offset: false, ticks: { maxRotation: 75, minRotation: 30, autoSkip: false, maxTicksLimit: 0 }, grid: { display: false }, barPercentage: 0.85, categoryPercentage: 0.9 }, y: { stacked: true, beginAtZero: true, ticks: { precision: 0 }, title: { display: true, text: 'Deployments' } } }
+					}
+				});
+
+				const legendEl = document.getElementById('deployments-30d-legend');
+				if (legendEl) {
+					legendEl.innerHTML = '';
+					const MAX_VISIBLE = 10;
+					const top = planets.slice(0, MAX_VISIBLE);
+					const hidden = planets.slice(MAX_VISIBLE);
+					function abbrev(name, max = 18) { return name.length > max ? name.slice(0, max - 1) + '…' : name; }
+					top.forEach(p => {
+						const sw = document.createElement('span');
+						sw.className = 'legend-item';
+						sw.style.display = 'inline-flex';
+						sw.style.alignItems = 'center';
+						sw.style.gap = '8px';
+						sw.style.marginRight = '10px';
+						const color = factionColorFor(p);
+						sw.title = p;
+						sw.innerHTML = `<span style="width:12px;height:12px;background:${color};border-radius:3px;display:inline-block"></span>${abbrev(p, 18)}`;
+						legendEl.appendChild(sw);
+					});
+					if (hidden.length) {
+						const more = document.createElement('button');
+						more.type = 'button';
+						more.className = 'legend-more';
+						more.style.marginLeft = '6px';
+						more.style.background = 'transparent';
+						more.style.border = '1px solid rgba(255,255,255,0.06)';
+						more.style.color = 'var(--text-soft)';
+						more.style.padding = '2px 6px';
+						more.style.borderRadius = '6px';
+						more.style.cursor = 'pointer';
+						more.textContent = `+${hidden.length} more`;
+						let expanded = false;
+						more.addEventListener('click', () => {
+							if (!expanded) {
+								hidden.forEach(p => {
+									const sw = document.createElement('span');
+									sw.className = 'legend-item extra';
+									sw.style.display = 'inline-flex';
+									sw.style.alignItems = 'center';
+									sw.style.gap = '8px';
+									sw.style.marginRight = '10px';
+									const color = factionColorFor(p);
+									sw.title = p;
+									sw.innerHTML = `<span style="width:12px;height:12px;background:${color};border-radius:3px;display:inline-block"></span>${abbrev(p, 18)}`;
+									legendEl.appendChild(sw);
+								});
+								more.textContent = 'Show less';
+								expanded = true;
+							} else {
+								document.querySelectorAll('#deployments-30d-legend .legend-item.extra').forEach(n => n.remove());
+								more.textContent = `+${hidden.length} more`;
+								expanded = false;
+							}
+						});
+						legendEl.appendChild(more);
+					}
+				}
+
+				const server = document.getElementById('deployments-30d-chart-server');
+				if (server) server.style.display = 'none';
+
+				// compute totals for debug
+				const totals = planets.map(p => ({ p, total: Array.from(map.get(p).values()).reduce((x, y) => x + y, 0) }));
+				console.debug('deployments-30d: rendered chart with', planets.length, 'planets, totals sample', totals.slice(0, 12));
+				const dbg = document.getElementById('deployments-30d-debug');
+				if (dbg) dbg.innerText = `Status: rendered ${planets.length} planets, labels=${labels.length}, top: ${totals.slice(0, 3).map(x => x.p + "(" + x.total + ")").join(', ')}`;
+			}
+
+			const sel = document.getElementById('deployments-range');
+			if (sel) {
+				sel.addEventListener('change', () => { console.debug('deployments-30d: dropdown change ->', sel.value); document.getElementById('deployments-30d-debug').innerText = `Status: selected ${sel.value}`; renderForRange(sel.value); });
+				sel.addEventListener('input', () => { console.debug('deployments-30d: dropdown input ->', sel.value); document.getElementById('deployments-30d-debug').innerText = `Status: selected ${sel.value}`; renderForRange(sel.value); });
+			}
+
+			// initial render
+			renderForRange('30');
+		})();
 	</script>
 </body>
+
 </html>
