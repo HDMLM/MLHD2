@@ -113,6 +113,7 @@ _BASE_PLANET_ICONS = {
     "Partion": iconconfig['PlanetIcons']['Gloom'],
     "Estanu": iconconfig['PlanetIcons']['Gloom'],
     "Erata Prime": iconconfig['PlanetIcons']['Gloom'],
+    "Crimsica": iconconfig['PlanetIcons']['Gloom'],
     "Aurora Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Widow's Harbor": iconconfig['PlanetIcons']['Free Springs Retreat'],
@@ -198,6 +199,29 @@ else:
     else:
         # Planet doesn't have an icon, just add the favourite planet icon
         PLANET_ICONS[most_played_planet] = favourite_planet_icon
+
+        # Load settings to get player's homeworld
+        def load_player_homeworld():
+            try:
+                with open('JSON/settings.json', 'r') as f:
+                    settings = json.load(f)
+                    return settings.get('Player Homeworld', 'Super Earth')
+            except Exception as e:
+                logging.error(f"Error loading player homeworld from settings: {e}")
+                return 'Super Earth'
+
+        # Get player's homeworld from settings
+        player_homeworld = load_player_homeworld()
+
+        # Add or combine Player Homeworld icon
+        player_homeworld_icon = iconconfig['PlanetIcons']['Player Homeworld']
+        if player_homeworld in PLANET_ICONS:
+            # Planet already has an icon, combine them
+            existing_icon = PLANET_ICONS[player_homeworld]
+            PLANET_ICONS[player_homeworld] = f"{existing_icon}{player_homeworld_icon}"
+        else:
+            # Planet doesn't have an icon, just add the homeworld icon
+            PLANET_ICONS[player_homeworld] = player_homeworld_icon
 
 CAMPAIGN_ICONS = {
     "Defense": iconconfig['CampaignIcons']['Defense'],
@@ -534,20 +558,20 @@ BIOME_BANNERS = {
 }
 
 SUBFACTION_BANNERS = {
-    "Automaton Legion": iconconfig['SubfactionBanners'].get('AutomatonLegion', ''),
-    "Terminid Horde": iconconfig['SubfactionBanners'].get('TerminidHorde', ''),
-    "Illuminate Cult": iconconfig['SubfactionBanners'].get('IlluminateCult', ''),
-    "Jet Brigade": iconconfig['SubfactionBanners'].get('JetBrigade', ''),
-    "Predator Strain": iconconfig['SubfactionBanners'].get('PredatorStrain', ''),
-    "Incineration Corps": iconconfig['SubfactionBanners'].get('IncinerationCorps', ''),
-    "Jet Brigade & Incineration Corps": iconconfig['SubfactionBanners'].get('JetBrigadeIncinerationCorps', ''),
-	"Spore Burst Strain": iconconfig['SubfactionBanners'].get('SporeBurstStrain', ''),
-	"The Great Host": iconconfig['SubfactionBanners'].get('TheGreatHost', ''),
-	"Rupture Strain": iconconfig['SubfactionBanners'].get('RuptureStrain', ''),
-	"Dragonroach": iconconfig['SubfactionBanners'].get('Dragonroach', ''),
-	"Predator Strain & Dragonroach": iconconfig['SubfactionBanners'].get('PredatorStrainDragonroach', ''),
-	"Spore Burst Strain & Dragonroach": iconconfig['SubfactionBanners'].get('SporeBurstStrainDragonroach', ''),
-	"Rupture Strain & Dragonroach": iconconfig['SubfactionBanners'].get('RuptureStrainDragonroach', '')
+    "Automaton Legion": iconconfig['SubfactionBanners'].get('AutomatonLegion', 'Automaton Legion'),
+    "Terminid Horde": iconconfig['SubfactionBanners'].get('TerminidHorde', 'Terminid Horde'),
+    "Illuminate Cult": iconconfig['SubfactionBanners'].get('IlluminateCult', 'Illuminate Cult'),
+    "Jet Brigade": iconconfig['SubfactionBanners'].get('JetBrigade', 'Jet Brigade'),
+    "Predator Strain": iconconfig['SubfactionBanners'].get('PredatorStrain', 'Predator Strain'),
+    "Incineration Corps": iconconfig['SubfactionBanners'].get('IncinerationCorps', 'Incineration Corps'),
+    "Jet Brigade & Incineration Corps": iconconfig['SubfactionBanners'].get('JetBrigadeIncinerationCorps', 'Jet Brigade & Incineration Corps'),
+    "Spore Burst Strain": iconconfig['SubfactionBanners'].get('SporeBurstStrain', 'Spore Burst Strain'),
+    "The Great Host": iconconfig['SubfactionBanners'].get('TheGreatHost', 'The Great Host'),
+    "Rupture Strain": iconconfig['SubfactionBanners'].get('RuptureStrain', 'Rupture Strain'),
+    "Dragonroach": iconconfig['SubfactionBanners'].get('Dragonroach', 'Dragonroach'),
+    "Predator Strain & Dragonroach": iconconfig['SubfactionBanners'].get('PredatorStrainDragonroach', 'Predator Strain & Dragonroach'),
+    "Spore Burst Strain & Dragonroach": iconconfig['SubfactionBanners'].get('SporeBurstStrainDragonroach', 'Spore Burst Strain & Dragonroach'),
+    "Rupture Strain & Dragonroach": iconconfig['SubfactionBanners'].get('RuptureStrainDragonroach', 'Rupture Strain & Dragonroach')
 }
 
 HELLDIVER_BANNERS = {
@@ -983,3 +1007,12 @@ PLANET_PROFILES = {
     "Super Earth": iconconfig['PlanetProfile']['Super Earth'],
     "Mars": iconconfig['PlanetProfile']['Scoured - Mars']
 }
+
+# Helper functions to retrieve banner URLs
+def get_subfaction_banner(subfaction: str) -> str:
+    """Return subfaction banner URL from config."""
+    return SUBFACTION_BANNERS.get(subfaction, "")
+
+def get_helldiver_banner(helldiver_key: str) -> str:
+    """Return helldiver banner URL from config."""
+    return HELLDIVER_BANNERS.get(helldiver_key, "")

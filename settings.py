@@ -104,7 +104,7 @@ class SettingsPage(tk.Tk):
         logging.debug("[settings] SettingsPage.__init__ start")
         super().__init__()
         self.title("Discord Settings")
-        self.geometry("900x900")
+        self.geometry("825x935")
         self.resizable(False, False)
         style = ttk.Style()
         self.apply_theme(style, DEFAULT_THEME)
@@ -240,48 +240,14 @@ class SettingsPage(tk.Tk):
         notebook.add(discord_frame, text="", image=self.discord_tab_img_normal, compound=tk.CENTER, padding=0)
         notebook.add(preferences_frame, text="", image=self.preferences_tab_img_normal, compound=tk.CENTER, padding=0)
         
-
-        # "Aestetics" section for banner selection
-        aesth_label = ttk.Label(preferences_frame, text="Aestetics", font=self.fs_sinclair_font)
-        aesth_lf = ttk.LabelFrame(preferences_frame, labelwidget=aesth_label, padding=10)
-        aesth_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
-        aesth_lf.columnconfigure(1, weight=1)
-
-        # "Banner" dropdown that persists via settings.json
-        banner_options = ["Biome Banner", "Subfaction Banner", "Helldiver Banner"]
-        default_banner = banner_options[0]
-        initial_banner = default_banner
-        try:
-            if os.path.exists(SETTINGS_PATH):
-                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
-                    sdata = json.load(f)
-                saved_banner = (sdata.get("banner") or "").strip()
-                # Match saved value to one of the options (case-insensitive)
-                for opt in banner_options:
-                    if saved_banner.casefold() == opt.casefold():
-                        initial_banner = opt
-                        break
-        except Exception:
-            # Fall back to default if anything goes wrong
-            initial_banner = default_banner
-
-        self.banner_var = tk.StringVar(value=initial_banner)
-        ttk.Label(aesth_lf, text="Banner:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
-        self.banner_combo = ttk.Combobox(
-            aesth_lf,
-            textvariable=self.banner_var,
-            values=banner_options,
-            state="readonly",
-            width=30,
-        )
-        self.banner_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=5)
-
-        
+        # Configure preferences_frame columns with equal sizing
+        preferences_frame.columnconfigure(0, weight=1, uniform="buttons")
+        preferences_frame.columnconfigure(1, weight=1, uniform="buttons")
 
         # Player Card frame (same style as Webhooks) to wrap the generated image
         player_card_label = ttk.Label(preferences_frame, text="Player Card", font=self.fs_sinclair_font)
         self.player_card_lf = ttk.LabelFrame(preferences_frame, labelwidget=player_card_label, padding=10)
-        self.player_card_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), pady=(0, 10))
+        self.player_card_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
         self.player_card_lf.columnconfigure(0, weight=1)
 
         # banner display label inside the Player Card frame
@@ -294,17 +260,85 @@ class SettingsPage(tk.Tk):
         except Exception:
             pass
 
-        # Banner generation button
-        self.generate_banner_button = ttk.Button(preferences_frame, text="Generate Banner", command=self.on_generate_banner)
-        self.generate_banner_button.grid(row=2, column=0, columnspan=2, pady=10)
+        # Banner generation button with image and hover effect
+        def load_generate_btn_img(path):
+            pil_img = Image.open(path).convert('RGBA')
+            pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
 
-        # Banner export button that sends the generated image to all Export webhooks
-        self.export_banner_button = ttk.Button(
+        generate_btn_img_tk = load_generate_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/GeneratePlacardButton.png"))
+        generate_btn_img_hover_tk = load_generate_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/GeneratePlacardButtonHover.png"))
+
+        self.generate_banner_button = tk.Label(
             preferences_frame,
-            text="Export Banner",
-            command=lambda: _export_banner()
+            image=generate_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
         )
-        self.export_banner_button.grid(row=3, column=0, columnspan=2, pady=(0, 10))
+        self.generate_banner_button.image = generate_btn_img_tk
+        self.generate_banner_button.grid(row=2, column=0, padx=(10, 5), pady=1)
+
+        def play_generate_click(e):
+            play_button_click()
+            self.on_generate_banner()
+
+        def on_generate_btn_enter(e):
+            self.generate_banner_button.configure(image=generate_btn_img_hover_tk)
+            self.generate_banner_button.image = generate_btn_img_hover_tk
+            play_button_hover()
+
+        def on_generate_btn_leave(e):
+            self.generate_banner_button.configure(image=generate_btn_img_tk)
+            self.generate_banner_button.image = generate_btn_img_tk
+
+        self.generate_banner_button.bind("<Enter>", on_generate_btn_enter)
+        self.generate_banner_button.bind("<Leave>", on_generate_btn_leave)
+        self.generate_banner_button.bind("<Button-1>", play_generate_click)
+
+        # Export banner button with image and hover effect
+        def load_export_btn_img(path):
+            pil_img = Image.open(path).convert('RGBA')
+            pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
+
+        export_btn_img_tk = load_export_btn_img("./media/SettingsInt/ExportPlayerCardButton.png")
+        export_btn_img_hover_tk = load_export_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/ExportPlayerCardButtonHover.png"))
+
+        self.export_banner_button = tk.Label(
+            preferences_frame,
+            image=export_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.export_banner_button.image = export_btn_img_tk
+        self.export_banner_button.grid(row=2, column=1, padx=(5, 10), pady=1)
+
+        def play_export_click(e):
+            play_button_click()
+            _export_banner()
+
+        def on_export_btn_enter(e):
+            self.export_banner_button.configure(image=export_btn_img_hover_tk)
+            self.export_banner_button.image = export_btn_img_hover_tk
+            play_button_hover()
+
+        def on_export_btn_leave(e):
+            self.export_banner_button.configure(image=export_btn_img_tk)
+            self.export_banner_button.image = export_btn_img_tk
+
+        self.export_banner_button.bind("<Enter>", on_export_btn_enter)
+        self.export_banner_button.bind("<Leave>", on_export_btn_leave)
+        self.export_banner_button.bind("<Button-1>", play_export_click)
 
         # Disable until a banner exists on disk
         try:
@@ -397,6 +431,344 @@ class SettingsPage(tk.Tk):
                 # Fallback: run inline
                 _worker()
 
+        # Load planet sectors data
+        sectors_data = {}
+        try:
+            sectors_path = os.path.join(JSON_DIR, "PlanetSectors.json")
+            if os.path.exists(sectors_path):
+                with open(sectors_path, "r", encoding="utf-8") as f:
+                    sectors_data = json.load(f)
+        except Exception as e:
+            logging.error(f"[settings] Failed to load PlanetSectors.json: {e}")
+
+        # Homeworld selection section
+        homeworld_label = ttk.Label(preferences_frame, text="Homeworld Selection", font=self.fs_sinclair_font)
+        homeworld_lf = ttk.LabelFrame(preferences_frame, labelwidget=homeworld_label, padding=10)
+        homeworld_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        homeworld_lf.columnconfigure(1, weight=1)
+
+        # Load saved homeworld if it exists
+        saved_homeworld = None
+        try:
+            if os.path.exists(SETTINGS_PATH):
+                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                    sdata = json.load(f)
+                saved_homeworld = sdata.get("Player Homeworld")
+        except Exception:
+            pass
+
+        # Sector selection
+        sector_list = list(sectors_data.keys()) if sectors_data else []
+        default_sector = "Sol System" if "Sol System" in sector_list else (sector_list[0] if sector_list else "")
+        self.sector_var = tk.StringVar(value=default_sector)
+        
+        ttk.Label(homeworld_lf, text="Sector:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.sector_combo = ttk.Combobox(
+            homeworld_lf,
+            textvariable=self.sector_var,
+            values=sector_list,
+            state="readonly",
+            width=12
+        )
+        self.sector_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=2)
+
+        # Planet selection
+        def update_planets(*args):
+            selected_sector = self.sector_var.get()
+            if selected_sector in sectors_data:
+                planets = sectors_data[selected_sector]["planets"]
+                self.planet_combo.configure(values=planets)
+                # Set default planet for Sol System or first planet for others
+                if selected_sector == "Sol System" and "Super Earth" in planets:
+                    self.planet_var.set("Super Earth")
+                elif planets:
+                    self.planet_var.set(planets[0])
+                else:
+                    self.planet_var.set("")
+            else:
+                self.planet_combo.configure(values=[])
+                self.planet_var.set("")
+
+        # Initialize planet selection
+        initial_planets = sectors_data.get(default_sector, {}).get("planets", []) if sectors_data else []
+        default_planet = "Super Earth" if "Super Earth" in initial_planets else (initial_planets[0] if initial_planets else "")
+        self.planet_var = tk.StringVar(value=default_planet)
+        
+        ttk.Label(homeworld_lf, text="Planet:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=(50,0))
+        self.planet_combo = ttk.Combobox(
+            homeworld_lf,
+            textvariable=self.planet_var,
+            values=initial_planets,
+            state="readonly",
+            width=12
+        )
+        self.planet_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=(50,0))
+
+        # Planet Preview (image only, no frame) - positioned to the right
+        self.planet_preview_label = ttk.Label(homeworld_lf, text="", background="#252526")
+        self.planet_preview_label.config(width=15, anchor=tk.CENTER)
+        self.planet_preview_label.grid(row=0, column=2, rowspan=2, padx=(50, 10), pady=(10, 5))
+
+        # Sector Preview (image only, no frame) - positioned to the right of planet
+        self.sector_preview_label = ttk.Label(homeworld_lf, text="", background="#252526")
+        self.sector_preview_label.config(width=15, anchor=tk.CENTER)
+        self.sector_preview_label.grid(row=0, column=3, rowspan=2, padx=(10, 10), pady=(10, 5))
+
+        # Bind sector change to update planets
+        self.sector_var.trace('w', update_planets)
+
+        # Check if homeworld is already set and disable controls if so
+        homeworld_is_set = saved_homeworld is not None
+        if homeworld_is_set:
+            # Parse saved homeworld to set the comboboxes
+            try:
+                # Check if saved_homeworld contains " - " (old format)
+                if " - " in saved_homeworld:
+                    # Old format: "Sector - Planet"
+                    parts = saved_homeworld.split(" - ")
+                    if len(parts) == 2:
+                        saved_sector, saved_planet = parts
+                        if saved_sector in sector_list:
+                            self.sector_var.set(saved_sector)
+                            update_planets()  # This will populate planets for the sector
+                            if saved_planet in sectors_data.get(saved_sector, {}).get("planets", []):
+                                self.planet_var.set(saved_planet)
+                else:
+                    # New format: just the planet name
+                    saved_planet = saved_homeworld
+                    # Find which sector contains this planet
+                    found_sector = None
+                    for sector_name, sector_info in sectors_data.items():
+                        if saved_planet in sector_info.get("planets", []):
+                            found_sector = sector_name
+                            break
+                    
+                    if found_sector and found_sector in sector_list:
+                        self.sector_var.set(found_sector)
+                        update_planets()  # This will populate planets for the sector
+                        self.planet_var.set(saved_planet)
+            except Exception:
+                pass
+            
+            # Disable the controls
+            self.sector_combo.configure(state="disabled")
+            self.planet_combo.configure(state="disabled")
+
+        # Save homeworld button
+        def save_homeworld():
+            selected_sector = self.sector_var.get()
+            selected_planet = self.planet_var.get()
+            
+            if not selected_sector or not selected_planet:
+                messagebox.showwarning("Invalid Selection", "Please select both a sector and planet.")
+                return
+            
+            # Ask for confirmation before setting homeworld
+            confirm = messagebox.askyesno(
+                "Confirm Homeworld",
+                f"Are you sure you want to set your homeworld to {selected_planet}?\n\n"
+                "This action CANNOT be undone or changed once confirmed."
+            )
+            
+            if not confirm:
+                # User clicked No, abort the operation
+                return
+            
+            homeworld_value = selected_planet  # Save only the planet name, not the sector
+            
+            # Save to settings.json
+            try:
+                settings_data = {}
+                if os.path.exists(SETTINGS_PATH):
+                    with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                        settings_data = json.load(f)
+                
+                settings_data["Player Homeworld"] = homeworld_value
+                
+                with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+                    json.dump(settings_data, f, indent=4)
+                
+                # Disable the controls after saving
+                self.sector_combo.configure(state="disabled")
+                self.planet_combo.configure(state="disabled")
+                
+                # Disable the button with deactive image
+                self.homeworld_button_enabled = False
+                self.save_homeworld_button.configure(image=homeworld_btn_img_deactive_tk, cursor="")
+                self.save_homeworld_button.image = homeworld_btn_img_deactive_tk
+                
+                messagebox.showinfo("Homeworld Set", f"Your homeworld has been set to {selected_planet}.")
+                
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to save homeworld: {e}")
+
+        # Load and subsample images for Set Homeworld button
+        def load_homeworld_btn_img(path):
+            pil_img = Image.open(path).convert('RGBA')
+            pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new('RGBA', pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
+
+        homeworld_btn_img_tk = load_homeworld_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/SetHomeworldButton.png"))
+        homeworld_btn_img_hover_tk = load_homeworld_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/SetHomeworldButtonHover.png"))
+        homeworld_btn_img_deactive_tk = load_homeworld_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/SetHomeworldButtonDeactive.png"))
+
+        self.save_homeworld_button = tk.Label(
+            homeworld_lf,
+            image=homeworld_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.save_homeworld_button.image = homeworld_btn_img_tk
+        self.save_homeworld_button.grid(row=1, column=0, columnspan=2, padx=(50, 0), pady=10)
+        
+        # Track button state
+        self.homeworld_button_enabled = True
+
+        def play_homeworld_click(e):
+            if not self.homeworld_button_enabled:
+                return
+            play_button_click()
+            save_homeworld()
+
+        def on_homeworld_btn_enter(e):
+            if not self.homeworld_button_enabled:
+                return
+            self.save_homeworld_button.configure(image=homeworld_btn_img_hover_tk)
+            self.save_homeworld_button.image = homeworld_btn_img_hover_tk
+            play_button_hover()
+
+        def on_homeworld_btn_leave(e):
+            if not self.homeworld_button_enabled:
+                return
+            self.save_homeworld_button.configure(image=homeworld_btn_img_tk)
+            self.save_homeworld_button.image = homeworld_btn_img_tk
+
+        self.save_homeworld_button.bind("<Enter>", on_homeworld_btn_enter)
+        self.save_homeworld_button.bind("<Leave>", on_homeworld_btn_leave)
+        self.save_homeworld_button.bind("<Button-1>", play_homeworld_click)
+        
+        # Add disclaimer label
+        disclaimer_text = "⚠️ DISCLAIMER: Your Homeworld CANNOT be changed once submitted.\nYour Homeworld should be your first ever planet visited, not necessarily your first logged planet."
+        disclaimer_label = ttk.Label(
+            homeworld_lf,
+            text=disclaimer_text,
+            font=("Segoe UI", 9),
+            foreground="#E74C3C",
+            justify=tk.CENTER,
+            wraplength=2000
+        )
+        disclaimer_label.grid(row=3, column=0, columnspan=4, pady=(2, 5), sticky=tk.EW, padx=10)
+        
+        # Disable button if homeworld is already set
+        if homeworld_is_set:
+            self.homeworld_button_enabled = False
+            self.save_homeworld_button.configure(image=homeworld_btn_img_deactive_tk, cursor="")
+            self.save_homeworld_button.image = homeworld_btn_img_deactive_tk
+
+        # Planet Preview update function
+        def update_planet_preview(*args):
+            selected_planet = self.planet_var.get()
+            if not selected_planet:
+                self.planet_preview_label.configure(image='')
+                return
+            
+            try:
+                # Load BiomePlanets.json to get the biome
+                biome_path = os.path.join(os.path.dirname(__file__), "JSON", "BiomePlanets.json")
+                with open(biome_path, "r", encoding="utf-8") as f:
+                    biome_data = json.load(f)
+                
+                # Get biome for the selected planet
+                biome = biome_data.get(selected_planet, "Tundra")  # Default to Tundra if not found
+                
+                # Load the planet image
+                planet_img_path = os.path.join(os.path.dirname(__file__), "media", "planets", f"{biome}.png")
+                if os.path.exists(planet_img_path):
+                    planet_img = Image.open(planet_img_path).convert("RGBA")
+                    planet_img = planet_img.resize((120, 120), Image.Resampling.LANCZOS)
+                    
+                    # Create background
+                    background = Image.new("RGBA", (120, 120), "#252526")
+                    
+                    # Composite planet on background
+                    background.paste(planet_img, (0, 0), planet_img)
+                    
+                    # Convert to PhotoImage
+                    self.planet_preview_photo = ImageTk.PhotoImage(background)
+                    self.planet_preview_label.configure(image=self.planet_preview_photo)
+                else:
+                    self.planet_preview_label.configure(image='')
+            except Exception as e:
+                logging.error(f"[settings] Failed to update planet preview: {e}")
+                self.planet_preview_label.configure(image='')
+
+        # Sector Preview update function
+        def update_sector_preview(*args):
+            selected_sector = self.sector_var.get()
+            if not selected_sector or selected_sector not in sectors_data:
+                self.sector_preview_label.configure(image='')
+                return
+            
+            try:
+                # Get enemy type for the sector
+                enemy_type = sectors_data[selected_sector].get("enemy", "Observing")
+                
+                # Map enemy types to colors
+                enemy_colors = {
+                    "Automatons": "#ff6d6d",
+                    "Terminids": "#ffc100",
+                    "Illuminate": "#8960ca",
+                    "Observing": "#41639C"
+                }
+                
+                enemy_color = enemy_colors.get(enemy_type, "#41639C")
+                
+                # Load the sector image
+                sector_img_path = os.path.join(os.path.dirname(__file__), "media", "sectors", f"{selected_sector}.png")
+                if os.path.exists(sector_img_path):
+                    sector_img = Image.open(sector_img_path).convert("RGBA")
+                    sector_img = sector_img.resize((120, 120), Image.Resampling.LANCZOS)
+                    
+                    # Apply color chroma - replace white pixels with enemy color
+                    pixels = sector_img.load()
+                    for y in range(sector_img.height):
+                        for x in range(sector_img.width):
+                            r, g, b, a = pixels[x, y]
+                            # Check if pixel is white (or close to white)
+                            if r > 200 and g > 200 and b > 200 and a > 0:
+                                # Parse enemy color
+                                ec = enemy_color.lstrip('#')
+                                er, eg, eb = tuple(int(ec[i:i+2], 16) for i in (0, 2, 4))
+                                pixels[x, y] = (er, eg, eb, a)
+                    
+                    # Create background
+                    background = Image.new("RGBA", (120, 120), "#252526")
+                    
+                    # Composite sector on background
+                    background.paste(sector_img, (0, 0), sector_img)
+                    
+                    # Convert to PhotoImage
+                    self.sector_preview_photo = ImageTk.PhotoImage(background)
+                    self.sector_preview_label.configure(image=self.sector_preview_photo)
+                else:
+                    self.sector_preview_label.configure(image='')
+            except Exception as e:
+                logging.error(f"[settings] Failed to update sector preview: {e}")
+                self.sector_preview_label.configure(image='')
+
+        # Bind preview updates to combobox changes
+        self.planet_var.trace('w', update_planet_preview)
+        self.sector_var.trace('w', update_sector_preview)
+
+        # Initialize previews
+        update_planet_preview()
+        update_sector_preview()
+
         # Remove tab border/highlight (like other buttons)
         style = ttk.Style()
         style.layout("TNotebook.Tab", [
@@ -443,16 +815,16 @@ class SettingsPage(tk.Tk):
         ttk.Entry(identity_lf, textvariable=self.Helldivers, width=30).grid(row=0, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
 
         ttk.Label(identity_lf, text="Destroyer Name:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.ship1_combo = ttk.Combobox(identity_lf, textvariable=self.shipName1_var, values=self.shipName1s, state='readonly', width=27)
+        self.ship1_combo = ttk.Combobox(identity_lf, textvariable=self.shipName1_var, values=self.shipName1s, state='readonly', width=18)
         self.ship1_combo.grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
-        self.ship2_combo = ttk.Combobox(identity_lf, textvariable=self.shipName2_var, values=self.shipName2s, state='readonly', width=39)
+        self.ship2_combo = ttk.Combobox(identity_lf, textvariable=self.shipName2_var, values=self.shipName2s, state='readonly', width=25)
         self.ship2_combo.grid(row=1, column=2, sticky=tk.W, padx=(3,0), pady=5)
 
         # Preview section
         preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=font_to_use)
-        preview_lf = ttk.LabelFrame(profile_frame, labelwidget=preview_label, padding=10)
-        preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=5)
-        ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W)
+        preview_lf = ttk.LabelFrame(profile_frame, labelwidget=preview_label, padding=2)
+        preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=1)
+        ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W, padx=(5, 0))
 
         def update_preview_label_color(*args):
             val = self.full_ship_name_var.get()
@@ -467,7 +839,7 @@ class SettingsPage(tk.Tk):
             if val == "SES Founding Father of Family Values":
                 self.preview_note_label.config(text="'You got this from Max0r, didn't you?'",foreground="#897f0d")
             elif val == "SES Herald of Wrath":
-                self.preview_note_label.config(text="'May Malice guide your path to freedom.'",foreground="#897f0d") # Easter egg text
+                self.preview_note_label.config(text="'May Malice guide your path to freedom, and the enemies of democracy be at your mercy.'",foreground="#897f0d") # Easter egg text
             elif val == "SES Mother of Democracy":
                 self.preview_note_label.config(text="'She'll be sure to bring you a glass of warm milk, a plate of cookies and FREEDOM!'",foreground="#897f0d")
             else:
@@ -478,17 +850,18 @@ class SettingsPage(tk.Tk):
             textvariable=self.full_ship_name_var,
             font=(font_to_use.actual("family"), 24, "bold")
         )
-        self.preview_name_label.grid(row=0, column=1, sticky=tk.W, padx=(0, 5), pady=5)
+        self.preview_name_label.grid(row=0, column=1, sticky=tk.W, padx=(5, 5), pady=5)
 
         # Note label easter egg
         self.preview_note_label = ttk.Label(
             preview_lf,
             text="",
             font=(font_to_use.actual("family"), 12, "italic"),
-            foreground=DEFAULT_THEME["."]["configure"]["foreground"]
+            foreground=DEFAULT_THEME["."]["configure"]["foreground"],
+            anchor="center"
         )
-        # Move note label to row=2 to avoid overlap with image
-        self.preview_note_label.grid(row=2, column=1, sticky=tk.W, padx=(0, 5), pady=(0, 5))
+        # Move note label to row=2 to avoid overlap with image, center it across both columns
+        self.preview_note_label.grid(row=2, column=0, columnspan=2, pady=(0, 5))
 
         self.full_ship_name_var.trace_add("write", update_preview_label_color)
         update_preview_label_color()
@@ -496,9 +869,9 @@ class SettingsPage(tk.Tk):
         # Load transparent png for preview (inside profile tab)
         # Make preview image larger (e.g., 400x400)
         self.preview_image_label = ttk.Label(preview_lf)
-        self.preview_image_label.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=(10,0))
+        self.preview_image_label.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=0)
         preview_lf.rowconfigure(1, weight=1)
-        preview_lf.columnconfigure(0, weight=1)
+        preview_lf.columnconfigure(0, weight=0)
         preview_lf.columnconfigure(1, weight=1)
         preview_lf.columnconfigure(2, weight=1)
         # Use a larger size for preview image
@@ -522,27 +895,27 @@ class SettingsPage(tk.Tk):
         # Account section
         account_label = ttk.Label(discord_frame, text="Account", font=self.fs_sinclair_font)
         account_lf = ttk.LabelFrame(discord_frame, labelwidget=account_label, padding=10)
-        account_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        account_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=15, pady=10)
         account_lf.columnconfigure(1, weight=1)
         ttk.Label(account_lf, text="Discord User ID:").grid(row=0, column=0, sticky=tk.W, pady=5)
         ttk.Entry(account_lf, textvariable=self.discord_uid_var, width=30).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=10, pady=5)
         ttk.Label(account_lf, text="Platform:").grid(row=0, column=2, sticky=tk.W, padx=(20,5))
-        self.platform_combo = ttk.Combobox(account_lf, textvariable=self.platform_var, values=["Not Selected", "Steam", "PlayStation", "Xbox"], state="readonly", width=20)
+        self.platform_combo = ttk.Combobox(account_lf, textvariable=self.platform_var, values=["Not Selected", "Steam", "PlayStation", "Xbox"], state="readonly", width=12)
         self.platform_combo.grid(row=0, column=3, sticky=tk.W)
         # Do-not-send to Discord toggle
         self.dont_send_chk = ttk.Checkbutton(
             account_lf,
-            text="Don't send results to Discord (We send it to a internal webhook instead)", # Too lazy to implement actual logic so hopefully this is fine for now
+            text="Don't send results to Discord (We send it to an internal webhook instead)", # Too lazy to implement actual logic so hopefully this is fine for now
             variable=self.dont_send_to_discord_var,
             command=self.on_dont_send_toggle,
         )
         self.dont_send_chk.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(5,0))
 
 # START BADGE PREVIEW
-        # Platform Badges (vertical images on right side, inside Discord tab)
+        # Platform Badges (horizontal images underneath webhook frame)
         platform_badges_frame = ttk.Frame(discord_frame)
-        # Place inside discord_frame, right side, a bit lower
-        platform_badges_frame.place(relx=0.98, rely=0.1, anchor="ne")
+        # Place with reduced left and top margins
+        platform_badges_frame.place(relx=0.12, rely=0.85, anchor="w")
 
         def load_platform_badge(path, size=(100, 100)):
             img = Image.open(path)
@@ -573,7 +946,7 @@ class SettingsPage(tk.Tk):
         for i, img in enumerate(self.platform_badge_imgs):
             lbl = tk.Label(platform_badges_frame, image=img, bg=DEFAULT_THEME["."]["configure"]["background"])
             lbl.image = img
-            lbl.pack(pady=(0, 60))
+            lbl.pack(side=tk.LEFT, padx=35)
             self.platform_badge_labels.append(lbl)
 
         def update_badges(*args):
@@ -589,7 +962,7 @@ class SettingsPage(tk.Tk):
         # Webhooks section
         hooks_label = ttk.Label(discord_frame, text="Webhooks", font=self.fs_sinclair_font)
         hooks_lf = ttk.LabelFrame(discord_frame, labelwidget=hooks_label, padding=10)
-        hooks_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        hooks_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=15, pady=10)
         hooks_lf.columnconfigure(0, weight=1)
 
         # Logging webhooks
@@ -1202,12 +1575,26 @@ class SettingsPage(tk.Tk):
         os.makedirs(JSON_DIR, exist_ok=True)
 
         # Write settings.json
+        # Load existing settings to preserve Player Homeworld if it exists
+        existing_homeworld = None
+        try:
+            if os.path.exists(SETTINGS_PATH):
+                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                    existing_data = json.load(f)
+                    existing_homeworld = existing_data.get("Player Homeworld")
+        except Exception:
+            pass
+        
         settings_data = {
             "shipName1": self.shipName1_var.get(),
             "shipName2": self.shipName2_var.get(),
             "username": self.Helldivers.get(),
-            "banner": self.banner_var.get(),
         }
+        
+        # Preserve Player Homeworld if it exists
+        if existing_homeworld:
+            settings_data["Player Homeworld"] = existing_homeworld
+        
         # Write DCord.json
         def _extract(items):
             return [w.get("url", "").strip() for w in items if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))]
@@ -1245,7 +1632,7 @@ class SettingsPage(tk.Tk):
                 json.dump(settings_data, f, indent=4)
             with open(DCORD_PATH, "w", encoding="utf-8") as f:
                 json.dump(dcord, f, indent=4)
-            msg = "Settings saved successfully!" if "-ML" in sys.argv else "Settings saved! Please launch Main.py or Launch.bat"
+            msg = "Settings saved successfully!" if "-ML" in sys.argv else "Settings saved! Please run MLHD2-Launcher.exe"
             messagebox.showinfo("Success", msg)
             self.destroy()
         except Exception as e:

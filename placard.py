@@ -697,12 +697,26 @@ def generate_helldiver_banner(
         except Exception:
             return None
 
+    def _get_homeworld_from_settings() -> Optional[str]:
+        """Get the Player Homeworld from settings.json file."""
+        try:
+            base = base_dir or os.path.dirname(os.path.abspath(__file__))
+            settings_path = os.path.join(base, "JSON", "settings.json")
+            if os.path.isfile(settings_path):
+                with open(settings_path, "r", encoding="utf-8") as f:
+                    settings_data = json.load(f)
+                    homeworld = settings_data.get("Player Homeworld")
+                    if homeworld and isinstance(homeworld, str) and homeworld.strip():
+                        return homeworld.strip()
+        except Exception:
+            pass
+        return None
+
     def _get_totals_and_homeworld() -> tuple[Optional[int], Optional[int], Optional[str]]:
-        """Return (total_kills, total_deployments, homeworld) from mission logs.
+        """Return (total_kills, total_deployments, homeworld) from mission logs and settings.
         - total_kills: sum of numeric 'Kills' column (best-effort detection)
         - total_deployments: number of rows in the log (non-empty DataFrame)
-        - homeworld: planet from the earliest mission by timestamp (best-effort),
-          falling back to the first non-empty planet value in file order.
+        - homeworld: planet from settings.json "Player Homeworld", fallback to earliest mission
         """
         try:
             app_data = os.path.join(os.getenv("LOCALAPPDATA") or "", "MLHD2")
@@ -738,89 +752,92 @@ def generate_helldiver_banner(
                 except Exception:
                     kills_total = 0
 
-            # Homeworld: earliest planet by timestamp if possible
-            planet_col = None
-            for c in df.columns:
-                if str(c).strip().lower() == "planet":
-                    planet_col = c
-                    break
-            if planet_col is None:
+            # Homeworld: prioritize settings.json, fallback to earliest mission
+            homeworld = _get_homeworld_from_settings()
+            
+            # Fallback: earliest planet by timestamp if no homeworld in settings
+            if not homeworld:
+                planet_col = None
                 for c in df.columns:
-                    if "planet" in str(c).lower():
+                    if str(c).strip().lower() == "planet":
                         planet_col = c
                         break
-
-            homeworld = None
-            if planet_col is not None:
-                # Attempt to detect a datetime column and pick earliest
-                def _try_parse_datetime_column(series: pd.Series) -> Optional[pd.Series]:
-                    try:
-                        s = series
-                        if pd.api.types.is_datetime64_any_dtype(s):
-                            dt = pd.to_datetime(s, errors="coerce")
-                        elif pd.api.types.is_integer_dtype(s) or pd.api.types.is_float_dtype(s):
-                            s_num = pd.to_numeric(s, errors="coerce")
-                            dt = pd.to_datetime(s_num, errors="coerce")
-                            if s_num.notna().any():
-                                maxv = float(s_num.max())
-                                minv = float(s_num.min())
-                                try:
-                                    if maxv > 1e12:
-                                        dt = pd.to_datetime(s_num, unit="ms", errors="coerce", utc=True).dt.tz_localize(None)
-                                    elif maxv > 1e9:
-                                        dt = pd.to_datetime(s_num, unit="s", errors="coerce", utc=True).dt.tz_localize(None)
-                                    elif 20000 < minv < 60000 and 20000 < maxv < 60000:
-                                        dt = pd.to_datetime(s_num, unit="D", origin="1899-12-30", errors="coerce")
-                                except Exception:
-                                    pass
-                        else:
-                            s_str = s.astype(str).str.strip()
-                            dt = None
-                            for fmt in ("%d-%m-%Y %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M", "%d-%m-%Y", "%d/%m/%Y"):
-                                try:
-                                    parsed = pd.to_datetime(s_str, format=fmt, errors="coerce")
-                                    if parsed.notna().any():
-                                        dt = parsed
-                                        break
-                                except Exception:
-                                    pass
-                            if dt is None:
-                                dt = pd.to_datetime(s_str, errors="coerce", dayfirst=True)
-                    except Exception:
-                        dt = pd.to_datetime(series.astype(str), errors="coerce", dayfirst=True)
-                    lower_bound = pd.Timestamp("2014-01-01")
-                    upper_bound = pd.Timestamp("2100-01-01")
-                    dt = dt.where((dt >= lower_bound) & (dt < upper_bound))
-                    return dt
-
-                # Identify a likely datetime column
-                time_cols = []
-                for c in df.columns:
-                    cl = str(c).strip().lower()
-                    if cl in {"time", "date", "timestamp", "datetime"} or "time" in cl or "date" in cl:
-                        time_cols.append(c)
-                dt_series = None
-                for c in time_cols:
-                    parsed = _try_parse_datetime_column(df[c])
-                    if parsed is not None and parsed.notna().any():
-                        dt_series = parsed
-                        break
-                if dt_series is not None:
-                    idx = dt_series.idxmin()
-                    try:
-                        val = df.loc[idx, planet_col]
-                        if pd.notna(val):
-                            homeworld = str(val).strip() or None
-                    except Exception:
-                        homeworld = None
-
-                # Fallback: first non-empty planet value
-                if not homeworld:
-                    for v in df[planet_col].astype(str):
-                        sv = str(v).strip()
-                        if sv:
-                            homeworld = sv
+                if planet_col is None:
+                    for c in df.columns:
+                        if "planet" in str(c).lower():
+                            planet_col = c
                             break
+
+                if planet_col is not None:
+                    # Attempt to detect a datetime column and pick earliest
+                    def _try_parse_datetime_column(series: pd.Series) -> Optional[pd.Series]:
+                        try:
+                            s = series
+                            if pd.api.types.is_datetime64_any_dtype(s):
+                                dt = pd.to_datetime(s, errors="coerce")
+                            elif pd.api.types.is_integer_dtype(s) or pd.api.types.is_float_dtype(s):
+                                s_num = pd.to_numeric(s, errors="coerce")
+                                dt = pd.to_datetime(s_num, errors="coerce")
+                                if s_num.notna().any():
+                                    maxv = float(s_num.max())
+                                    minv = float(s_num.min())
+                                    try:
+                                        if maxv > 1e12:
+                                            dt = pd.to_datetime(s_num, unit="ms", errors="coerce", utc=True).dt.tz_localize(None)
+                                        elif maxv > 1e9:
+                                            dt = pd.to_datetime(s_num, unit="s", errors="coerce", utc=True).dt.tz_localize(None)
+                                        elif 20000 < minv < 60000 and 20000 < maxv < 60000:
+                                            dt = pd.to_datetime(s_num, unit="D", origin="1899-12-30", errors="coerce")
+                                    except Exception:
+                                        pass
+                            else:
+                                s_str = s.astype(str).str.strip()
+                                dt = None
+                                for fmt in ("%d-%m-%Y %H:%M:%S", "%d/%m/%Y %H:%M:%S", "%d-%m-%Y %H:%M", "%d/%m/%Y %H:%M", "%d-%m-%Y", "%d/%m/%Y"):
+                                    try:
+                                        parsed = pd.to_datetime(s_str, format=fmt, errors="coerce")
+                                        if parsed.notna().any():
+                                            dt = parsed
+                                            break
+                                    except Exception:
+                                        pass
+                                if dt is None:
+                                    dt = pd.to_datetime(s_str, errors="coerce", dayfirst=True)
+                        except Exception:
+                            dt = pd.to_datetime(series.astype(str), errors="coerce", dayfirst=True)
+                        lower_bound = pd.Timestamp("2014-01-01")
+                        upper_bound = pd.Timestamp("2100-01-01")
+                        dt = dt.where((dt >= lower_bound) & (dt < upper_bound))
+                        return dt
+
+                    # Identify a likely datetime column
+                    time_cols = []
+                    for c in df.columns:
+                        cl = str(c).strip().lower()
+                        if cl in {"time", "date", "timestamp", "datetime"} or "time" in cl or "date" in cl:
+                            time_cols.append(c)
+                    dt_series = None
+                    for c in time_cols:
+                        parsed = _try_parse_datetime_column(df[c])
+                        if parsed is not None and parsed.notna().any():
+                            dt_series = parsed
+                            break
+                    if dt_series is not None:
+                        idx = dt_series.idxmin()
+                        try:
+                            val = df.loc[idx, planet_col]
+                            if pd.notna(val):
+                                homeworld = str(val).strip() or None
+                        except Exception:
+                            homeworld = None
+
+                    # Final fallback: first non-empty planet value
+                    if not homeworld:
+                        for v in df[planet_col].astype(str):
+                            sv = str(v).strip()
+                            if sv:
+                                homeworld = sv
+                                break
 
             return kills_total, deployments, homeworld
         except Exception:

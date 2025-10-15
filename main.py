@@ -67,7 +67,8 @@ from tkinter import font as tkfont
 os.environ["PILLOW_DEBUG"] = "0"
 
 from PIL import Image, ImageTk
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES
+from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, SUBFACTION_BANNERS, HELLDIVER_BANNERS, get_subfaction_banner, get_helldiver_banner
+import random
 
 # Manual Configuration
 GWDay = "Day: 611"
@@ -678,23 +679,37 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load sector preview image: {e}")
 
-        # Create label and frame to hold the biome of the planet
-        biome_frame = ttk.LabelFrame(details_frame, text=banner_type, padding=5)
+        # Banner type selection combobox (similar to aesthetics banner) — place NEXT to the frame label
+        banner_options = ["Biome Banner", "Subfaction Banner", "Helldiver Banner"]
+        self.banner_type_var = tk.StringVar(value=banner_type)
+
+        # Header containing the label and the combobox, used as the LabelFrame's labelwidget
+        banner_header = ttk.Frame(details_frame)
+        ttk.Label(banner_header, text="Banner Selection").pack(side=tk.LEFT)
+        self.biome_banner_combo = ttk.Combobox(
+            banner_header,
+            textvariable=self.banner_type_var,
+            values=banner_options,
+            state="readonly",
+            width=17
+        )
+        self.biome_banner_combo.pack(side=tk.LEFT, padx=(6, 0))
+
+        # Frame reserved only for the image; header sits in the label area
+        biome_frame = ttk.LabelFrame(details_frame, padding=5)
+        biome_frame['labelwidget'] = banner_header
         biome_frame.grid(row=0, column=6, rowspan=6, sticky=tk.N, padx=(20,0))
+
+        # Bind combobox selection event
+        self.biome_banner_combo.bind('<<ComboboxSelected>>', lambda e: [update_biome_banner(), save_banner_setting()])
 
         self.planet_biome_label = tk.Label(biome_frame, borderwidth=0)  # no width/height -> uses image natural size
         self.planet_biome_label.pack(padx=0, pady=0)
 
         def update_biome_banner(*args, f=None):
             try:
-                # Load banner type preference once
-                if not hasattr(self, 'banner_type'):
-                    try:
-                        with open(self.settings_file, 'r', encoding='utf-8') as _sf:
-                            _s = json.load(_sf)
-                        self.banner_type = _s.get('banner', 'Biome Banner')
-                    except Exception:
-                        self.banner_type = 'Biome Banner'
+                # Get banner type from the combobox
+                banner_type_selected = self.banner_type_var.get()
 
                 base_dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -708,11 +723,11 @@ class MissionLogGUI:
                     except Exception:
                         biome_map = {}
                 biome_name = biome_map.get(planet_name, "Mars")
-                logging.debug(f"Planet: {planet_name}, Biome: {biome_name}, Banner style: {self.banner_type}")
+                logging.debug(f"Planet: {planet_name}, Biome: {biome_name}, Banner style: {banner_type_selected}")
                 self.current_biome = biome_name
                 pil_banner = None
                 # Style: Subfaction Banner
-                if self.banner_type == "Subfaction Banner":
+                if banner_type_selected == "Subfaction Banner":
                     subfaction = (self.subfaction_type.get() or "Unknown").strip()
                     subf_clean = subfaction.replace(" ", "_")
                     candidates = [
@@ -746,7 +761,7 @@ class MissionLogGUI:
                             break
 
                 # Style: Helldiver Banner
-                elif self.banner_type == "Helldiver Banner":
+                elif banner_type_selected == "Helldiver Banner":
                     try:
                         idx = random.randint(1, 6)
                         candidates = [
@@ -834,10 +849,29 @@ class MissionLogGUI:
                 except Exception:
                     self.planet_biome_label.configure(image='')
 
+        # Function to save banner selection to settings file
+        def save_banner_setting(*args):
+            try:
+                # Read current settings
+                settings_data = {}
+                if os.path.exists(self.settings_file):
+                    with open(self.settings_file, 'r', encoding='utf-8') as f:
+                        settings_data = json.load(f)
+                
+                # Update banner setting
+                settings_data['banner'] = self.banner_type_var.get()
+                
+                # Write back to settings file
+                with open(self.settings_file, 'w', encoding='utf-8') as f:
+                    json.dump(settings_data, f, indent=4)
+            except Exception as e:
+                logging.error(f"Error saving banner setting: {e}")
+
         # Keep banner reactive to inputs that affect each style
         try:
             self.subfaction_type.trace_add("write", lambda *a: update_biome_banner())
             self.profile_picture.trace_add("write", lambda *a: update_biome_banner())
+            self.banner_type_var.trace_add("write", lambda *a: [update_biome_banner(), save_banner_setting()])
         except Exception:
             pass
 
@@ -1133,7 +1167,7 @@ class MissionLogGUI:
         button_icon_frame.grid(row=0, column=7, padx=(0,10), pady=(0,10), sticky=tk.NE,rowspan=7)
         # Top row to place Settings (kept inside) and a separate root-level info button
         top_buttons_row = ttk.Frame(button_icon_frame)
-        top_buttons_row.pack(side=tk.TOP, pady=(10,8), padx=(10,0))
+        top_buttons_row.pack(side=tk.TOP, pady=(10,8), padx=0)
         # Settings button with hover effect
         try:
             def load_settings_btn_img(path):
@@ -1154,7 +1188,7 @@ class MissionLogGUI:
                 highlightthickness=0,
                 cursor="hand2"
             )
-            self.settings_btn_label.pack(side=tk.LEFT, pady=0, padx=(0,6))
+            self.settings_btn_label.pack(side=tk.LEFT, pady=0, padx=0)
 
             def on_settings_btn_enter(e):
                     self.settings_btn_label.configure(image=self.settings_btn_img_hover)
@@ -1171,7 +1205,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load settings button image: {e}")
             fallback_label = tk.Label(top_buttons_row, text="Settings", cursor="hand2")
-            fallback_label.pack(side=tk.LEFT, pady=0, padx=(0,6))
+            fallback_label.pack(side=tk.LEFT, pady=0, padx=0)
             fallback_label.bind("<Button-1>", lambda e: subprocess.run(['python', 'settings.py']))
 
         # Info (Help) button with hover effect, placed OUTSIDE frames at root top-right and smaller
@@ -1214,18 +1248,44 @@ class MissionLogGUI:
             self.help_btn_label.bind("<Enter>", on_help_btn_enter)
             self.help_btn_label.bind("<Leave>", on_help_btn_leave)
 
+            # Easter egg tracking
+            import time
+            self.help_btn_clicks = []
+            
             def show_sector_placeholder_window():
+                # Track clicks for easter egg
+                current_time = time.time()
+                self.help_btn_clicks.append(current_time)
+                # Remove clicks older than 60 seconds
+                self.help_btn_clicks = [t for t in self.help_btn_clicks if current_time - t <= 60]
+                
+                # Check if easter egg should trigger (10 clicks within a minute)
+                show_easter_egg = len(self.help_btn_clicks) >= 10
+                
                 # Create a new top-level window
                 win = tk.Toplevel(self.root)
-                win.title("Sector Placeholder")
+                win.title("Tips" if not show_easter_egg else "???")
                 win.resizable(False, False)
                 # Load the image
                 try:
-                    pil_img = Image.open("sector-placeholder.png").convert('RGBA')
-                    img = ImageTk.PhotoImage(pil_img)
-                    lbl = tk.Label(win, image=img)
-                    lbl.image = img  # Keep reference
-                    lbl.pack(padx=10, pady=10)
+                    if show_easter_egg:
+                        # Easter egg: show egg.png at larger size
+                        pil_img = Image.open("./media/SyInt/egg.png").convert('RGBA')
+                        # Scale up the image (2x size)
+                        pil_img = pil_img.resize((pil_img.width * 2, pil_img.height * 2), Image.LANCZOS)
+                        img = ImageTk.PhotoImage(pil_img)
+                        lbl = tk.Label(win, image=img)
+                        lbl.image = img  # Keep reference
+                        lbl.pack(padx=0, pady=0)
+                    else:
+                        # Normal: show Tips.png
+                        pil_img = Image.open("./media/SyInt/Tips.png").convert('RGBA')
+                        # Subsample the image (resize to half size)
+                        pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+                        img = ImageTk.PhotoImage(pil_img)
+                        lbl = tk.Label(win, image=img)
+                        lbl.image = img  # Keep reference
+                        lbl.pack(padx=10, pady=10)
                 except Exception as e:
                     lbl = tk.Label(win, text="Failed to load image")
                     lbl.pack(padx=10, pady=10)
@@ -1257,7 +1317,7 @@ class MissionLogGUI:
             highlightthickness=0,
             cursor="hand2"
             )
-            self.invite_btn_label.pack(side=tk.TOP, pady=(0,8), padx=(10,0))
+            self.invite_btn_label.pack(side=tk.TOP, pady=(0,8), padx=0)
 
             def on_invite_btn_enter(e):
                     self.invite_btn_label.configure(image=self.invite_btn_img_hover)
@@ -1274,7 +1334,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to load invite button image: {e}")
             invite_fallback = tk.Label(button_icon_frame, text="Invite Button", cursor="hand2")
-            invite_fallback.pack(side=tk.TOP, pady=(0,8), padx=(10,0))
+            invite_fallback.pack(side=tk.TOP, pady=(0,8), padx=0)
             invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
 
     # Enemy selection
@@ -2294,7 +2354,40 @@ class MissionLogGUI:
                 mission_icon = get_mission_icon("PLACEHOLDER")
             else:
                 mission_icon = get_mission_icon(data['Mission Type'])
-            biome_banner = get_biome_banner(data['Planet'])
+            # Load banner preference from settings and set appropriate banner
+            try:
+                with open(self.settings_file, 'r', encoding='utf-8') as f:
+                    settings_data = json.load(f)
+                banner_preference = settings_data.get('banner', 'Biome Banner')
+            except Exception:
+                banner_preference = 'Biome Banner'
+                
+            if banner_preference == 'Biome Banner':
+                banner = get_biome_banner(data['Planet'])
+                logging.info(f"Using Biome Banner for {data['Planet']}: {banner}")
+            elif banner_preference == 'Subfaction Banner':
+                # Use subfaction-based banner logic
+                subfaction = data['Enemy Subfaction'] or "Unknown"
+                banner = get_subfaction_banner(subfaction)
+                logging.info(f"Subfaction Banner lookup for '{subfaction}': {banner}")
+                # Fallback to biome banner if subfaction banner not found
+                if not banner:
+                    banner = get_biome_banner(data['Planet'])
+                    logging.info(f"Subfaction banner not found, falling back to biome banner: {banner}")
+            elif banner_preference == 'Helldiver Banner':
+                # Use helldiver banner logic - randomly select from 1-6
+                helldiver_num = random.randint(1, 6)
+                helldiver_key = f"Helldiver{helldiver_num}"
+                banner = get_helldiver_banner(helldiver_key)
+                logging.info(f"Helldiver Banner lookup for '{helldiver_key}': {banner}")
+                # Fallback to biome banner if helldiver banner not found
+                if not banner:
+                    banner = get_biome_banner(data['Planet'])
+                    logging.info(f"Helldiver banner not found, falling back to biome banner: {banner}")
+            else:
+                # Default fallback to biome banner
+                banner = get_biome_banner(data['Planet'])
+                logging.info(f"Using default Biome Banner: {banner}")
             dss_icon = get_dss_icon(data['DSS Modifier'])
             title_icon = get_title_icon(data['Title'])
             profile_picture = get_profile_picture(self.profile_picture.get())
@@ -2472,7 +2565,7 @@ class MissionLogGUI:
                     "text": f"{streak_emoji}\n{UID}     v{VERSION}{DEV_RELEASE}",
                     "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"
                     },
-                    "image": {"url": f"{biome_banner}"},
+                    "image": {"url": f"{banner}"},
                     "thumbnail": {"url": f"{profile_picture}"},                   
                 }],
                 "attachments": []
@@ -2640,6 +2733,19 @@ class MissionLogGUI:
                 pass
         except Exception as e:
             logging.error(f"Failed to refresh planet / mega city lists after settings load: {e}")
+        
+        # Load banner setting from settings.json file
+        try:
+            if os.path.exists(self.settings_file):
+                with open(self.settings_file, 'r', encoding='utf-8') as f:
+                    settings_data = json.load(f)
+                banner_setting = settings_data.get('banner', 'Biome Banner')
+                if hasattr(self, 'banner_type_var'):
+                    self.banner_type_var.set(banner_setting)
+        except Exception as e:
+            logging.error(f"Failed to load banner setting: {e}")
+            if hasattr(self, 'banner_type_var'):
+                self.banner_type_var.set('Biome Banner')
 
 if __name__ == "__main__":
     # Efficiently validate Discord ID and Platform before launching GUI
