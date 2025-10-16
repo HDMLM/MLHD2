@@ -203,7 +203,8 @@ else:
         # Load settings to get player's homeworld
         def load_player_homeworld():
             try:
-                with open('JSON/settings.json', 'r') as f:
+                from runtime_paths import app_path
+                with open(app_path('JSON', 'settings.json'), 'r') as f:
                     settings = json.load(f)
                     return settings.get('Player Homeworld', 'Super Earth')
             except Exception as e:

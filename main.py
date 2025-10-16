@@ -26,6 +26,7 @@ from typing import Dict, List, Optional
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import time
 import configparser
+from runtime_paths import app_path, get_install_dir
 import threading
 import os
 import subprocess
@@ -80,23 +81,24 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Load config
 config = configparser.ConfigParser()
-config.read('config.config')
-DISCORD_CLIENT_ID = config['Discord']['DISCORD_CLIENT_ID']
+# Prefer install-aware config paths
+config.read(app_path('config.config'))
+DISCORD_CLIENT_ID = config.get('Discord', 'DISCORD_CLIENT_ID', fallback='0')
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('icon.config'))
 
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
 
 # File paths
 if DEBUG:
-    SETTINGS_FILE = './JSON/settings-dev.json'
-    PERSISTENCE_FILE = './JSON/persistent-dev.json'
-    streak_file = './JSON/streak_data-dev.json'
+    SETTINGS_FILE = app_path('JSON', 'settings-dev.json')
+    PERSISTENCE_FILE = app_path('JSON', 'persistent-dev.json')
+    streak_file = app_path('JSON', 'streak_data-dev.json')
 else:
-    SETTINGS_FILE = './JSON/settings.json'
-    PERSISTENCE_FILE = './JSON/persistent.json'
-    streak_file = './JSON/streak_data.json'
+    SETTINGS_FILE = app_path('JSON', 'settings.json')
+    PERSISTENCE_FILE = app_path('JSON', 'persistent.json')
+    streak_file = app_path('JSON', 'streak_data.json')
 
 # Set up application data paths 
 APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
@@ -540,7 +542,7 @@ class MissionLogGUI:
             mission_frame.columnconfigure(col, weight=1)
 
         # Load sectors from config (and store for later)
-        with open('./JSON/PlanetSectors.json', 'r') as f:
+        with open(app_path('JSON', 'PlanetSectors.json'), 'r') as f:
             sectors_data = json.load(f)
             self.sectors_data = sectors_data
             sector_list = list(sectors_data.keys())
@@ -574,7 +576,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Title:").grid(row=1, column=2, sticky=tk.W, pady=5)
         # Load titles from json file
-        with open('./JSON/Titles.json', 'r') as f:
+        with open(app_path('JSON', 'Titles.json'), 'r') as f:
             titles_data = json.load(f)
             self.titles = titles_data["Titles"]
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
@@ -584,7 +586,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Profile:").grid(row=2, column=2, sticky=tk.W, pady=5)
         # Load profile pictures from json
-        with open('./JSON/ProfilePictures.json', 'r') as f:
+        with open(app_path('JSON', 'ProfilePictures.json'), 'r') as f:
             profile_data = json.load(f)
             self.profile_pictures = profile_data["Profile Pictures"]
         self.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=self.profile_picture, state='readonly', width=32)
@@ -718,7 +720,7 @@ class MissionLogGUI:
                 biome_map = f or {}
                 if not biome_map:
                     try:
-                        with open('./JSON/BiomePlanets.json', 'r', encoding='utf-8') as bf:
+                        with open(app_path('JSON', 'BiomePlanets.json'), 'r', encoding='utf-8') as bf:
                             biome_map = json.load(bf)
                     except Exception:
                         biome_map = {}
@@ -882,7 +884,7 @@ class MissionLogGUI:
                 if not planet_name:
                     return
 
-                with open('./JSON/BiomePlanets.json', 'r', encoding='utf-8') as f:
+                with open(app_path('JSON', 'BiomePlanets.json'), 'r', encoding='utf-8') as f:
                     biome_map = json.load(f)
                 biome_name = biome_map.get(planet_name, "Mars")
                 # Compare selected planet (parent) to BiomePlanets.json keys and get its biome (child)
@@ -1004,7 +1006,7 @@ class MissionLogGUI:
             # Populate mega cities based on currently selected planet.
             selected_planet = self.planet.get()
             try:
-                with open("./JSON/MegaCityPlanets.json", "r") as f:
+                with open(app_path('JSON', 'MegaCityPlanets.json'), 'r') as f:
                     planetary_data = json.load(f)
             except Exception:
                 planetary_data = {}
@@ -1337,19 +1339,26 @@ class MissionLogGUI:
             invite_fallback.pack(side=tk.TOP, pady=(0,8), padx=0)
             invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
 
-    # Enemy selection
-        ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
+            # Enemy selection
+            ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
 
-        with open('./JSON/Missions.json', 'r') as f:
-            missions_data = json.load(f)
-            enemy_types = list(missions_data.keys())
+            enemy_types = []
+            try:
+                with open(app_path('JSON', 'Missions.json'), 'r') as f:
+                    missions_data = json.load(f)
+                    # Missions.json may map enemy types to missions; collect keys
+                    enemy_types = list(missions_data.keys())
+            except Exception:
+                # fallback to Enemies.json
+                try:
+                    with open(app_path('JSON', 'Enemies.json'), 'r') as f:
+                        enemies_data = json.load(f)
+                        enemy_types = list(enemies_data.keys())
+                except Exception:
+                    enemy_types = []
 
-        with open('./JSON/Enemies.json', 'r') as f:
-            enemies_data = json.load(f)
-            enemy_types = list(enemies_data.keys())
-
-        enemy_combo = ttk.Combobox(details_frame, textvariable=self.enemy_type, values=enemy_types, state='readonly', width=27)
-        enemy_combo.grid(row=0, column=1, padx=5, pady=5)
+            enemy_combo = ttk.Combobox(details_frame, textvariable=self.enemy_type, values=enemy_types, state='readonly', width=27)
+            enemy_combo.grid(row=0, column=1, padx=5, pady=5)
 
     # Major Order + DSS toggles
         ttk.Label(details_frame, text="Major Order:").grid(row=2, column=2, sticky=tk.W, pady=5)
@@ -1424,7 +1433,7 @@ class MissionLogGUI:
             subfaction = self.subfaction_type.get()
             
             try:
-                with open('./JSON/Enemies.json', 'r') as f:
+                with open(app_path('JSON', 'Enemies.json'), 'r') as f:
                     enemies_data = json.load(f)
                 
                 # Get HVTs for selected enemy/subfaction
@@ -2053,7 +2062,7 @@ class MissionLogGUI:
                 os._exit(0)
 
     def submit_data(self) -> None:
-        with open('./JSON/DCord.json', 'r') as f:
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
             discord_data = json.load(f)
             global Platform
             Platform = discord_data.get('platform', 'Not Selected')
@@ -2393,7 +2402,7 @@ class MissionLogGUI:
             profile_picture = get_profile_picture(self.profile_picture.get())
 
             # Get discord_uid from DCord.json
-            with open('./JSON/DCord.json', 'r') as f:
+            with open(app_path('JSON', 'DCord.json'), 'r') as f:
                 dcord_data = json.load(f)
                 user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -2528,7 +2537,7 @@ class MissionLogGUI:
 
             # UID from local DCord.json (user settings)
             try:
-                with open('./JSON/DCord.json', 'r') as f:
+                with open(app_path('JSON', 'DCord.json'), 'r') as f:
                     settings_data = json.load(f)
                     UID = settings_data.get('discord_uid', '0')
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -2536,7 +2545,7 @@ class MissionLogGUI:
                 UID = '0'  # Fallback to default
             # Platform from local DCord.json (user settings)
             try:
-                with open('./JSON/DCord.json', 'r') as f:
+                with open(app_path('JSON', 'DCord.json'), 'r') as f:
                     settings_data = json.load(f)
                     Platform = settings_data.get('platform', "Not Selected")
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -2578,7 +2587,7 @@ class MissionLogGUI:
                 ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
             else:
                 # Use PROD webhook in production mode
-                with open('./JSON/DCord.json', 'r') as f:
+                with open(app_path('JSON', 'DCord.json'), 'r') as f:
                     dcord_data = json.load(f)
                     ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_logging', [])
                     # Backward/forward compatibility: allow list of dicts with {'label','url'}
@@ -2750,7 +2759,7 @@ class MissionLogGUI:
 if __name__ == "__main__":
     # Efficiently validate Discord ID and Platform before launching GUI
     try:
-        with open('./JSON/DCord.json', 'r') as f:
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
             settings_data = json.load(f)
         discord_uid = settings_data.get('discord_uid', '0')
         platform = settings_data.get('platform', "Not Selected")

@@ -1,6 +1,7 @@
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 import configparser
+from runtime_paths import app_path
 import requests
 import json
 import logging
@@ -11,9 +12,9 @@ from main import VERSION, DEV_RELEASE
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read('config.config')
+config.read(app_path('config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
@@ -56,7 +57,7 @@ except (FileNotFoundError, ValueError) as e:
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key
     highest_streak = streak_data.get("Helldiver", {}).get("highest_streak", 0)
@@ -155,7 +156,7 @@ all_campaigns = (total_liberation and total_defense and
                 total_attrition and total_bfse)
 
 # Load biome mapping from json file
-with open('./JSON/BiomePlanets.json', 'r') as f:
+with open(app_path('JSON', 'BiomePlanets.json'), 'r') as f:
     biome_mapping = json.load(f)
 
 # Create a set of all unique biomes from the mapping
@@ -658,7 +659,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
         webhook_urls = [
@@ -1123,7 +1124,7 @@ latest_note = non_blank_notes.iloc[-1] if not non_blank_notes.empty else "No Quo
 
 # UID from local DCord.json (user settings)
 try:
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         settings_data = json.load(f)
         UID = settings_data.get('discord_uid', '0')
 except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -1131,7 +1132,7 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
     UID = '0'  # Fallback to default
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -1408,14 +1409,14 @@ if DEBUG:
 else:
     # Load production webhooks from external JSON
     try:
-        with open('./JSON/DCord.json', 'r') as f:
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
             dcord_data = json.load(f)
-            ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_export', [])
-            ACTIVE_WEBHOOK = [
-                (w.get('url') if isinstance(w, dict) else str(w)).strip()
-                for w in ACTIVE_WEBHOOK
-                if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
-            ]
+        ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_export', [])
+        ACTIVE_WEBHOOK = [
+            (w.get('url') if isinstance(w, dict) else str(w)).strip()
+            for w in ACTIVE_WEBHOOK
+            if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
+        ]
         if not ACTIVE_WEBHOOK:
             logging.error("No production webhooks found in DCord.json (key: discord_webhooks_export).")
     except FileNotFoundError:

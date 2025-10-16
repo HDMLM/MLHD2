@@ -9,6 +9,7 @@ from main import VERSION, DEV_RELEASE
 import os
 
 # --- Config and Logging Setup ---
+from runtime_paths import app_path
 config = configparser.ConfigParser()
 config.read('config.config')
 iconconfig = configparser.ConfigParser()
@@ -73,7 +74,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
         # Normalize possible dict entries and filter invalid/empty
@@ -110,7 +111,7 @@ else:
     Rating = "Disgraceful Conduct"
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -145,7 +146,7 @@ except Exception as e:
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key or fall back to helldiver_ses if the first one doesn't exist
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
@@ -191,7 +192,7 @@ embed_data = {
 }
 
 # --- Send to Discord Webhook ---
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     discord_data = json.load(f)
 webhook_urls = discord_data.get('discord_webhooks_export', [])
 webhook_urls = [

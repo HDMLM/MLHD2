@@ -50,10 +50,250 @@ APP_DIR = Path(os.path.dirname(sys.executable) if _is_frozen() else os.path.dirn
 BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
 
 def app_path(*parts: str) -> str:
-    return str(APP_DIR.joinpath(*parts))
+    # Use the user-selected install directory if present, otherwise fall back to the launcher/app dir.
+    base = get_install_dir()
+    return str(Path(base).joinpath(*parts))
 
 def resource_path(*parts: str) -> str:
     return str(BUNDLE_DIR.joinpath(*parts))
+
+
+# Persistent install-dir support -------------------------------------------------
+# Config is stored per-user (LOCALAPPDATA on Windows, XDG or ~/.config on other platforms).
+_CONFIG_DIR_NAME = "MLHD2"
+_CONFIG_FILENAME = "launcher_config.ini"
+_INSTALL_DIR_CACHE: Optional[str] = None
+
+def get_user_config_file() -> str:
+    # Return an absolute path to the per-user config file, creating the directory if needed.
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or os.path.expanduser("~")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    cfg_dir = os.path.join(base, _CONFIG_DIR_NAME)
+    try:
+        os.makedirs(cfg_dir, exist_ok=True)
+        return os.path.join(cfg_dir, _CONFIG_FILENAME)
+    except Exception:
+        # Could not create per-user config dir (permissions/sandbox). Fall back
+        # to a local config file in the launcher folder so code can still read/write.
+        try:
+            local = os.path.join(str(APP_DIR), _CONFIG_FILENAME)
+            # Ensure APP_DIR exists (it should), but guard anyway
+            os.makedirs(str(APP_DIR), exist_ok=True)
+            return local
+        except Exception:
+            # Last resort: return path under APP_DIR (may still fail later)
+            return os.path.join(str(APP_DIR), _CONFIG_FILENAME)
+
+def read_saved_install_dir() -> Optional[str]:
+    """Return saved install dir from per-user config or MLHD2_INSTALL_DIR env var, or None."""
+    global _INSTALL_DIR_CACHE
+    if _INSTALL_DIR_CACHE is not None:
+        return _INSTALL_DIR_CACHE
+    cfg = configparser.ConfigParser()
+    try:
+        cfg.read(get_user_config_file())
+        v = cfg.get("Paths", "install_dir", fallback="").strip()
+        if v:
+            _INSTALL_DIR_CACHE = v
+            return v
+    except Exception:
+        pass
+    # If per-user config not present or not readable, check for a local config
+    try:
+        local_cfg = os.path.join(str(APP_DIR), _CONFIG_FILENAME)
+        if os.path.exists(local_cfg):
+            cfg_local = configparser.ConfigParser()
+            cfg_local.read(local_cfg)
+            v = cfg_local.get("Paths", "install_dir", fallback="").strip()
+            if v:
+                _INSTALL_DIR_CACHE = v
+                return v
+    except Exception:
+        pass
+    # Fall back to environment variable if provided (useful for portable/exe scenarios)
+    env = os.environ.get("MLHD2_INSTALL_DIR")
+    if env:
+        _INSTALL_DIR_CACHE = env
+        return env
+    return None
+
+def save_install_dir(path: str) -> None:
+    """Persist chosen install dir to per-user config file."""
+    global _INSTALL_DIR_CACHE
+    cfg = configparser.ConfigParser()
+    cfg["Paths"] = {"install_dir": path}
+    per_user_path = get_user_config_file()
+    try:
+        # Try primary per-user location first
+        with open(per_user_path, "w", encoding="utf-8") as f:
+            cfg.write(f)
+        _INSTALL_DIR_CACHE = path
+        try:
+            update_paths_from_install_dir()
+        except Exception:
+            pass
+        return
+    except Exception as per_err:
+        # Attempt fallback: write a local config into the launcher folder (APP_DIR)
+        try:
+            local_cfg_path = os.path.join(str(APP_DIR), _CONFIG_FILENAME)
+            with open(local_cfg_path, "w", encoding="utf-8") as f:
+                cfg.write(f)
+            _INSTALL_DIR_CACHE = path
+            try:
+                update_paths_from_install_dir()
+            except Exception:
+                pass
+            # Inform user that per-user save failed and we saved locally instead
+            try:
+                messagebox.showwarning(
+                    "Launcher Config: Saved Locally",
+                    (
+                        "Could not save launcher configuration to the per-user location:\n"
+                        f"{per_user_path}\n\n"
+                        "Falling back to a local config file in the launcher folder. "
+                        "This means the selection will be available only for this launcher copy.\n\n"
+                        f"Error: {per_err}"
+                    ),
+                    parent=None,
+                )
+            except Exception:
+                pass
+            return
+        except Exception as local_err:
+            # Last resort: keep the path in-memory for this session and show an error
+            try:
+                _INSTALL_DIR_CACHE = path
+            except Exception:
+                pass
+            try:
+                messagebox.showerror(
+                    "Launcher Config: Save Failed",
+                    (
+                        "Failed to persist the selected install directory to both the per-user config and a local fallback.\n"
+                        "The launcher will use the chosen directory for this session only.\n\n"
+                        f"Per-user error: {per_err}\nLocal fallback error: {local_err}"
+                    ),
+                    parent=None,
+                )
+            except Exception:
+                pass
+            try:
+                update_paths_from_install_dir()
+            except Exception:
+                pass
+            return
+
+def get_install_dir() -> str:
+    """Return the directory where the application should read/write files.
+
+    This prefers the user-selected install dir (persisted) and falls back to the
+    directory the launcher is located in (APP_DIR).
+    """
+    d = read_saved_install_dir()
+    if d:
+        return d
+    return str(APP_DIR)
+
+def update_paths_from_install_dir() -> None:
+    """Recompute module-level path globals that depend on the install directory.
+
+    Call this after the user selects or changes the install dir so file locations
+    like MAIN_PROGRAM and REQUIREMENTS_FILE point to the chosen location.
+    """
+    global REQUIREMENTS_FILE, MAIN_PROGRAM, BACKUP_DIR_ROOT, FIRST_LAUNCH_MARKER
+    REQUIREMENTS_FILE = app_path("requirements.txt")
+    MAIN_PROGRAM = app_path("main.py")
+    BACKUP_DIR_ROOT = app_path("backup")
+    FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
+
+def maybe_prompt_install_dir(parent: Optional[tk.Tk] = None) -> Optional[str]:
+    """Prompt the user once (if no install dir saved) to choose an install directory.
+
+    If the user cancels, nothing is saved and the launcher continues to use the
+    default (launcher folder). When running as an EXE this will persist the
+    chosen directory in the user's LOCALAPPDATA so future runs remember it.
+    """
+    # If an install dir is already persisted, do nothing unless forced.
+    # Set environment variable MLHD2_FORCE_PROMPT=1 to force showing the prompt
+    saved_dir = read_saved_install_dir()
+    try:
+        logging.debug("maybe_prompt_install_dir: saved install dir=%r", saved_dir)
+    except Exception:
+        pass
+    if saved_dir and os.environ.get("MLHD2_FORCE_PROMPT") != "1":
+        return saved_dir
+
+    # Only show a GUI prompt when a display is available
+    try:
+        # Create a temporary hidden root if parent wasn't provided
+        root = parent or tk.Tk()
+        if parent is None:
+            root.withdraw()
+        initial = str(APP_DIR)
+        # Ask the user to choose an install directory; allow them to cancel
+        choice = filedialog.askdirectory(parent=root, title="Choose MLHD2 install directory", initialdir=initial)
+        if choice:
+            # Try to persist; if persistence fails later code can still use the chosen path returned here
+            try:
+                save_install_dir(choice)
+            except Exception:
+                pass
+            try:
+                update_paths_from_install_dir()
+            except Exception:
+                pass
+            return choice
+            # Ensure derived path globals use the newly saved install dir immediately.
+            try:
+                update_paths_from_install_dir()
+            except Exception:
+                pass
+    except Exception:
+        # Ignore GUI failures and continue with defaults
+        pass
+
+
+# Guided helper to offer the Python 3.10.6 installer / instructions
+def offer_python_installer_gui(parent: Optional[tk.Tk] = None, reason: Optional[str] = None) -> None:
+    """Show a short dialog offering to open the Python 3.10.6 download page or show PATH instructions.
+
+    If no Tk root exists, open the download page directly (useful in non-GUI scenarios).
+    """
+    download_url = "https://www.python.org/ftp/python/3.10.6/python-3.10.6-amd64.exe"
+    path_instructions_url = "https://docs.python.org/3/using/windows.html#installation-steps"
+
+    # If no Tk root is present, just open the download page and return
+    try:
+        if not getattr(tk, '_default_root', None):
+            webbrowser.open(download_url)
+            return
+    except Exception:
+        webbrowser.open(download_url)
+        return
+
+    title = "Python 3.10.6 Required"
+    msg = reason or (
+        "Python 3.10.6 is required to run the main application.\n\n"
+        "Would you like to open the official Python 3.10.6 download page?"
+    )
+    try:
+        # Yes -> open download page. No -> offer PATH instructions.
+        open_dl = messagebox.askyesno(title, msg, parent=parent)
+        if open_dl:
+            webbrowser.open(download_url)
+            return
+        else:
+            if messagebox.askyesno(title, "Show instructions for installing Python and adding it to PATH?", parent=parent):
+                webbrowser.open(path_instructions_url)
+    except Exception:
+        # As fallback, open download page
+        try:
+            webbrowser.open(download_url)
+        except Exception:
+            pass
 
 # Load launcher config for Discord RPC Client ID
 _config = configparser.ConfigParser()
@@ -94,6 +334,46 @@ def _py_cmd() -> List[str]:
     return PYTHON3106_CMD or [sys.executable]
 
 
+def _ensure_pip_for_python(python_cmd: List[str]) -> bool:
+    """Try to make pip available for the given python executable.
+
+    Returns True if pip is available after the call.
+    The function first tries `python -m ensurepip --upgrade`, then falls back
+    to downloading get-pip.py and running it with the target python.
+    """
+    try:
+        # Try ensurepip first (available in many Python installations)
+        subprocess.check_call([*python_cmd, "-m", "ensurepip", "--upgrade"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        # Fallback: download get-pip.py and run it
+        try:
+            import urllib.request
+            url = "https://bootstrap.pypa.io/get-pip.py"
+            with urllib.request.urlopen(url, timeout=30) as resp:
+                data = resp.read()
+            # Write to temp file
+            import tempfile
+            fd, path = tempfile.mkstemp(suffix="-get-pip.py")
+            os.close(fd)
+            try:
+                with open(path, "wb") as f:
+                    f.write(data)
+                subprocess.check_call([*python_cmd, path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            finally:
+                try:
+                    os.remove(path)
+                except Exception:
+                    pass
+        except Exception:
+            return False
+    # Verify pip now
+    try:
+        subprocess.check_call([*python_cmd, "-m", "pip", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        return True
+    except Exception:
+        return False
+
+
 def ensure_python_version():
     # When frozen (PyInstaller), don't enforce embedded interpreter version strictly.
     # External Python 3.10.6 is only required for running main.py and pip.
@@ -116,8 +396,12 @@ ensure_python_version()
 
 import requests
 import tkinter as tk
-from tkinter import messagebox, scrolledtext
+from tkinter import messagebox, scrolledtext, filedialog
 from tkinter import ttk
+import traceback
+import platform
+import getpass
+import stat
 
 GITHUB_API_REPO = "HDMLM/MLHD2"
 GITHUB_REPO = "https://github.com/HDMLM/MLHD2"
@@ -211,6 +495,24 @@ def _is_excluded(rel_path: str) -> bool:
     normalized = rel_path.replace("\\", "/").lstrip("./")
     return any(normalized.startswith(pref) for pref in EXCLUDE_PATH_PREFIXES)
 
+
+def _append_debug_line(line: str) -> None:
+    """Append a single line (or multi-line string) to last_update_debug.txt in APP_DIR.
+
+    This helper swallows all exceptions to avoid breaking update flow.
+    """
+    try:
+        debug_path = os.path.join(str(APP_DIR), "last_update_debug.txt")
+        os.makedirs(os.path.dirname(debug_path), exist_ok=True)
+        with open(debug_path, "a", encoding="utf-8") as dbg:
+            dbg.write(line)
+            if not line.endswith("\n"):
+                dbg.write("\n")
+    except Exception:
+        # Never raise from debug logging
+        pass
+
+
 # NEW: validate files/dirs against LaunchMedia/FStruct.json
 def _validate_files_against_fstruct() -> Tuple[int, int, int, List[str], List[str]]:
     """
@@ -288,7 +590,8 @@ _VERSION_REGEX = re.compile(r'^\s*VERSION\s*=\s*["\']([^"\']+)["\']')
 def get_local_version() -> Optional[str]:
     # Extract version string from Main.py (VERSION = "...")
     try:
-        with open(MAIN_PROGRAM, "r", encoding="utf-8") as f:
+        main_prog = app_path("main.py")
+        with open(main_prog, "r", encoding="utf-8") as f:
             for line in f:
                 m = _VERSION_REGEX.match(line)
                 if m:
@@ -341,7 +644,34 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
     # Download selected release zipball. Returns (tag, bytes, error_message)
     rel = pick_latest_release(include_prerelease=include_prerelease)
     if not rel:
-        return None, None, "No release metadata available"
+        # No releases found - attempt to download the repository archive (default branch)
+        try:
+            # Try GitHub API zipball endpoint (returns default branch archive)
+            api_zip = f"{GITHUB_API_BASE}/zipball"
+            try:
+                r = requests.get(api_zip, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
+                _append_debug_line(f"HTTP GET {api_zip} -> {getattr(r, 'status_code', 'NO-RESP')} len={len(getattr(r, 'content', b''))}")
+                _append_debug_line(f"Response headers: {getattr(r, 'headers', {})}")
+            except Exception as e:
+                _append_debug_line(f"HTTP GET {api_zip} failed: {e}\n{traceback.format_exc()}")
+                r = None
+            if r and r.status_code == 200 and r.content:
+                return "default-branch", r.content, ""
+            # Fallback to the HTML archive link for the main branch
+            html_zip = f"{GITHUB_REPO}/archive/refs/heads/main.zip"
+            try:
+                r2 = requests.get(html_zip, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
+                _append_debug_line(f"HTTP GET {html_zip} -> {getattr(r2, 'status_code', 'NO-RESP')} len={len(getattr(r2, 'content', b''))}")
+                _append_debug_line(f"Response headers: {getattr(r2, 'headers', {})}")
+            except Exception as e:
+                _append_debug_line(f"HTTP GET {html_zip} failed: {e}\n{traceback.format_exc()}")
+                r2 = None
+            if r2 and r2.status_code == 200 and r2.content:
+                return "main", r2.content, ""
+            return None, None, "No release metadata available and failed to download default-branch archive"
+        except Exception as e:
+            _append_debug_line(f"download_release_zip fallback failed: {e}\n{traceback.format_exc()}")
+            return None, None, f"No release metadata available and failed to download default-branch archive: {e}"
     tag = rel.get("tag_name") or rel.get("name")
     zip_url = rel.get("zipball_url")
     if not zip_url:
@@ -354,10 +684,15 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
     except Exception as e:
         return None, None, f"Download error: {e}"
 
-def safe_zip_update(include_prerelease: bool = False) -> str:
+def safe_zip_update(include_prerelease: bool = False, target_root_override: Optional[str] = None) -> str:
     # Perform safe update via zip archive with backup of changed files
 
     #check if current version is higher than latest version if so skip update
+    # Refresh path globals from saved install dir in case user previously selected one
+    try:
+        update_paths_from_install_dir()
+    except Exception:
+        pass
     local_version = get_local_version()
     latest = get_latest_github_version(include_prerelease=include_prerelease)
     if not isinstance(latest, str):
@@ -378,11 +713,87 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
     updated = created = skipped = excluded = backed_up = 0
     errors: List[str] = []
     ts = time.strftime('%Y%m%d-%H%M%S')
+    # Use the provided override (if any) or the user-selected install directory as the target root.
+    # update_paths_from_install_dir() should be called earlier when the user chooses an install dir.
+    # Normalize the target root and ensure it's a plain path string (avoid mixed separators)
+    target_root = os.path.normpath(target_root_override or get_install_dir())
+    # Preflight: ensure we can create nested directories under target_root. Some sandboxed
+    # user contexts allow file creation at the top level but block creating
+    # subdirectories. Test by creating a nested temp folder and removing it.
+    try:
+        test_nested = os.path.join(target_root, ".mlhd2_test_mkdir", "a", "b")
+        from pathlib import Path as _P
+        _P(test_nested).mkdir(parents=True, exist_ok=True)
+        # Cleanup
+        try:
+            shutil.rmtree(os.path.join(target_root, ".mlhd2_test_mkdir"), ignore_errors=True)
+        except Exception:
+            pass
+    except Exception as e:
+        _append_debug_line(f"Preflight nested mkdir FAILED for {target_root}: {e}\n{traceback.format_exc()}")
+        return ("Safe update failed: cannot create subdirectories under the chosen install directory.\n"
+                "This environment may restrict creating folders (e.g., sandboxed/WDAG accounts).\n"
+                "Please choose a different install directory (for example C:\\Users\\<YourUser>\\Documents or a folder under C:\\) and retry.")
+    # DEBUG: Write diagnostic information so we can detect what install dir the
+    # background updater is using (helps diagnose 'needs restart' behavior).
+    try:
+        _append_debug_line("\n--- safe_zip_update debug: " + time.strftime('%Y-%m-%d %H:%M:%S') + " ---")
+        _append_debug_line(f"get_install_dir() -> {get_install_dir()!r}")
+        _append_debug_line(f"_INSTALL_DIR_CACHE -> {_INSTALL_DIR_CACHE!r}")
+        try:
+            cfgfile = get_user_config_file()
+            _append_debug_line(f"config_file -> {cfgfile}")
+            if os.path.exists(cfgfile):
+                try:
+                    with open(cfgfile, 'r', encoding='utf-8', errors='ignore') as cf:
+                        _append_debug_line('config_contents:\n' + cf.read())
+                except Exception as e:
+                    _append_debug_line(f"failed reading config contents: {e}\n{traceback.format_exc()}")
+            else:
+                _append_debug_line('config_contents: (missing)')
+        except Exception as e:
+            _append_debug_line(f"failed reading config path: {e}\n{traceback.format_exc()}")
+        try:
+            _append_debug_line(f"APP_DIR -> {APP_DIR}")
+            _append_debug_line(f"target_root -> {target_root}")
+            # Environment snapshot
+            _append_debug_line(f"Platform: {platform.platform()}")
+            _append_debug_line(f"Python: {sys.version}")
+            try:
+                _append_debug_line(f"User: {getpass.getuser()}")
+            except Exception:
+                _append_debug_line("User: (unknown)")
+            _append_debug_line(f"CWD: {os.getcwd()}")
+            # Permissions quick check on target_root
+            try:
+                testfile = os.path.join(str(target_root), f".__mlhd2_debug_perm_{ts}")
+                os.makedirs(os.path.dirname(testfile), exist_ok=True)
+                with open(testfile, 'w', encoding='utf-8') as tf:
+                    tf.write('test')
+                st = os.stat(testfile)
+                _append_debug_line(f"Permission test: wrote debug file at {testfile} mode={oct(st.st_mode)} size={st.st_size}")
+                try:
+                    os.remove(testfile)
+                except Exception:
+                    pass
+            except Exception as e:
+                _append_debug_line(f"Permission test failed: {e}\n{traceback.format_exc()}")
+        except Exception:
+            pass
+    except Exception:
+        pass
     backup_root = os.path.join(BACKUP_DIR_ROOT, ts)
     try:
         with zipfile.ZipFile(io.BytesIO(content)) as z:
             # Determine common top-level directory in GitHub zipball
             members = z.namelist()
+            try:
+                _append_debug_line(f"Zip members count: {len(members)}")
+                # list first 200 members to avoid massive writes
+                for m in members[:200]:
+                    _append_debug_line(f"Z:{m}")
+            except Exception:
+                pass
             if not members:
                 return "Safe update failed: archive empty"
             top = members[0].split('/')[0]
@@ -401,15 +812,30 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
                 if _is_excluded(rel_path):
                     excluded += 1
                     continue
-                # Always write updates into the application directory
-                dest_path = os.path.join(str(APP_DIR), rel_path.replace('/', os.sep))
+                # Compute dest_path robustly by joining path components (avoid manual replace)
+                rel_parts = [p for p in rel_path.split('/') if p]
+                try:
+                    dest_path = os.path.join(target_root, *rel_parts)
+                except Exception:
+                    dest_path = os.path.join(str(target_root), rel_path.replace('/', os.sep))
                 dest_dir = os.path.dirname(dest_path)
                 try:
-                    os.makedirs(dest_dir, exist_ok=True)
-                    data = z.read(member)
+                    # Ensure directory exists
+                    from pathlib import Path as _P
+                    _P(dest_dir).mkdir(parents=True, exist_ok=True)
+                except Exception as e:
+                    _append_debug_line(f"Failed to create directory for {rel_path}: {e}\n{traceback.format_exc()}")
+                    errors.append(f"{rel_path}: {e}")
+                    continue
+                try:
+                    try:
+                        data = z.read(member)
+                    except Exception as e:
+                        _append_debug_line(f"Failed to read zip member {member}: {e}\n{traceback.format_exc()}")
+                        errors.append(f"{rel_path}: failed to read zip member: {e}")
+                        continue
                     # Decide if needs copy
                     if os.path.exists(dest_path):
-                        # Compare size & content quickly
                         try:
                             with open(dest_path, 'rb') as existing:
                                 if existing.read() == data:
@@ -418,18 +844,34 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
                         except Exception:
                             pass
                         # Backup then overwrite
-                        backup_path = os.path.join(backup_root, rel_path.replace('/', os.sep))
-                        os.makedirs(os.path.dirname(backup_path), exist_ok=True)
-                        shutil.copy2(dest_path, backup_path)
-                        backed_up += 1
-                        with open(dest_path, 'wb') as f:
-                            f.write(data)
-                        updated += 1
+                        backup_path = os.path.join(backup_root, *rel_parts)
+                        try:
+                            _P(os.path.dirname(backup_path)).mkdir(parents=True, exist_ok=True)
+                        except Exception:
+                            pass
+                        try:
+                            shutil.copy2(dest_path, backup_path)
+                            backed_up += 1
+                        except Exception:
+                            # If copy fails, still attempt to overwrite
+                            _append_debug_line(f"Backup failed for {dest_path}: {traceback.format_exc()}")
+                        try:
+                            with open(dest_path, 'wb') as f:
+                                f.write(data)
+                            updated += 1
+                        except Exception as e:
+                            _append_debug_line(f"Failed to overwrite {dest_path}: {e}\n{traceback.format_exc()}")
+                            errors.append(f"{rel_path}: {e}")
                     else:
-                        with open(dest_path, 'wb') as f:
-                            f.write(data)
-                        created += 1
+                        try:
+                            with open(dest_path, 'wb') as f:
+                                f.write(data)
+                            created += 1
+                        except Exception as e:
+                            _append_debug_line(f"Failed to write new file {dest_path}: {e}\n{traceback.format_exc()}")
+                            errors.append(f"{rel_path}: {e}")
                 except Exception as e:
+                    _append_debug_line(f"Unexpected extraction error for {rel_path}: {e}\n{traceback.format_exc()}")
                     errors.append(f"{rel_path}: {e}")
         summary = [
             f"Safe ZIP Update to {tag}",
@@ -444,8 +886,35 @@ def safe_zip_update(include_prerelease: bool = False) -> str:
             summary.extend(errors[:10])
         if backed_up > 0:
             summary.append(f"Backup stored in {backup_root}")
+        # Post-extraction diagnostics: log presence of key files and a short dir listing
+        try:
+            main_target = os.path.join(str(target_root), "main.py")
+            _append_debug_line(f"Post-extract: main.py exists -> {os.path.exists(main_target)}; path={main_target}")
+            try:
+                top_list = os.listdir(str(target_root))
+                # Log first 200 entries to avoid giant writes
+                _append_debug_line("Target root listing (first 200 entries):")
+                for e in top_list[:200]:
+                    _append_debug_line(f"T:{e}")
+                _append_debug_line(f"Target root total entries: {len(top_list)}")
+            except Exception as e:
+                _append_debug_line(f"Failed to list target_root {target_root}: {e}\n{traceback.format_exc()}")
+        except Exception:
+            pass
+        # Write the summary and any collected errors to debug log for inspection
+        try:
+            _append_debug_line("Update summary:")
+            for line in summary:
+                _append_debug_line(line)
+            if errors:
+                _append_debug_line("Top errors (first 20):")
+                for errline in errors[:20]:
+                    _append_debug_line(errline)
+        except Exception:
+            pass
         return "\n".join(summary)
     except Exception as e:
+        _append_debug_line(f"Safe update exception during extraction: {e}\n{traceback.format_exc()}")
         return (f"Safe update failed during extraction: {e}\n"
                 "Ensure disk space and that existing files are not locked by another process.")
 
@@ -609,10 +1078,38 @@ def check_requirements(
             pkgs = json.loads(data.decode("utf-8", errors="replace"))
             return {_canon_name(p["name"]): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
         except Exception:
+            # Try to bootstrap pip for this python and retry once
+            try:
+                if _ensure_pip_for_python(python_exe):
+                    data = subprocess.check_output(
+                        [*python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
+                        stderr=subprocess.DEVNULL,
+                        startupinfo=startupinfo,
+                        creationflags=creationflags,
+                    )
+                    import json
+                    pkgs = json.loads(data.decode("utf-8", errors="replace"))
+                    return {_canon_name(p["name"]): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
+            except Exception:
+                pass
             return {}
 
     def install_or_update(pkg: str, target: Optional[str]) -> Tuple[bool, str]:
         # Install or update a package; target is exact version string or None
+        # Prompt for install directory on first interactive use (asks user when none saved)
+        try:
+            if not read_saved_install_dir():
+                try:
+                    maybe_prompt_install_dir(None)
+                    update_paths_from_install_dir()
+                except Exception:
+                    pass
+                if not read_saved_install_dir():
+                    return False, "Install cancelled: install directory not set."
+        except Exception:
+            # Non-fatal; continue but don't block install if something odd happens reading config
+            pass
+
         python_exe = _py_cmd()
         spec = f"{pkg}=={target}" if target else pkg
         # Show real pip output when debugging to aid troubleshooting
@@ -630,18 +1127,29 @@ def check_requirements(
                 except Exception:
                     startupinfo = None
                     creationflags = 0
-            if DEBUG_MODE:
-                # Don't redirect so errors are visible in the console
-                subprocess.check_call(cmd)
-            else:
-                subprocess.check_call(
-                    cmd,
+            def _call(cmd_args):
+                if DEBUG_MODE:
+                    return subprocess.check_call(cmd_args)
+                return subprocess.check_call(
+                    cmd_args,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.STDOUT,
                     startupinfo=startupinfo,
                     creationflags=creationflags,
                 )
-            return True, ""
+
+            try:
+                _call(cmd)
+                return True, ""
+            except FileNotFoundError:
+                # pip not found for this python, try to bootstrap pip then retry once
+                if _ensure_pip_for_python(python_exe):
+                    try:
+                        _call(cmd)
+                        return True, ""
+                    except Exception as e:
+                        return False, str(e)
+                return False, "pip not available for target python"
         except subprocess.CalledProcessError as e:
             return False, f"pip exit code {e.returncode}"
         except Exception as e:
@@ -657,6 +1165,11 @@ def check_requirements(
         if _is_frozen() and not PYTHON3106_CMD:
             log("Python 3.10.6 not found. Cannot verify or install requirements from the bundled launcher.")
             log("Please install Python 3.10.6 and run 'Check Requirements' again, or run 'pip install -r requirements.txt' manually.")
+            try:
+                # Try to present the guided installer to the user
+                offer_python_installer_gui()
+            except Exception:
+                pass
             return "Summary: Skipped (Python 3.10.6 missing)"
         # In frozen mode, REQUIREMENTS_FILE might not exist next to the EXE; look in app dir specifically
         if not os.path.exists(REQUIREMENTS_FILE):
@@ -825,7 +1338,8 @@ def check_requirements(
 def launch_program_detached() -> Optional[subprocess.Popen]:
     # Start the main program process and return the Popen or None on failure
     python_exe = _py_cmd()
-    if not os.path.exists(MAIN_PROGRAM):
+    main_prog = app_path("main.py")
+    if not os.path.exists(main_prog):
         messagebox.showerror(
             "Not Installed",
             "The main program is not installed yet.\n"
@@ -833,12 +1347,24 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
         )
         return None
     if not PYTHON3106_CMD and _is_frozen():
-        messagebox.showerror("Launch Error", "Python 3.10.6 is required to run the logger. Please install Python 3.10.6 and try again.")
+        try:
+            offer_python_installer_gui(parent=None, reason="Python 3.10.6 is required to run the logger.")
+        except Exception:
+            # Fallback to original messagebox
+            try:
+                messagebox.showerror("Launch Error", "Python 3.10.6 is required to run the logger. Please install Python 3.10.6 and try again.")
+            except Exception:
+                pass
         return None
     try:
-        return subprocess.Popen([*python_exe, MAIN_PROGRAM])
+        # Launch the main program with its install directory as the working directory
+        launch_cwd = os.path.dirname(main_prog) or get_install_dir()
+        return subprocess.Popen([*python_exe, main_prog], cwd=launch_cwd)
     except Exception as e:
-        messagebox.showerror("Launch Error", str(e))
+        try:
+            messagebox.showerror("Launch Error", f"Failed to start main program: {e}")
+        except Exception:
+            pass
 
         
 def threaded_action(
@@ -942,6 +1468,14 @@ class InstallerGUI(tk.Tk):
         # Discord RPC for launcher
         self._rpc = _LauncherRPC()
         self._rpc.start()
+
+        # Do not prompt for install directory on startup; prompt will be shown
+        # when the user clicks 'Update to Latest'. Still refresh path globals
+        # from any previously saved install dir so labels/paths are correct.
+        try:
+            update_paths_from_install_dir()
+        except Exception:
+            pass
 
         # Optional: set window icon from LaunchMedia/app.ico if present
         try:
@@ -1062,6 +1596,15 @@ class InstallerGUI(tk.Tk):
 
         def open_settings():
             python_exe = _py_cmd()
+            # Ensure install dir is chosen; prompt if not
+            try:
+                if not read_saved_install_dir():
+                    if messagebox.askyesno("Open Settings", "No install directory configured. Choose one now?"):
+                        maybe_prompt_install_dir(self)
+                        update_paths_from_install_dir()
+            except Exception:
+                pass
+
             settings_path = app_path("settings.py")
             if not os.path.exists(settings_path):
                 messagebox.showerror(
@@ -1137,6 +1680,8 @@ class InstallerGUI(tk.Tk):
             font=insignia_font
         )
         self.version_label.place(x=30, y=60)
+
+        # Install dir prompt is triggered on Update (first-run) but not shown in UI
 
 
         # Main content area (match height with patch notes)
@@ -1268,6 +1813,50 @@ class InstallerGUI(tk.Tk):
             self.update_btn.bind("<Enter>", lambda e: self.update_btn.config(image=self.update_photo_hover))
             self.update_btn.bind("<Leave>", lambda e: self.update_btn.config(image=self.update_photo))
 
+        # Uninstall button (optional image files under LaunchMedia)
+        uninstall_img_path = resource_path("LaunchMedia", "UninstallButton.png")
+        uninstall_hover_img_path = resource_path("LaunchMedia", "UninstallButtonHover.png")
+        try:
+            if os.path.exists(app_path("LaunchMedia", "UninstallButton.png")):
+                uninstall_img_path = app_path("LaunchMedia", "UninstallButton.png")
+            if os.path.exists(app_path("LaunchMedia", "UninstallButtonHover.png")):
+                uninstall_hover_img_path = app_path("LaunchMedia", "UninstallButtonHover.png")
+        except Exception:
+            pass
+        try:
+            from PIL import Image, ImageTk
+            resample_algo = getattr(Image, 'LANCZOS', Image.ANTIALIAS)
+            uninstall_img = Image.open(uninstall_img_path).convert("RGBA").resize((button_w_wide, button_h_tall), resample_algo)
+            uninstall_img_hover = Image.open(uninstall_hover_img_path).convert("RGBA").resize((button_w_wide, button_h_tall), resample_algo)
+            self.uninstall_photo = ImageTk.PhotoImage(uninstall_img)
+            self.uninstall_photo_hover = ImageTk.PhotoImage(uninstall_img_hover)
+        except Exception:
+            self.uninstall_photo = None
+            self.uninstall_photo_hover = None
+
+        self.uninstall_btn = tk.Button(
+            self.canvas,
+            image=self.uninstall_photo if self.uninstall_photo else None,
+            text="" if self.uninstall_photo else "Uninstall",
+            bg="#4C4C4C",
+            fg="white",
+            font=("Arial", 12),
+            command=self._action_uninstall,
+            borderwidth=0,
+            compound="center",
+            highlightthickness=0,
+            activebackground="#4C4C4C"
+        )
+        # Place uninstall button next to Update button
+        self.uninstall_btn.place(x=update_x + button_w_wide + 10, y=button_y_padded, width=button_w_wide, height=button_h_tall)
+
+        try:
+            if self.uninstall_photo and self.uninstall_photo_hover:
+                self.uninstall_btn.bind("<Enter>", lambda e: self.uninstall_btn.config(image=self.uninstall_photo_hover))
+                self.uninstall_btn.bind("<Leave>", lambda e: self.uninstall_btn.config(image=self.uninstall_photo))
+        except Exception:
+            pass
+
     # Always include pre-releases by default, originally a checkbox but im too lazy to refactor the code to remove it so we just set it true
         self.include_prerelease = tk.BooleanVar(value=True)
 
@@ -1362,18 +1951,67 @@ class InstallerGUI(tk.Tk):
             except Exception:
                 pass
         threading.Thread(target=run, daemon=True).start()
+        threading.Thread(target=run, daemon=True).start()
 
     def _action_update_latest(self) -> None:
         try:
             self._rpc.set_status("Updating", "Fetching latest release")
         except Exception:
             pass
+        # If no install dir saved yet, force the user to choose one before proceeding.
+        chosen: Optional[str] = None
+        try:
+            saved = read_saved_install_dir()
+            if not saved:
+                # Keep prompting until the user selects a directory or explicitly cancels the update.
+                while True:
+                    try:
+                        choice = maybe_prompt_install_dir(self)
+                    except Exception:
+                        choice = None
+                    if choice:
+                        chosen = choice
+                        break
+                    # User cancelled the dialog; ask if they want to try again
+                    try:
+                        retry = messagebox.askyesno(
+                            "Install Directory Required",
+                            "An install directory is required to continue.\n\nWould you like to choose one now?\n\nYes = choose directory, No = cancel update",
+                            parent=self,
+                        )
+                    except Exception:
+                        retry = False
+                    if not retry:
+                        try:
+                            messagebox.showinfo("Update Cancelled", "Update cancelled because no install directory was selected.", parent=self)
+                        except Exception:
+                            pass
+                        return
+                # Ensure derived path globals are updated immediately. If saving to disk
+                # failed for permission or user-context reasons, set the in-memory
+                # cache so the running launcher still uses the chosen directory.
+                try:
+                    global _INSTALL_DIR_CACHE
+                    _INSTALL_DIR_CACHE = chosen or choice
+                except Exception:
+                    pass
+                try:
+                    update_paths_from_install_dir()
+                except Exception:
+                    pass
+            else:
+                chosen = saved
+        except Exception:
+            chosen = get_install_dir()
+
         def _update():
-            threaded_action(lambda: safe_zip_update(self.include_prerelease.get()), self.text)
+            # Background worker performs the actual update using the chosen path captured above
+            threaded_action(lambda: safe_zip_update(self.include_prerelease.get(), target_root_override=chosen), self.text)
             try:
                 self._rpc.set_status("Idle", "Ready")
             except Exception:
                 pass
+
         threading.Thread(target=_update, daemon=True).start()
 
     def _action_launch(self) -> None:
@@ -1382,6 +2020,88 @@ class InstallerGUI(tk.Tk):
         except Exception:
             pass
         self.launch_and_monitor()
+    def _action_uninstall(self) -> None:
+        """Uninstall the installed application from the saved install directory.
+
+        This will:
+        - Confirm with the user (two-step prompt)
+        - Optionally create a timestamped backup of the install dir under BACKUP_DIR_ROOT
+        - Remove the install dir contents
+        - Clear the saved install_dir from launcher config
+        - Update path globals
+        """
+        try:
+            install_dir = read_saved_install_dir()
+            if not install_dir:
+                messagebox.showinfo("Uninstall", "No install directory is configured.")
+                return
+
+            # Double-confirm with the user
+            if not messagebox.askyesno("Confirm Uninstall",
+                                       f"Are you sure you want to uninstall MLHD2 from:\n{install_dir}\n\nThis will permanently delete files in that directory."):
+                return
+
+            # Offer to create a backup
+            if messagebox.askyesno("Backup Before Uninstall",
+                                   "Would you like to create a backup of the install directory before uninstalling? (Recommended)"):
+                try:
+                    ts = time.strftime('%Y%m%d-%H%M%S')
+                    backup_root = os.path.join(BACKUP_DIR_ROOT, f"uninstall-{ts}")
+                    shutil.copytree(install_dir, backup_root)
+                    messagebox.showinfo("Backup Created", f"Backup of install directory created at:\n{backup_root}")
+                except Exception as e:
+                    if not messagebox.askyesno("Backup Failed",
+                                               f"Backup failed: {e}\n\nProceed with uninstall anyway?"):
+                        return
+
+            # Perform removal with safety checks
+            protected = os.path.abspath(str(APP_DIR))
+            target = os.path.abspath(install_dir)
+            # Refuse to remove APP_DIR itself unless it's different from install dir
+            if target == protected and not messagebox.askyesno("Warning",
+                                                               "The configured install directory is the same as the launcher directory.\nDo you really want to remove the launcher folder as well?"):
+                return
+
+            try:
+                # Remove contents of the install dir
+                for root, dirs, files in os.walk(target, topdown=False):
+                    for name in files:
+                        try:
+                            os.remove(os.path.join(root, name))
+                        except Exception:
+                            pass
+                    for name in dirs:
+                        try:
+                            shutil.rmtree(os.path.join(root, name))
+                        except Exception:
+                            pass
+                # Finally remove the install dir itself if empty
+                try:
+                    os.rmdir(target)
+                except Exception:
+                    # ignore if not empty or permission issues
+                    pass
+            except Exception as e:
+                messagebox.showerror("Uninstall Error", f"Failed to remove install directory: {e}")
+                return
+
+            # Clear saved install dir
+            try:
+                save_install_dir("")
+                # Also clear cache
+                global _INSTALL_DIR_CACHE
+                _INSTALL_DIR_CACHE = None
+            except Exception:
+                pass
+
+            # Recompute paths and notify user
+            try:
+                update_paths_from_install_dir()
+            except Exception:
+                pass
+            messagebox.showinfo("Uninstall Complete", "MLHD2 has been uninstalled from the selected directory.\nThe launcher will continue to run.")
+        except Exception as e:
+            messagebox.showerror("Uninstall Failed", f"An unexpected error occurred: {e}")
 
     # NEW: first-launch font prompt
     def maybe_prompt_font_install(self) -> None:

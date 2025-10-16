@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 from logging_config import setup_logging
 import configparser
+from runtime_paths import app_path
 import requests
 import json
 import os
@@ -22,9 +23,9 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read('config.config')
+config.read(app_path('config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
@@ -329,7 +330,7 @@ if DEBUG:
     ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
 else:
     # Use PROD webhook in production mode
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         dcord_data = json.load(f)
         ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
         ACTIVE_WEBHOOK = [
@@ -439,7 +440,7 @@ search_sector = df['Sector'].mode()[0]
 SectorCount = df.apply(lambda row: row.astype(str).str.contains(search_sector, case=False).sum(), axis=1).sum()
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -474,14 +475,14 @@ except Exception as e:
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key or fall back to helldiver_ses if the first one doesn't exist
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
 
 # Load DCord.json data
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     
 def _build_primary_embed_description() -> str:
@@ -654,7 +655,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks_export', [])
         webhook_urls = [
