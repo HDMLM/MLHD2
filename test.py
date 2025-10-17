@@ -48,14 +48,7 @@ except Exception:
 def _is_frozen() -> bool:
     return getattr(sys, "frozen", False) is True
 
-APP_DIR = Path(os.path.dirname(sys.executable) if _is_frozen() else os.path.dirname(__file__)).resolve()
-BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
-
-def app_path(*parts: str) -> str:
-    return str(APP_DIR.joinpath(*parts))
-
-def resource_path(*parts: str) -> str:
-    return str(BUNDLE_DIR.joinpath(*parts))
+from runtime_paths import app_path, resource_path
 
 # Config (Discord client id fallback)
 _config = configparser.ConfigParser()

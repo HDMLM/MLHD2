@@ -1,9 +1,10 @@
 cd /d "%~dp0.."
-pyinstaller "installer.spec"
+pyinstaller --clean "installer.spec"
 move "%cd%\dist\MLHD2-Launcher.exe" "%cd%\tools\Built\MLHD2-Launcher.exe"
 rmdir /s /q "%cd%\dist"
 rmdir /s /q "%cd%\build"
 @echo off
+pause
 cls
 echo Build complete. The built executable is located at: %cd%\tools\Built\MLHD2-Launcher.exe
 pause
