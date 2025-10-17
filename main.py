@@ -26,6 +26,7 @@ from typing import Dict, List, Optional
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import time
 import configparser
+from runtime_paths import app_path, get_install_dir
 import threading
 import os
 import subprocess
@@ -71,32 +72,33 @@ from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAM
 import random
 
 # Manual Configuration
-GWDay = "Day: 611"
-GWDate = "Date: 11/10/2025"
-VERSION = "1.7.008"
+GWDay = "Day: 617"
+GWDate = "Date: 17/10/2025"
+VERSION = "1.7.009"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Load config
 config = configparser.ConfigParser()
-config.read('config.config')
-DISCORD_CLIENT_ID = config['Discord']['DISCORD_CLIENT_ID']
+# Prefer install-aware config paths
+config.read(app_path('config.config'))
+DISCORD_CLIENT_ID = config.get('Discord', 'DISCORD_CLIENT_ID', fallback='0')
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('icon.config'))
 
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
 
 # File paths
 if DEBUG:
-    SETTINGS_FILE = './JSON/settings-dev.json'
-    PERSISTENCE_FILE = './JSON/persistent-dev.json'
-    streak_file = './JSON/streak_data-dev.json'
+    SETTINGS_FILE = app_path('JSON', 'settings-dev.json')
+    PERSISTENCE_FILE = app_path('JSON', 'persistent-dev.json')
+    streak_file = app_path('JSON', 'streak_data-dev.json')
 else:
-    SETTINGS_FILE = './JSON/settings.json'
-    PERSISTENCE_FILE = './JSON/persistent.json'
-    streak_file = './JSON/streak_data.json'
+    SETTINGS_FILE = app_path('JSON', 'settings.json')
+    PERSISTENCE_FILE = app_path('JSON', 'persistent.json')
+    streak_file = app_path('JSON', 'streak_data.json')
 
 # Set up application data paths 
 APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
@@ -540,7 +542,7 @@ class MissionLogGUI:
             mission_frame.columnconfigure(col, weight=1)
 
         # Load sectors from config (and store for later)
-        with open('./JSON/PlanetSectors.json', 'r') as f:
+        with open(app_path('JSON', 'PlanetSectors.json'), 'r') as f:
             sectors_data = json.load(f)
             self.sectors_data = sectors_data
             sector_list = list(sectors_data.keys())
@@ -574,7 +576,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Title:").grid(row=1, column=2, sticky=tk.W, pady=5)
         # Load titles from json file
-        with open('./JSON/Titles.json', 'r') as f:
+        with open(app_path('JSON', 'Titles.json'), 'r') as f:
             titles_data = json.load(f)
             self.titles = titles_data["Titles"]
         self.title_combo = ttk.Combobox(mission_frame, textvariable=self.title, state='readonly', width=32)
@@ -584,7 +586,7 @@ class MissionLogGUI:
 
         ttk.Label(mission_frame, text="Profile:").grid(row=2, column=2, sticky=tk.W, pady=5)
         # Load profile pictures from json
-        with open('./JSON/ProfilePictures.json', 'r') as f:
+        with open(app_path('JSON', 'ProfilePictures.json'), 'r') as f:
             profile_data = json.load(f)
             self.profile_pictures = profile_data["Profile Pictures"]
         self.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=self.profile_picture, state='readonly', width=32)
@@ -718,7 +720,7 @@ class MissionLogGUI:
                 biome_map = f or {}
                 if not biome_map:
                     try:
-                        with open('./JSON/BiomePlanets.json', 'r', encoding='utf-8') as bf:
+                        with open(app_path('JSON', 'BiomePlanets.json'), 'r', encoding='utf-8') as bf:
                             biome_map = json.load(bf)
                     except Exception:
                         biome_map = {}
@@ -882,7 +884,7 @@ class MissionLogGUI:
                 if not planet_name:
                     return
 
-                with open('./JSON/BiomePlanets.json', 'r', encoding='utf-8') as f:
+                with open(app_path('JSON', 'BiomePlanets.json'), 'r', encoding='utf-8') as f:
                     biome_map = json.load(f)
                 biome_name = biome_map.get(planet_name, "Mars")
                 # Compare selected planet (parent) to BiomePlanets.json keys and get its biome (child)
@@ -1004,7 +1006,7 @@ class MissionLogGUI:
             # Populate mega cities based on currently selected planet.
             selected_planet = self.planet.get()
             try:
-                with open("./JSON/MegaCityPlanets.json", "r") as f:
+                with open(app_path('JSON', 'MegaCityPlanets.json'), 'r') as f:
                     planetary_data = json.load(f)
             except Exception:
                 planetary_data = {}
@@ -1337,16 +1339,23 @@ class MissionLogGUI:
             invite_fallback.pack(side=tk.TOP, pady=(0,8), padx=0)
             invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
 
-    # Enemy selection
+        # Enemy selection
         ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
 
-        with open('./JSON/Missions.json', 'r') as f:
-            missions_data = json.load(f)
-            enemy_types = list(missions_data.keys())
-
-        with open('./JSON/Enemies.json', 'r') as f:
-            enemies_data = json.load(f)
-            enemy_types = list(enemies_data.keys())
+        enemy_types = []
+        try:
+            with open(app_path('JSON', 'Missions.json'), 'r') as f:
+                missions_data = json.load(f)
+                # Missions.json may map enemy types to missions; collect keys
+                enemy_types = list(missions_data.keys())
+        except Exception:
+            # fallback to Enemies.json
+            try:
+                with open(app_path('JSON', 'Enemies.json'), 'r') as f:
+                    enemies_data = json.load(f)
+                    enemy_types = list(enemies_data.keys())
+            except Exception:
+                enemy_types = []
 
         enemy_combo = ttk.Combobox(details_frame, textvariable=self.enemy_type, values=enemy_types, state='readonly', width=27)
         enemy_combo.grid(row=0, column=1, padx=5, pady=5)
@@ -1424,7 +1433,7 @@ class MissionLogGUI:
             subfaction = self.subfaction_type.get()
             
             try:
-                with open('./JSON/Enemies.json', 'r') as f:
+                with open(app_path('JSON', 'Enemies.json'), 'r') as f:
                     enemies_data = json.load(f)
                 
                 # Get HVTs for selected enemy/subfaction
@@ -2053,7 +2062,7 @@ class MissionLogGUI:
                 os._exit(0)
 
     def submit_data(self) -> None:
-        with open('./JSON/DCord.json', 'r') as f:
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
             discord_data = json.load(f)
             global Platform
             Platform = discord_data.get('platform', 'Not Selected')
@@ -2337,14 +2346,16 @@ class MissionLogGUI:
                 "Disappointing Service": 1,
                 "Disgraceful Conduct": 0
             }
-            
+
+            SEIco = iconconfig['MiscIcon']['Super Earth Icon']
+
             gold_count = rating_stars.get(self.rating.get(), 0)
             Stars = GoldStar * gold_count + GreyStar * (5 - gold_count)
             date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
             enemy_icon = get_enemy_icon(data['Enemy Type'])
             planet_icon = get_planet_icon(data['Planet'])
             if planet_icon == '':
-                planet_icon = '<:hd1superearth:1103949794285723658>'
+                planet_icon = {SEIco}
             system_color = get_system_color(data['Enemy Type'])
             diff_icon = get_difficulty_icon(data['Difficulty'])
             subfaction_icon = get_subfaction_icon(data['Enemy Subfaction'])
@@ -2393,7 +2404,7 @@ class MissionLogGUI:
             profile_picture = get_profile_picture(self.profile_picture.get())
 
             # Get discord_uid from DCord.json
-            with open('./JSON/DCord.json', 'r') as f:
+            with open(app_path('JSON', 'DCord.json'), 'r') as f:
                 dcord_data = json.load(f)
                 user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -2424,39 +2435,61 @@ class MissionLogGUI:
                 bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
                 bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
                 bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+                bseyshelbeach = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
             except Exception as e:
                 logging.error(f"Error checking mission log for planet visits: {e}")
                 # Set default values if file doesn't exist
-                bsuperearth = bcyberstan = bmaleveloncreek = bcalypso = bpopliix = ''
+                bsuperearth = bcyberstan = bmaleveloncreek = bcalypso = bpopliix = bseyshelbeach = ''
 
             # Dynamic performance tracking icons
             try:
                 excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
                 if os.path.exists(excel_file):
                     df = pd.read_excel(excel_file)
-                    last_mission = df.iloc[-2] if not df.empty else None
                     
-                    # Compare current kills/deaths to previous mission independently
-                    if last_mission is not None:
-                        prev_kills = last_mission['Kills']
-                        prev_deaths = last_mission['Deaths']
+                    # Check if this is the user's first or second mission (no previous data to compare)
+                    # Note: Excel file is saved BEFORE this code runs, so current mission is already df.iloc[-1]
+                    if len(df) < 2:
+                        # First mission - no comparison possible
+                        logging.info("First or second mission detected - no previous performance data to compare")
+                        killico = ''
+                        deathico = ''
+                    else:
+                        # Get the previous mission (second-to-last row)
+                        # Current mission is df.iloc[-1], previous is df.iloc[-2]
+                        last_mission = df.iloc[-2]
+                        prev_kills = int(last_mission['Kills'])
+                        prev_deaths = int(last_mission['Deaths'])
                         current_kills = int(data['Kills'])
                         current_deaths = int(data['Deaths'])
+                        
+                        logging.info(f"Performance comparison - Previous: {prev_kills} kills, {prev_deaths} deaths | Current: {current_kills} kills, {current_deaths} deaths")
                         
                         # Calculate separate indicators for kills and deaths
                         if current_kills > prev_kills:
                             killico = iconconfig['MiscIcon']['Positive']
+                            logging.info(f"Kills increased: {prev_kills} -> {current_kills}")
                         elif current_kills < prev_kills:
                             killico = iconconfig['MiscIcon']['Negative']
+                            logging.info(f"Kills decreased: {prev_kills} -> {current_kills}")
                         else:
                             killico = iconconfig['MiscIcon']['Neutral']
+                            logging.info(f"Kills unchanged: {current_kills}")
                             
                         if current_deaths < prev_deaths:
                             deathico = iconconfig['MiscIcon']['PositiveDeaths']
+                            logging.info(f"Deaths decreased (better): {prev_deaths} -> {current_deaths}")
                         elif current_deaths > prev_deaths:
                             deathico = iconconfig['MiscIcon']['NegativeDeaths']
+                            logging.info(f"Deaths increased (worse): {prev_deaths} -> {current_deaths}")
                         else:
                             deathico = iconconfig['MiscIcon']['Neutral']
+                            logging.info(f"Deaths unchanged: {current_deaths}")
+                else:
+                    # Excel file doesn't exist yet - first mission
+                    logging.info("Mission log file doesn't exist - first mission detected")
+                    killico = ''
+                    deathico = ''
             except Exception as e:
                 logging.error(f"Error calculating previous kills/deaths: {e}")
                 killico = ''
@@ -2528,7 +2561,7 @@ class MissionLogGUI:
 
             # UID from local DCord.json (user settings)
             try:
-                with open('./JSON/DCord.json', 'r') as f:
+                with open(app_path('JSON', 'DCord.json'), 'r') as f:
                     settings_data = json.load(f)
                     UID = settings_data.get('discord_uid', '0')
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -2536,7 +2569,7 @@ class MissionLogGUI:
                 UID = '0'  # Fallback to default
             # Platform from local DCord.json (user settings)
             try:
-                with open('./JSON/DCord.json', 'r') as f:
+                with open(app_path('JSON', 'DCord.json'), 'r') as f:
                     settings_data = json.load(f)
                     Platform = settings_data.get('platform', "Not Selected")
             except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -2544,18 +2577,21 @@ class MissionLogGUI:
                 Platform = "Not Selected"  # Fallback to default
             MICo = str(data["Major Order"]) + " " + iconconfig['MiscIcon']['MO'] if data["Major Order"] else str(data["Major Order"])
             DSSIco = str(data["DSS Active"]) + " " + iconconfig['MiscIcon']['DSS'] if data["DSS Active"] else str(data["DSS Active"])
+            FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
+            FlairRightIco = iconconfig['MiscIcon']['Flair Right'] 
+    
 
             message_content = {
                 "content": None,
                 "embeds": [{
-                    "title": f"{data['Super Destroyer']}\nDeployed {data['Helldivers']}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
-                    "description": f"**Level {data['Level']} | {data['Title']} {title_icon}\nMission: {total_missions_main}**\n\n<a:easyshine1:1349110651829747773> <:hd1superearth:1103949794285723658> **Galactic Intel** {planet_icon} <a:easyshine3:1349110648528699422>\n> Sector: {data['Sector']}\n> Planet: {data['Planet']}\n> Mega City: {data['Mega City']}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data['DSS Modifier']} {dss_icon}\n\n",
+                    "title": f"{data['Super Destroyer']}\nDeployed {data['Helldivers']}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}",
+                    "description": f"**Level {data['Level']} | {data['Title']} {title_icon}\nMission: {total_missions_main}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {planet_icon} {FlairRightIco}\n> Sector: {data['Sector']}\n> Planet: {data['Planet']}\n> Mega City: {data['Mega City']}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data['DSS Modifier']} {dss_icon}\n\n",
                     "color": system_color,
                     "fields": [{
-                        "name": f"<a:easyshine1:1349110651829747773> {enemy_icon} **Enemy Intel** {subfaction_icon} <a:easyshine3:1349110648528699422>",
+                        "name": f"{FlairLeftIco} {enemy_icon} **Enemy Intel** {subfaction_icon} {FlairRightIco}",
                         "value": f"> Faction: {data['Enemy Type']}\n> Subfaction: {data['Enemy Subfaction']}\n" +
                         (f"> High-Value Target: {data['Enemy HVT']} {hvt_icon}\n" if data['Enemy HVT'] != "No HVTs" else "") +
-                        f"> Campaign: {data['Mission Category']}\n\n<a:easyshine1:1349110651829747773> {campaign_icon} **Mission Intel** {mission_icon} <a:easyshine3:1349110648528699422>\n> Mission: {data['Mission Type']}\n> Difficulty: {data['Difficulty']} {diff_icon}\n> Kills: {data['Kills']} {killico}\n> Deaths: {data['Deaths']} {deathico}\n> KDR: {(int(data['Kills']) / max(1, int(data['Deaths']))):.2f}\n> Rating: {data['Rating']}\n\n {Stars}\n"
+                        f"> Campaign: {data['Mission Category']}\n\n{FlairLeftIco} {campaign_icon} **Mission Intel** {mission_icon} {FlairRightIco}\n> Mission: {data['Mission Type']}\n> Difficulty: {data['Difficulty']} {diff_icon}\n> Kills: {data['Kills']} {killico}\n> Deaths: {data['Deaths']} {deathico}\n> KDR: {(int(data['Kills']) / max(1, int(data['Deaths']))):.2f}\n> Rating: {data['Rating']}\n\n {Stars}\n"
                     }],
                     "author": {
                         "name": f"Super Earth Mission Report\nDate: {date}",
@@ -2578,7 +2614,7 @@ class MissionLogGUI:
                 ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
             else:
                 # Use PROD webhook in production mode
-                with open('./JSON/DCord.json', 'r') as f:
+                with open(app_path('JSON', 'DCord.json'), 'r') as f:
                     dcord_data = json.load(f)
                     ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_logging', [])
                     # Backward/forward compatibility: allow list of dicts with {'label','url'}
@@ -2750,7 +2786,7 @@ class MissionLogGUI:
 if __name__ == "__main__":
     # Efficiently validate Discord ID and Platform before launching GUI
     try:
-        with open('./JSON/DCord.json', 'r') as f:
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
             settings_data = json.load(f)
         discord_uid = settings_data.get('discord_uid', '0')
         platform = settings_data.get('platform', "Not Selected")

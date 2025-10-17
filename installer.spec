@@ -22,7 +22,8 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[],
-    hiddenimports=[],
+    # include a few common hidden imports used dynamically by the launcher
+    hiddenimports=['requests', 'pkg_resources', 'importlib_metadata'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -35,8 +36,20 @@ a = Analysis(
 
 # Bundle project resource folders
 a.datas += Tree('LaunchMedia', prefix='LaunchMedia')
-# If you need JSON at runtime, uncomment the next line:
-# a.datas += Tree('JSON', prefix='JSON')
+# Include JSON runtime data (user-visible data files). IMPORTANT: place it under a
+# non-top-level prefix so it does NOT shadow the standard-library 'json' package
+# (on Windows a top-level 'JSON' directory can interfere with imports like
+# `import json` -> PyInstaller may prefer the bundled dir). Put under resources/JSON.
+a.datas += Tree('JSON', prefix=os.path.join('resources', 'JSON'))
+# Bundle a few individual runtime files that installer.py expects to open at runtime.
+a.datas += [
+    # Use 3-tuples (dest_name, src_name, typecode) because PyInstaller internal
+    # normalization expects (dest, src, type). Put the files at the bundle root.
+    ('mission_export_template.html', 'mission_export_template.html', 'DATA'),
+    ('config.config', 'config.config', 'DATA'),
+    ('requirements.txt', 'requirements.txt', 'DATA'),
+    ('file_version_info.txt', 'file_version_info.txt', 'DATA'),
+]
 
 # Bundle individual files used at runtime (uncomment as needed)
 # a.datas += [

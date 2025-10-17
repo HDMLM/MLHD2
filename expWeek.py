@@ -9,6 +9,7 @@ from main import VERSION, DEV_RELEASE
 import os
 
 # --- Config and Logging Setup ---
+from runtime_paths import app_path
 config = configparser.ConfigParser()
 config.read('config.config')
 iconconfig = configparser.ConfigParser()
@@ -73,7 +74,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
         # Normalize possible dict entries and filter invalid/empty
@@ -110,7 +111,7 @@ else:
     Rating = "Disgraceful Conduct"
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -140,36 +141,44 @@ try:
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
     bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
     bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+    bseyshelbeach = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
 except Exception as e:
     logging.error(f"Error checking mission log for planet visits: {e}")
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key or fall back to helldiver_ses if the first one doesn't exist
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
 
+FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
+FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+GoldStarIco = iconconfig['Stars']['GoldStar']
+FlairSkullIco = iconconfig['MiscIcon']['Flair Skull']
+FlairSEIco = iconconfig['MiscIcon']['Flair Super Earth']
+FlairGSSkullIco = iconconfig['MiscIcon']['Flair Gold Spinning Skull']
+
 embed_data = {
     "content": None,
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}",
             "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n"
                            f"\"{latest_note}\"\n\n"
-                           f"<a:easyshine1:1349110651829747773> <a:easyshine2:1349110649753698305> Combat Statistics <a:easyshine2:1349110649753698305> <a:easyshine3:1349110648528699422>\n"
+                           f"{FlairLeftIco} {FlairSkullIco} Combat Statistics {FlairSkullIco} {FlairRightIco}\n"
                            f"> Kills - {recent_df['Kills'].sum()}\n"
                            f"> Deaths - {recent_df['Deaths'].sum()}\n"
                            f"> KDR - {(recent_df['Kills'].sum() / recent_df['Deaths'].sum()):.2f}\n"
                            f"> Highest Kills in Mission - {recent_df['Kills'].max()}\n"
-                           f"\n<a:easyshine1:1349110651829747773> <a:easysuperearth:1343266082881802443> Mission Statistics <a:easysuperearth:1343266082881802443> <a:easyshine3:1349110648528699422>\n"
+                           f"\n{FlairLeftIco} {FlairSEIco} Mission Statistics {FlairSEIco} {FlairRightIco}\n"
                            f"> Deployments - {len(recent_df)}\n"
                            f"> First Deployment - {recent_df['Time'].min().strftime('%d-%m-%Y %H:%M:%S')}\n"
                            f"> Last Deployment - {recent_df['Time'].max().strftime('%d-%m-%Y %H:%M:%S')}\n"
-                           f"\n<a:easyshine1:1349110651829747773> <a:easyskullgold:1232018045791375360> Performance Statistics <a:easyskullgold:1232018045791375360> <a:easyshine3:1349110648528699422>\n"
+                           f"\n{FlairLeftIco} {FlairGSSkullIco} Performance Statistics {FlairGSSkullIco} {FlairRightIco}\n"
                            f"> Rating - {Rating} | {int(Rating_Percentage)}%\n"
-                           f"\n<a:easyshine1:1349110651829747773>  <:goldstar:1423054692228792430> Favourites <:goldstar:1423054692228792430> <a:easyshine3:1349110648528699422>\n"    
+                           f"\n{FlairLeftIco}  {GoldStarIco} Favourites {GoldStarIco} {FlairRightIco}\n"    
                            f"> Mission - {search_mission} {MISSION_ICONS.get(search_mission, '')} (x{MissionCount})\n"
                            f"> Campaign - {search_campaign} {CAMPAIGN_ICONS.get(search_campaign, '')} (x{CampaignCount})\n"
                            f"> Faction - {search_faction} {ENEMY_ICONS.get(search_faction, '')} (x{FactionCount})\n"
@@ -191,7 +200,7 @@ embed_data = {
 }
 
 # --- Send to Discord Webhook ---
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     discord_data = json.load(f)
 webhook_urls = discord_data.get('discord_webhooks_export', [])
 webhook_urls = [

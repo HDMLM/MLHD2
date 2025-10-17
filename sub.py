@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 from logging_config import setup_logging
 import configparser
+from runtime_paths import app_path
 import requests
 import json
 import os
@@ -22,9 +23,9 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read('config.config')
+config.read(app_path('config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
@@ -329,7 +330,7 @@ if DEBUG:
     ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
 else:
     # Use PROD webhook in production mode
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         dcord_data = json.load(f)
         ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
         ACTIVE_WEBHOOK = [
@@ -439,7 +440,7 @@ search_sector = df['Sector'].mode()[0]
 SectorCount = df.apply(lambda row: row.astype(str).str.contains(search_sector, case=False).sum(), axis=1).sum()
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -469,19 +470,27 @@ try:
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
     bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
     bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+    bseyshelbeach = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
 except Exception as e:
     logging.error(f"Error checking mission log for planet visits: {e}")
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key or fall back to helldiver_ses if the first one doesn't exist
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
 
+GoldStarIco = iconconfig['Stars']['GoldStar']
+FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
+FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+FlairSkullIco = iconconfig['MiscIcon']['Flair Skull']
+FlairSEIco = iconconfig['MiscIcon']['Flair Super Earth']
+FlairGSSkullIco = iconconfig['MiscIcon']['Flair Gold Spinning Skull']
+
 # Load DCord.json data
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     
 def _build_primary_embed_description() -> str:
@@ -492,21 +501,21 @@ def _build_primary_embed_description() -> str:
     return (
         f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n"
         f"\"{latest_note}\"\n\n"
-        f"<a:easyshine1:1349110651829747773>  <a:easyshine2:1349110649753698305> Combat Statistics <a:easyshine2:1349110649753698305> <a:easyshine3:1349110648528699422>\n"
+        f"{FlairLeftIco}  {FlairSkullIco} Combat Statistics {FlairSkullIco} {FlairRightIco}\n"
         f"> Kills - {df['Kills'].sum()}\n"
         f"> Deaths - {df['Deaths'].sum()}\n"
         f"> KDR - {(df['Kills'].sum() / df['Deaths'].sum()):.2f}\n"
         f"> Highest Kills in Mission - {df['Kills'].max()}\n"
-        f"\n<a:easyshine1:1349110651829747773>  <a:easysuperearth:1343266082881802443> Mission Statistics <a:easysuperearth:1343266082881802443> <a:easyshine3:1349110648528699422>\n"
+        f"\n{FlairLeftIco}  {FlairSEIco} Mission Statistics {FlairSEIco} {FlairRightIco}\n"
         f"> Deployments - {len(df)}\n"
         f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n"
         f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n"
         f"> Mega City Deployments - {mega_city_count}\n"
     f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode().iloc[0])}\n"
-        f"\n<a:easyshine1:1349110651829747773>  <a:easyskullgold:1232018045791375360> Performance Statistics <a:easyskullgold:1232018045791375360> <a:easyshine3:1349110648528699422>\n"
+        f"\n{FlairLeftIco}  {FlairGSSkullIco} Performance Statistics {FlairGSSkullIco} {FlairRightIco}\n"
         f"> Rating - {Rating} | {int(Rating_Percentage)}%\n"
         f"> Highest Streak - {highest_streak} Missions\n"
-        f"\n<a:easyshine1:1349110651829747773>  <:goldstar:1337818552094163034> Favourites <:goldstar:1337818552094163034> <a:easyshine3:1349110648528699422>\n"
+        f"\n{FlairLeftIco}  {GoldStarIco} Favourites {GoldStarIco} {FlairRightIco}\n"
     f"> Mission - {df['Mission Type'].mode().iloc[0]} {MISSION_ICONS.get(df['Mission Type'].mode().iloc[0], '')} (x{MissionCount})\n"
     f"> Campaign - {df['Mission Category'].mode().iloc[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode().iloc[0], '')} (x{CampaignCount})\n"
     f"> Faction - {df['Enemy Type'].mode().iloc[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode().iloc[0], '')} (x{FactionCount})\n"
@@ -560,64 +569,6 @@ enemy_icons = {
     }
 }
 
-# Planet type specific embeds with icons
-planet_icons = {
-    "Super Earth": {
-        "emoji": iconconfig['PlanetIcons']['Human Homeworld']
-    },
-    "Cyberstan": {
-        "emoji": iconconfig['PlanetIcons']['Automaton Homeworld']
-    },
-    "Malevelon Creek": {
-        "emoji": iconconfig['PlanetIcons']['Malevelon Creek']
-    },
-    "Calypso": {
-        "emoji": iconconfig['PlanetIcons']['Calypso']
-    },
-    "Diaspora X": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Enuliale": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Epsilon Phoencis VI": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Gemstone Bluffs": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Nabatea Secundus": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Navi VII": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Azur Secundus": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Erson Sands": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Nivel 43": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Zagon Prime": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Hellmire": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Omicron": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Oshaune": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    },
-    "Fori Prime": {
-        "emoji": iconconfig['PlanetIcons']['Gloom']
-    }
-}
-
 # Group planets by enemy type
 enemy_planets = {}
 for planet in planets:
@@ -633,7 +584,7 @@ for enemy_type, planet_list in enemy_planets.items():
     planets_description_parts = []
     for planet, planet_data in planet_list:
         planets_description_parts.append(
-            f"{enemy_icons.get(enemy_type, {'emoji': ''})['emoji']} **{planet}** {planet_icons.get(planet, {'emoji': ''})['emoji']}\n"
+            f"{enemy_icons.get(enemy_type, {'emoji': ''})['emoji']} **{planet}**\n"
             f"> Deployments - {len(planet_data)}\n"
             f"> Major Order Deployments - {planet_data['Major Order'].astype(int).sum()}\n"
             f"> Kills - {planet_data['Kills'].sum()}\n"
@@ -654,7 +605,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks_export', [])
         webhook_urls = [
@@ -768,7 +719,7 @@ def _generate_html_export(df: pd.DataFrame) -> str:
 embed_data_contingency = {
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}",
             "color": 7257043,
             "fields": [
                 {

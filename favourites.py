@@ -2,6 +2,7 @@ import pandas as pd
 import logging
 from logging_config import setup_logging
 import configparser
+from runtime_paths import app_path
 import requests
 import json
 from datetime import datetime, timezone, timedelta
@@ -81,7 +82,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
         # Normalize possible dict entries and filter invalid/empty
@@ -250,7 +251,7 @@ if DEBUG:
     ACTIVE_WEBHOOK = [config['Webhooks']['TEST']]
 else:
     # Use PROD webhook in production mode
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         dcord_data = json.load(f)
         ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks', [])
         ACTIVE_WEBHOOK = [
@@ -337,7 +338,7 @@ search_sector3 = sector_counts_3.index[0] if len(sector_counts_3) > 0 else "None
 SectorCount3 = sector_counts_3.iloc[0] if len(sector_counts_3) > 0 else 0
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -367,19 +368,20 @@ try:
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
     bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
     bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+    bseyshelbeach = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
 except Exception as e:
     logging.error(f"Error checking mission log for planet visits: {e}")
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key or fall back to helldiver_ses if the first one doesn't exist
     highest_streak = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("highest_streak", 0)
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
 
 # Load DCord.json data
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
 
 # Calculate Mega City deployments excluding "Planet Surface" and empty values
@@ -389,13 +391,19 @@ terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega Cit
 automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
 illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
 
+FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
+FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+Bronze1Ico = iconconfig['MiscIcon']['Bronze 1']
+Silver1Ico = iconconfig['MiscIcon']['Silver 1']
+Gold1Ico = iconconfig['MiscIcon']['Gold 1']
+
 # Create embed data
 embed_data = {
     "content": None,
     "embeds": [
         {
             "title": "",  # Empty title, will be set below
-            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Your Top Favourites <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" +   
+            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\n{FlairLeftIco} {Gold1Ico} Your Top Favourites {Gold1Ico} {FlairRightIco}\n" +   
                         f"> Mission - {df['Mission Type'].mode().iloc[0]} {MISSION_ICONS.get(df['Mission Type'].mode().iloc[0], '')} (x{MissionCount})\n" +
                         f"> Campaign - {df['Mission Category'].mode().iloc[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode().iloc[0], '')} (x{CampaignCount})\n" +
                         f"> Faction - {df['Enemy Type'].mode().iloc[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode().iloc[0], '')} (x{FactionCount})\n" +
@@ -403,7 +411,7 @@ embed_data = {
                         f"> Difficulty - {df['Difficulty'].mode().iloc[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode().iloc[0], '')} (x{DifficultyCount})\n" +
                         f"> Planet - {df['Planet'].mode().iloc[0]} {PLANET_ICONS.get(df['Planet'].mode().iloc[0], '')} (x{PlanetCount})\n" +
                         f"> Sector - {df['Sector'].mode().iloc[0]} (x{SectorCount})\n\n" +
-                        f"<a:easyshine1:1349110651829747773> <a:sil:1414376620378034196> Strong Contenders <a:sil:1414376620378034196> <a:easyshine3:1349110648528699422>\n" +
+                        f"{FlairLeftIco} {Silver1Ico} Strong Contenders {Silver1Ico} {FlairRightIco}\n" +
                         f"> Mission - {search_mission2} {MISSION_ICONS.get(search_mission2, '')} (x{MissionCount2})\n" +
                         f"> Campaign - {search_campaign2} {CAMPAIGN_ICONS.get(search_campaign2, '')} (x{CampaignCount2})\n" +
                         f"> Faction - {search_faction2} {ENEMY_ICONS.get(search_faction2, '')} (x{FactionCount2})\n" +
@@ -411,7 +419,7 @@ embed_data = {
                         f"> Difficulty - {search_difficulty2} {DIFFICULTY_ICONS.get(search_difficulty2, '')} (x{DifficultyCount2})\n" +
                         f"> Planet - {search_planet2} {PLANET_ICONS.get(search_planet2, '')} (x{PlanetCount2})\n" +
                         f"> Sector - {search_sector2} (x{SectorCount2})\n\n" +
-                        f"<a:easyshine1:1349110651829747773> <a:bro:1414376629190262965> Honourable Mentions <a:bro:1414376629190262965> <a:easyshine3:1349110648528699422>\n" +
+                        f"{FlairLeftIco} {Bronze1Ico} Honourable Mentions {Bronze1Ico} {FlairRightIco}\n" +
                         f"> Mission - {search_mission3} {MISSION_ICONS.get(search_mission3, '')} (x{MissionCount3})\n" +
                         f"> Campaign - {search_campaign3} {CAMPAIGN_ICONS.get(search_campaign3, '')} (x{CampaignCount3})\n" +
                         f"> Faction - {search_faction3} {ENEMY_ICONS.get(search_faction3, '')} (x{FactionCount3})\n" +
@@ -433,7 +441,7 @@ embed_data = {
 }
 
 # Update the embed title with name and level
-embed_data["embeds"][0]["title"] = f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}"
+embed_data["embeds"][0]["title"] = f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}"
 
 # Group data by enemy type (faction)
 faction_stats = {}
@@ -453,7 +461,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
         # Normalize possible dict entries and filter invalid/empty

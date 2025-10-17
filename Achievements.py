@@ -1,19 +1,21 @@
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 import configparser
+from runtime_paths import app_path
 import requests
 import json
 import logging
 import os
+import time
 from logging_config import setup_logging
 from icon import TITLE_ICONS
 from main import VERSION, DEV_RELEASE
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read('config.config')
+config.read(app_path('config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
@@ -56,7 +58,7 @@ except (FileNotFoundError, ValueError) as e:
 
 highest_streak = 0
 profile_picture = ""
-with open('./JSON/streak_data.json', 'r') as f:
+with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     streak_data = json.load(f)
     # Use "Helldiver" as the key
     highest_streak = streak_data.get("Helldiver", {}).get("highest_streak", 0)
@@ -155,7 +157,7 @@ all_campaigns = (total_liberation and total_defense and
                 total_attrition and total_bfse)
 
 # Load biome mapping from json file
-with open('./JSON/BiomePlanets.json', 'r') as f:
+with open(app_path('JSON', 'BiomePlanets.json'), 'r') as f:
     biome_mapping = json.load(f)
 
 # Create a set of all unique biomes from the mapping
@@ -658,7 +660,7 @@ if DEBUG:
     webhook_urls = [config['Webhooks']['TEST']] # Use the webhook URL from the config for debugging
 else:
     # Load webhook URLs from DCord.json
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get('discord_webhooks', [])
         webhook_urls = [
@@ -667,440 +669,457 @@ else:
             if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
         ]
 
+FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
+FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+Locked1Ico = iconconfig['MiscIcon']['Locked 1']
+Locked2Ico = iconconfig['MiscIcon']['Locked 2']
+Locked3Ico = iconconfig['MiscIcon']['Locked 3']
+Locked4Ico = iconconfig['MiscIcon']['Locked 4']
+Bronze1Ico = iconconfig['MiscIcon']['Bronze 1']
+Bronze2Ico = iconconfig['MiscIcon']['Bronze 2']
+Silver1Ico = iconconfig['MiscIcon']['Silver 1']
+Silver2Ico = iconconfig['MiscIcon']['Silver 2']
+Gold1Ico = iconconfig['MiscIcon']['Gold 1']
+Gold2Ico = iconconfig['MiscIcon']['Gold 2']
+Gold3Ico = iconconfig['MiscIcon']['Gold 3']
+Gold4Ico = iconconfig['MiscIcon']['Gold 4']
+GoldFlairLeftIco = iconconfig['MiscIcon']['Gold Flair Left']
+GoldFlairRightIco = iconconfig['MiscIcon']['Gold Flair Right']
+
 # Define achievement metadata for messages and titles
 ACHIEVEMENT_DEFS = {
     "CmdFavourite1": {
         "message": ("Log 100 Missions", "HINT: You have the strength and the courage... to be free"),
         "title": (
-            "<a:bro:1414376629190262965> **HIGH COMMAND'S FAVOURITE I**",
-            "<:locked1:1416039237106663455> **~~HIGH COMMAND'S FAVOURITE I~~**"
+            f"{Bronze1Ico} **HIGH COMMAND'S FAVOURITE I**",
+            f"{Locked1Ico} **~~HIGH COMMAND'S FAVOURITE I~~**"
         )
     },
     "CmdFavourite2": {
         "message": ("Log 250 Missions", "HINT: You have the strength and the courage... to be free"),
         "title": (
-            "<a:sil:1414376620378034196> **HIGH COMMAND'S FAVOURITE II**",
-            "<:locked1:1416039237106663455> **~~HIGH COMMAND'S FAVOURITE II~~**"
+            f"{Silver1Ico} **HIGH COMMAND'S FAVOURITE II**",
+            f"{Locked1Ico} **~~HIGH COMMAND'S FAVOURITE II~~**"
         )
     },
     "CmdFavourite3": {
         "message": ("Log 500 Missions", "HINT: You have the strength and the courage... to be free"),
         "title": (
-            "<a:gol:1414376388516909076> **HIGH COMMAND'S FAVOURITE III**",
-            "<:locked1:1416039237106663455> **~~HIGH COMMAND'S FAVOURITE III~~**"
+            f"{Gold1Ico} **HIGH COMMAND'S FAVOURITE III**",
+            f"{Locked1Ico} **~~HIGH COMMAND'S FAVOURITE III~~**"
         )
     },
     "ReliableDiver1": {
         "message": ("Log 100 Major Order Missions", "HINT: You're one to obey orders"),
         "title": (
-            "<a:bro:1414376629190262965> **RELIABLE DIVER I**",
-            "<:locked1:1416039237106663455> **~~RELIABLE DIVER I~~**"
+            f"{Bronze1Ico} **RELIABLE DIVER I**",
+            f"{Locked1Ico} **~~RELIABLE DIVER I~~**"
         )
     },
     "ReliableDiver2": {
         "message": ("Log 250 Major Order Missions", "HINT: You're one to obey orders"),
         "title": (
-            "<a:sil:1414376620378034196> **RELIABLE DIVER II**",
-            "<:locked1:1416039237106663455> **~~RELIABLE DIVER II~~**"
+            f"{Silver1Ico} **RELIABLE DIVER II**",
+            f"{Locked1Ico} **~~RELIABLE DIVER II~~**"
         )
     },
     "ReliableDiver3": {
         "message": ("Log 500 Major Order Missions", "HINT: You're one to obey orders"),
         "title": (
-            "<a:gol:1414376388516909076> **RELIABLE DIVER III**",
-            "<:locked1:1416039237106663455> **~~RELIABLE DIVER III~~**"
+            f"{Gold1Ico} **RELIABLE DIVER III**",
+            f"{Locked1Ico} **~~RELIABLE DIVER III~~**"
         )
     },
     "DSSDiver1": {
         "message": ("Log 100 Missions with the Democracy Space Station in Orbit", "HINT: You like a good bit of support"),
         "title": (
-            "<a:bro:1414376629190262965> **I <3 DSS I**",
-            "<:locked1:1416039237106663455> **~~I <3 DSS I~~**"
+            f"{Bronze1Ico} **I <3 DSS I**",
+            f"{Locked1Ico} **~~I <3 DSS I~~**"
         )
     },
     "DSSDiver2": {
         "message": ("Log 250 Missions with the Democracy Space Station in Orbit", "HINT: You like a good bit of support"),
         "title": (
-            "<a:sil:1414376620378034196> **I <3 DSS II**",
-            "<:locked1:1416039237106663455> **~~I <3 DSS II~~**"
+            f"{Silver1Ico} **I <3 DSS II**",
+            f"{Locked1Ico} **~~I <3 DSS II~~**"
         )
     },
     "DSSDiver3": {
         "message": ("Log 500 Missions with the Democracy Space Station in Orbit", "HINT: You like a good bit of support"),
         "title": (
-            "<a:gol:1414376388516909076> **I <3 DSS III**",
-            "<:locked1:1416039237106663455> **~~I <3 DSS III~~**"
+            f"{Gold1Ico} **I <3 DSS III**",
+            f"{Locked1Ico} **~~I <3 DSS III~~**"
         )
     },
     "PlanetDiver1": {
         "message": ("Log Missions on 25 Different Planets", "HINT: You leave no stone unturned"),
         "title": (
-            "<a:bro:1414376629190262965> **THE LONG MARCH OF LIBERTY I**",
-            "<:locked1:1416039237106663455> **~~THE LONG MARCH OF LIBERTY I~~**"
+            f"{Bronze1Ico} **THE LONG MARCH OF LIBERTY I**",
+            f"{Locked1Ico} **~~THE LONG MARCH OF LIBERTY I~~**"
         )
     },
     "PlanetDiver2": {
         "message": ("Log Missions on 50 Different Planets", "HINT: You leave no stone unturned"),
         "title": (
-            "<a:sil:1414376620378034196> **THE LONG MARCH OF LIBERTY II**",
-            "<:locked1:1416039237106663455> **~~THE LONG MARCH OF LIBERTY II~~**"
+            f"{Silver1Ico} **THE LONG MARCH OF LIBERTY II**",
+            f"{Locked1Ico} **~~THE LONG MARCH OF LIBERTY II~~**"
         )
     },
     "PlanetDiver3": {
         "message": ("Log Missions on 100 Different Planets", "HINT: You leave no stone unturned"),
         "title": (
-            "<a:gol:1414376388516909076> **THE LONG MARCH OF LIBERTY III**",
-            "<:locked1:1416039237106663455> **~~THE LONG MARCH OF LIBERTY III~~**"
+            f"{Gold1Ico} **THE LONG MARCH OF LIBERTY III**",
+            f"{Locked1Ico} **~~THE LONG MARCH OF LIBERTY III~~**"
         )
     },
     "SectorDiver1": {
         "message": ("Log Missions on 15 Different Sectors", "HINT: You like to cover all bases"),
         "title": (
-            "<a:bro:1414376629190262965> **MASTER OF THE MAP I**",
-            "<:locked1:1416039237106663455> **~~MASTER OF THE MAP I~~**"
+            f"{Bronze1Ico} **MASTER OF THE MAP I**",
+            f"{Locked1Ico} **~~MASTER OF THE MAP I~~**"
         )
     },
     "SectorDiver2": {
         "message": ("Log Missions on 30 Different Sectors", "HINT: You like to cover all bases"),
         "title": (
-            "<a:sil:1414376620378034196> **MASTER OF THE MAP II**",
-            "<:locked1:1416039237106663455> **~~MASTER OF THE MAP II~~**"
+            f"{Silver1Ico} **MASTER OF THE MAP II**",
+            f"{Locked1Ico} **~~MASTER OF THE MAP II~~**"
         )
     },
     "SectorDiver3": {
         "message": ("Log Missions on 45 Different Sectors", "HINT: You like to cover all bases"),
         "title": (
-            "<a:gol:1414376388516909076> **MASTER OF THE MAP III**",
-            "<:locked1:1416039237106663455> **~~MASTER OF THE MAP III~~**"
+            f"{Gold1Ico} **MASTER OF THE MAP III**",
+            f"{Locked1Ico} **~~MASTER OF THE MAP III~~**"
         )
     },
     "EveryAchievement": {
         "message": ("Complete Every Achievement", "HINT: You love a good hunt"),
         "title": (
-            "<a:gol:1414376388516909076> **ACHIEVEMENT HUNTER**",
-            "<:locked1:1416039237106663455> **~~ACHIEVEMENT HUNTER~~**"
+            f"{Gold1Ico} **ACHIEVEMENT HUNTER**",
+            f"{Locked1Ico} **~~ACHIEVEMENT HUNTER~~**"
         )
     },
     "OutbreakPerfected1": {
         "message": ("Log 100 Terminid Missions", "HINT: You're rather familiar with E-710"),
         "title": (
-            "<a:bro1:1415834803256688732> **OUTBREAK PERFECTED I**",
-            "<:locked2:1416039336520187975> **~~OUTBREAK PERFECTED I~~**"
+            f"{Bronze2Ico} **OUTBREAK PERFECTED I**",
+            f"{Locked2Ico} **~~OUTBREAK PERFECTED I~~**"
         )
     },
     "OutbreakPerfected2": {
         "message": ("Log 250 Terminid Missions", "HINT: You're rather familiar with E-710"),
         "title": (
-            "<a:sil1:1415835160431300660> **OUTBREAK PERFECTED II**",
-            "<:locked2:1416039336520187975> **~~OUTBREAK PERFECTED II~~**"
+            f"{Silver2Ico} **OUTBREAK PERFECTED II**",
+            f"{Locked2Ico} **~~OUTBREAK PERFECTED II~~**"
         )
     },
     "OutbreakPerfected3": {
         "message": ("Log 500 Terminid Missions", "HINT: You're rather familiar with E-710"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **OUTBREAK PERFECTED III**",
-            "<:locked2:1416039336520187975> **~~OUTBREAK PERFECTED III~~**"
+            f"{Gold2Ico} **OUTBREAK PERFECTED III**",
+            f"{Locked2Ico} **~~OUTBREAK PERFECTED III~~**"
         )
     },
     "AutomatonPerfected1": {
         "message": ("Log 100 Automaton Missions", "HINT: You're rather familiar with losing access to your Stratagems"),
         "title": (
-            "<a:bro1:1415834803256688732> **INCURSION DEVASTATED I**",
-            "<:locked2:1416039336520187975> **~~INCURSION DEVASTATED I~~**"
+            f"{Bronze2Ico} **INCURSION DEVASTATED I**",
+            f"{Locked2Ico} **~~INCURSION DEVASTATED I~~**"
         )
     },
     "AutomatonPerfected2": {
         "message": ("Log 250 Automaton Missions", "HINT: You're rather familiar with losing access to your Stratagems"),
         "title": (
-            "<a:sil1:1415835160431300660> **INCURSION DEVASTATED II**",
-            "<:locked2:1416039336520187975> **~~INCURSION DEVASTATED II~~**"
+            f"{Silver2Ico} **INCURSION DEVASTATED II**",
+            f"{Locked2Ico} **~~INCURSION DEVASTATED II~~**"
         )
     },
     "AutomatonPerfected3": {
         "message": ("Log 500 Automaton Missions", "HINT: You're rather familiar with losing access to your Stratagems"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **INCURSION DEVASTATED III**",
-            "<:locked2:1416039336520187975> **~~INCURSION DEVASTATED III~~**"
+            f"{Gold2Ico} **INCURSION DEVASTATED III**",
+            f"{Locked2Ico} **~~INCURSION DEVASTATED III~~**"
         )
     },
     "IlluminatePerfected1": {
         "message": ("Log 100 Illuminate Missions", "HINT: You're rather familiar with their autocratic intentions"),
         "title": (
-            "<a:bro1:1415834803256688732> **INVASION ABOLISHED I**",
-            "<:locked2:1416039336520187975> **~~INVASION ABOLISHED I~~**"
+            f"{Bronze2Ico} **INVASION ABOLISHED I**",
+            f"{Locked2Ico} **~~INVASION ABOLISHED I~~**"
         )
     },
     "IlluminatePerfected2": {
         "message": ("Log 250 Illuminate Missions", "HINT: You're rather familiar with their autocratic intentions"),
         "title": (
-            "<a:sil1:1415835160431300660> **INVASION ABOLISHED II**",
-            "<:locked2:1416039336520187975> **~~INVASION ABOLISHED II~~**"
+            f"{Silver2Ico} **INVASION ABOLISHED II**",
+            f"{Locked2Ico} **~~INVASION ABOLISHED II~~**"
         )
     },
     "IlluminatePerfected3": {
         "message": ("Log 500 Illuminate Missions", "HINT: You're rather familiar with their autocratic intentions"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **INVASION ABOLISHED III**",
-            "<:locked2:1416039336520187975> **~~INVASION ABOLISHED III~~**"
+            f"{Gold2Ico} **INVASION ABOLISHED III**",
+            f"{Locked2Ico} **~~INVASION ABOLISHED III~~**"
         )
     },
     "TerminidHunter1": {
         "message": ("Log 10,000 Kills against the Terminids", "HINT: You douse yourself in E-710"),
         "title": (
-            "<a:bro1:1415834803256688732> **BUG STOMPER I**",
-            "<:locked2:1416039336520187975> **~~BUG STOMPER I~~**"
+            f"{Bronze2Ico} **BUG STOMPER I**",
+            f"{Locked2Ico} **~~BUG STOMPER I~~**"
         )
     },
     "TerminidHunter2": {
         "message": ("Log 25,000 Kills against the Terminids", "HINT: You douse yourself in E-710"),
         "title": (
-            "<a:sil1:1415835160431300660> **BUG STOMPER II**",
-            "<:locked2:1416039336520187975> **~~BUG STOMPER II~~**"
+            f"{Silver2Ico} **BUG STOMPER II**",
+            f"{Locked2Ico} **~~BUG STOMPER II~~**"
         )
     },
     "TerminidHunter3": {
         "message": ("Log 50,000 Kills against the Terminids", "HINT: You douse yourself in E-710"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **BUG STOMPER III**",
-            "<:locked2:1416039336520187975> **~~BUG STOMPER III~~**"
+            f"{Gold2Ico} **BUG STOMPER III**",
+            f"{Locked2Ico} **~~BUG STOMPER III~~**"
         )
     },
     "AutomatonHunter1": {
         "message": ("Log 10,000 Kills against the Automatons", "HINT: You make things out of scrap metal in your spare time"),
         "title": (
-            "<a:bro1:1415834803256688732> **CLANKER SCRAPPER I**",
-            "<:locked2:1416039336520187975> **~~CLANKER SCRAPPER I~~**"
+            f"{Bronze2Ico} **CLANKER SCRAPPER I**",
+            f"{Locked2Ico} **~~CLANKER SCRAPPER I~~**"
         )
     },
     "AutomatonHunter2": {
         "message": ("Log 25,000 Kills against the Automatons", "HINT: You make things out of scrap metal in your spare time"),
         "title": (
-            "<a:sil1:1415835160431300660> **CLANKER SCRAPPER II**",
-            "<:locked2:1416039336520187975> **~~CLANKER SCRAPPER II~~**"
+            f"{Silver2Ico} **CLANKER SCRAPPER II**",
+            f"{Locked2Ico} **~~CLANKER SCRAPPER II~~**"
         )
     },
     "AutomatonHunter3": {
         "message": ("Log 50,000 Kills against the Automatons", "HINT: You make things out of scrap metal in your spare time"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **CLANKER SCRAPPER III**",
-            "<:locked2:1416039336520187975> **~~CLANKER SCRAPPER III~~**"
+            f"{Gold2Ico} **CLANKER SCRAPPER III**",
+            f"{Locked2Ico} **~~CLANKER SCRAPPER III~~**"
         )
     },
     "IlluminateHunter1": {
         "message": ("Log 10,000 Kills against the Illuminate", "HINT: You single handedly make an effort of wiping them out of the Second Galactic War"),
         "title": (
-            "<a:bro1:1415834803256688732> **SQUID SEVERER I**",
-            "<:locked2:1416039336520187975> **~~SQUID SEVERER I~~**"
+            f"{Bronze2Ico} **SQUID SEVERER I**",
+            f"{Locked2Ico} **~~SQUID SEVERER I~~**"
         )
     },
     "IlluminateHunter2": {
         "message": ("Log 25,000 Kills against the Illuminate", "HINT: You single handedly make an effort of wiping them out of the Second Galactic War"),
         "title": (
-            "<a:sil1:1415835160431300660> **SQUID SEVERER II**",
-            "<:locked2:1416039336520187975> **~~SQUID SEVERER II~~**"
+            f"{Silver2Ico} **SQUID SEVERER II**",
+            f"{Locked2Ico} **~~SQUID SEVERER II~~**"
         )
     },
     "IlluminateHunter3": {
         "message": ("Log 50,000 Kills against the Illuminate", "HINT: You single handedly make an effort of wiping them out of the Second Galactic War"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **SQUID SEVERER III**",
-            "<:locked2:1416039336520187975> **~~SQUID SEVERER III~~**"
+            f"{Gold2Ico} **SQUID SEVERER III**",
+            f"{Locked2Ico} **~~SQUID SEVERER III~~**"
         )
     },
     "Streak10": {
         "message": ("Reach a Streak of 10", "HINT: You'll need to take some annual leave after this... seriously... Democracy Applauds You!"),
         "title": (
-            "<a:bro1:1415834803256688732> **INFLAMMABLE I**",
-            "<:locked2:1416039336520187975> **~~INFLAMMABLE I~~**"
+            f"{Bronze2Ico} **INFLAMMABLE I**",
+            f"{Locked2Ico} **~~INFLAMMABLE I~~**"
         )
     },
     "Streak20": {
         "message": ("Reach a Streak of 20", "HINT: You'll need to take some annual leave after this... seriously... Democracy Applauds You!"),
         "title": (
-            "<a:sil1:1415835160431300660> **INFLAMMABLE II**",
-            "<:locked2:1416039336520187975> **~~INFLAMMABLE II~~**"
+            f"{Silver2Ico} **INFLAMMABLE II**",
+            f"{Locked2Ico} **~~INFLAMMABLE II~~**"
         )
     },
     "Streak30": {
         "message": ("Reach a Streak of 30", "HINT: You'll need to take some annual leave after this... seriously... Democracy Applauds You!"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **INFLAMMABLE III**",
-            "<:locked2:1416039336520187975> **~~INFLAMMABLE III~~**"
+            f"{Gold2Ico} **INFLAMMABLE III**",
+            f"{Locked2Ico} **~~INFLAMMABLE III~~**"
         )
     },
     "EveryChallenge": {
         "message": ("Complete Every Challenge", "HINT: You love a good challenge"),
         "title": (
-            "<a:EasyAwardBaftaMP2025:1363545915352289371> **A NEW CHALLENGER APPROACHES**",
-            "<:locked2:1416039336520187975> **~~A NEW CHALLENGER APPROACHES~~**"
+            f"{Gold2Ico} **A NEW CHALLENGER APPROACHES**",
+            f"{Locked2Ico} **~~A NEW CHALLENGER APPROACHES~~**"
         )
     },
     "MalevelonCreek": {
         "message": ("Serve on Malevelon Creek", "HINT: You remember..."),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **NEVER FORGET**",
-            "<:locked3:1416039337841262633> **~~NEVER FORGET~~**"
+            f"{Gold3Ico} **NEVER FORGET**",
+            f"{Locked3Ico} **~~NEVER FORGET~~**"
         )
     },
     "SuperEarth": {
         "message": ("Serve on Super Earth", "HINT: You feel very welcome"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **HOME SUPER HOME**",
-            "<:locked3:1416039337841262633> **~~HOME SUPER HOME~~**"
+            f"{Gold3Ico} **HOME SUPER HOME**",
+            f"{Locked3Ico} **~~HOME SUPER HOME~~**"
         )
     },
     "Cyberstan": {
         "message": ("Serve on an Enemy Homeworld", "HINT: You don't feel very welcome... like they have a choice"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **ON THE ENEMY'S DOORSTEP**",
-            "<:locked3:1416039337841262633> **~~ON THE ENEMY'S DOORSTEP~~**"
+            f"{Gold3Ico} **ON THE ENEMY'S DOORSTEP**",
+            f"{Locked3Ico} **~~ON THE ENEMY'S DOORSTEP~~**"
         )
     },
     "AllDifficulties": {
         "message": ("Complete 1 of Every Difficulty Type", "HINT: You don't care how difficult the task, as long as democracy is spread"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **JACK OF ALL TRADES**",
-            "<:locked3:1416039337841262633> **~~JACK OF ALL TRADES~~**"
+            f"{Gold3Ico} **JACK OF ALL TRADES**",
+            f"{Locked3Ico} **~~JACK OF ALL TRADES~~**"
         )
     },
     "AllCampaigns": {
         "message": ("Complete 1 of Every Campaign Type", "HINT: You have a wide range of choice, and you picked every single one"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **QUEEN OF ALL TRADES**",
-            "<:locked3:1416039337841262633> **~~QUEEN OF ALL TRADES~~**"
+            f"{Gold3Ico} **QUEEN OF ALL TRADES**",
+            f"{Locked3Ico} **~~QUEEN OF ALL TRADES~~**"
         )
     },
     "AllBiomes": {
         "message": ("Complete 1 of Every Biome Type", "HINT: You are well versed with every terrain, every parameter, every storm"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **KING OF ALL TRADES**",
-            "<:locked3:1416039337841262633> **~~KING OF ALL TRADES~~**"
+            f"{Gold3Ico} **KING OF ALL TRADES**",
+            f"{Locked3Ico} **~~KING OF ALL TRADES~~**"
         )
     },
     "DisgracefulConduct": {
         "message": ("Get a Performance Rating of Disgraceful Conduct on a Mission", "HINT: You... why?"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **you got this on purpose...**",
-            "<:locked3:1416039337841262633> **~~you got this on purpose...~~**"
+            f"{Gold3Ico} **you got this on purpose...**",
+            f"{Locked3Ico} **~~you got this on purpose...~~**"
         )
     },
     "CostlyFailure": {
         "message": ("Get a Performance Rating of Costly Failure on a Mission", "HINT: You... okay but seriously why?"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **okay I was serious before but... you really did get this on purpose...**",
-            "<:locked3:1416039337841262633> **~~okay I was serious before but... you really did get this on purpose...~~**"
+            f"{Gold3Ico} **okay I was serious before but... you really did get this on purpose...**",
+            f"{Locked3Ico} **~~okay I was serious before but... you really did get this on purpose...~~**"
         )
     },
     "EveryTriumph": {
         "message": ("Complete Every Triumph", "HINT: You alone are the triumphant one"),
         "title": (
-            "<a:EasyAwardBaftaMusic2025:1359268029850058974> **A TRIUMPHANT RETURN**",
-            "<:locked3:1416039337841262633> **~~A TRIUMPHANT RETURN~~**"
+            f"{Gold3Ico} **A TRIUMPHANT RETURN**",
+            f"{Locked3Ico} **~~A TRIUMPHANT RETURN~~**"
         )
     },
     "OneMission": {
         "message": ("Log 100 Missions of 1 Mission Type", "HINT: You don't even need teammates for this mission"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **LET ME SOLO THIS**",
-            "<:locked4:1416039238654361600> **~~LET ME SOLO THIS~~**"
+            f"{Gold4Ico} **LET ME SOLO THIS**",
+            f"{Locked4Ico} **~~LET ME SOLO THIS~~**"
         )
     },
     "OnePlanet": {
         "message": ("Log 100 Missions of 1 Planet Type", "HINT: You must really like this planet"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **NEW HOMEWORLD**",
-            "<:locked4:1416039238654361600> **~~NEW HOMEWORLD~~**"
+            f"{Gold4Ico} **NEW HOMEWORLD**",
+            f"{Locked4Ico} **~~NEW HOMEWORLD~~**"
         )
     },
     "OneSector": {
         "message": ("Log 100 Missions of 1 Sector Type", "HINT: Your name echoes from the neighbouring planets"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **THEY FEAR YOUR NAME**",
-            "<:locked4:1416039238654361600> **~~THEY FEAR YOUR NAME~~**"
+            f"{Gold4Ico} **THEY FEAR YOUR NAME**",
+            f"{Locked4Ico} **~~THEY FEAR YOUR NAME~~**"
         )
     },
     "CmdFavourite4": {
         "message": ("Log 1000 Missions", "HINT: You have earned your rightful place on Super Earth, and served with purpose"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **HELLDIVERS TO HELLPODS**",
-            "<:locked4:1416039238654361600> **~~HELLDIVERS TO HELLPODS~~**"
+            f"{Gold4Ico} **HELLDIVERS TO HELLPODS**",
+            f"{Locked4Ico} **~~HELLDIVERS TO HELLPODS~~**"
         )
     },
     "ReliableDiver4": {
         "message": ("Log 1000 Major Order Missions", "HINT: You're always there, when they call your name"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **AT EASE SUPER PRIVATE**",
-            "<:locked4:1416039238654361600> **~~AT EASE SUPER PRIVATE~~**"
+            f"{Gold4Ico} **AT EASE SUPER PRIVATE**",
+            f"{Locked4Ico} **~~AT EASE SUPER PRIVATE~~**"
         )
     },
     "DSSDiver4": {
         "message": ("Log 1000 Missions with the Democracy Space Station in Orbit", "HINT: You are one with democracy"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **I REALLY <3 DSS**",
-            "<:locked4:1416039238654361600> **~~I REALLY <3 DSS~~**"
+            f"{Gold4Ico} **I REALLY <3 DSS**",
+            f"{Locked4Ico} **~~I REALLY <3 DSS~~**"
         )
     },
     "OutbreakPerfected4": {
         "message": ("Log 1000 Terminid Missions", "HINT: You're way too familiar with E-710"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **FOREVER INHALING GLOOM**",
-            "<:locked4:1416039238654361600> **~~FOREVER INHALING GLOOM~~**"
+            f"{Gold4Ico} **FOREVER INHALING GLOOM**",
+            f"{Locked4Ico} **~~FOREVER INHALING GLOOM~~**"
         )
     },
     "AutomatonPerfected4": {
         "message": ("Log 1000 Automaton Missions", "HINT: You're way too familiar with losing access to your Stratagems"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **HEARING BINARY IN THE BUSHES**",
-            "<:locked4:1416039238654361600> **~~HEARING BINARY IN THE BUSHES~~**"
+            f"{Gold4Ico} **HEARING BINARY IN THE BUSHES**",
+            f"{Locked4Ico} **~~HEARING BINARY IN THE BUSHES~~**"
         )
     },
     "IlluminatePerfected4": {
         "message": ("Log 1000 Illuminates Missions", "HINT: You're way too familiar with their autocratic intentions"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **RID OF THY SQU'ITH**",
-            "<:locked4:1416039238654361600> **~~RID OF THY SQU'ITH~~**"
+            f"{Gold4Ico} **RID OF THY SQU'ITH**",
+            f"{Locked4Ico} **~~RID OF THY SQU'ITH~~**"
         )
     },
     "TerminidHunter4": {
         "message": ("Kill 100,000 Terminids", "HINT: You can never have enough E-710"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **DID SOMEONE SAY OIL?**",
-            "<:locked4:1416039238654361600> **~~DID SOMEONE SAY OIL?~~**"
+            f"{Gold4Ico} **DID SOMEONE SAY OIL?**",
+            f"{Locked4Ico} **~~DID SOMEONE SAY OIL?~~**"
         )
     },
     "AutomatonHunter4": {
         "message": ("Kill 100,000 Automatons", "HINT: You can't pick the two apart, you just know these traitors must succumb at the hands of managed democracy"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **CYBORG OR AUTOMATON?**",
-            "<:locked4:1416039238654361600> **~~CYBORG OR AUTOMATON?~~**"
+            f"{Gold4Ico} **CYBORG OR AUTOMATON?**",
+            f"{Locked4Ico} **~~CYBORG OR AUTOMATON?~~**"
         )
     },
     "IlluminateHunter4": {
         "message": ("Kill 100,000 Illuminate", "HINT: You can't tell how many more are left, but you will continue to make your mark on their population no matter the cost"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **PEACE WAS NEVER AN OPTION**",
-            "<:locked4:1416039238654361600> **~~PEACE WAS NEVER AN OPTION~~**"
+            f"{Gold4Ico} **PEACE WAS NEVER AN OPTION**",
+            f"{Locked4Ico} **~~PEACE WAS NEVER AN OPTION~~**"
         )
     },
     "SuperHunter": {
         "message": ("Kill 1,000,000 Enemies", "HINT: Your enemies are a mere blur, nothing gets in the way of liberty"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **NO MATTER THE FRONT**",
-            "<:locked4:1416039238654361600> **~~NO MATTER THE FRONT~~**"
+            f"{Gold4Ico} **NO MATTER THE FRONT**",
+            f"{Locked4Ico} **~~NO MATTER THE FRONT~~**"
         )
     },
     "EveryMilestone": {
         "message": ("Complete Every Milestone", "HINT: Beating Top Records is just another day at the office"),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **SECOND GALACTIC WAR VETERAN**",
-            "<:locked4:1416039238654361600> **~~SECOND GALACTIC WAR VETERAN~~**"
+            f"{Gold4Ico} **SECOND GALACTIC WAR VETERAN**",
+            f"{Locked4Ico} **~~SECOND GALACTIC WAR VETERAN~~**"
         )
     },
     "OneHundredPercent": {
         "message": ("Achieve 100% Completion", "HINT: ..."),
         "title": (
-            "<a:EasyAwardEggHunt2025:1363541656447488200> **JOHN HELLDIVER**",
-            "<:locked4:1416039238654361600> **~~???~~**"
+            f"{Gold4Ico} **JOHN HELLDIVER**",
+            f"{Locked4Ico} **~~???~~**"
         )
     }
 }
@@ -1123,7 +1142,7 @@ latest_note = non_blank_notes.iloc[-1] if not non_blank_notes.empty else "No Quo
 
 # UID from local DCord.json (user settings)
 try:
-    with open('./JSON/DCord.json', 'r') as f:
+    with open(app_path('JSON', 'DCord.json'), 'r') as f:
         settings_data = json.load(f)
         UID = settings_data.get('discord_uid', '0')
 except (FileNotFoundError, json.JSONDecodeError) as e:
@@ -1131,7 +1150,7 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
     UID = '0'  # Fallback to default
 
 # Get discord_uid from DCord.json
-with open('./JSON/DCord.json', 'r') as f:
+with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
     user_discord_uid = dcord_data.get('discord_uid', '')
 
@@ -1161,6 +1180,7 @@ try:
     bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
     bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
     bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+    bseyshelbeach = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
 except Exception as e:
     logging.error(f"Error checking mission log for planet visits: {e}")
 
@@ -1169,8 +1189,8 @@ embed_data = {
     "content": None,
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}",
-            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\nTotal Completion: {achievement_percentage}%\n\n<a:easyshine1:1349110651829747773> <a:gol:1414376388516909076> Achievements <a:gol:1414376388516909076> <a:easyshine3:1349110648528699422>\n" + 
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}",
+            "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\nTotal Completion: {achievement_percentage}%\n\n{FlairLeftIco} {Gold1Ico} Achievements {Gold1Ico} {FlairRightIco}\n" + 
                         f"> {globals()['CmdFavourite1_title']}\n" +
                         f"> *{globals()['CmdFavourite1_message']}*\n> *{CmdFavourite1_date}*\n" +
                         f"> \n" +
@@ -1226,7 +1246,7 @@ embed_data = {
             "image": {"url": f"https://cdn.discordapp.com/attachments/1340508329977446484/1416046371911241847/achievementsBanner.png?ex=68c56b73&is=68c419f3&hm=291ffb6f464c34e8fc2e20204d387ffaa8324d1e71165bd4f925e0dbb7dc6efc&"},
             "thumbnail": {"url": f"{profile_picture}"}
         },
-        {           "description": f"<a:easyshine1:1349110651829747773> <a:EasyAwardBaftaMP2025:1363545915352289371> Challenges <a:EasyAwardBaftaMP2025:1363545915352289371> <a:easyshine3:1349110648528699422>\n" + 
+        {           "description": f"{FlairLeftIco} {Gold2Ico} Challenges {Gold2Ico} {FlairRightIco}\n" + 
                         f"> {globals()['OutbreakPerfected1_title']}\n" +
                         f"> *{globals()['OutbreakPerfected1_message']}*\n> *{OutbreakPerfected1_date}*\n" +
                         f"> \n" +
@@ -1306,7 +1326,7 @@ embed_data = {
 embed_data_2 = {
     "content": None,
     "embeds": [
-        {           "description": f"<a:easyshine1:1349110651829747773> <a:EasyAwardBaftaMusic2025:1359268029850058974> Triumphs <a:EasyAwardBaftaMusic2025:1359268029850058974> <a:easyshine3:1349110648528699422>\n" + 
+        {           "description": f"{FlairLeftIco} {Gold3Ico} Triumphs {Gold3Ico} {FlairRightIco}\n" + 
                         f"> {globals()['MalevelonCreek_title']}\n" +
                         f"> *{globals()['MalevelonCreek_message']}*\n> *{MalevelonCreek_date}*\n" +
                         f"> \n" +
@@ -1341,7 +1361,7 @@ embed_data_2 = {
                     },
             "image": {"url": f"https://cdn.discordapp.com/attachments/1340508329977446484/1416046382896250933/triumphsBanner.png?ex=68c56b76&is=68c419f6&hm=00f97614e113fab2ed23c56dbd5a2f94e9d7ddd963b0bcd9b3ce896dc04146aa&"},
         },
-        {           "description": f"<a:gshiny1:1416046438764249240> <a:EasyAwardEggHunt2025:1363541656447488200> Milestones <a:EasyAwardEggHunt2025:1363541656447488200> <a:gshiny3:1416046435610136699>\n" + 
+        {           "description": f"{GoldFlairLeftIco} {Gold4Ico} Milestones {Gold4Ico} {GoldFlairRightIco}\n" + 
                         f"> {globals()['OneMission_title']}\n" +
                         f"> *{globals()['OneMission_message']}*\n> *{OneMission_date}*\n" +
                         f"> \n" +
@@ -1408,14 +1428,14 @@ if DEBUG:
 else:
     # Load production webhooks from external JSON
     try:
-        with open('./JSON/DCord.json', 'r') as f:
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
             dcord_data = json.load(f)
-            ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_export', [])
-            ACTIVE_WEBHOOK = [
-                (w.get('url') if isinstance(w, dict) else str(w)).strip()
-                for w in ACTIVE_WEBHOOK
-                if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
-            ]
+        ACTIVE_WEBHOOK = dcord_data.get('discord_webhooks_export', [])
+        ACTIVE_WEBHOOK = [
+            (w.get('url') if isinstance(w, dict) else str(w)).strip()
+            for w in ACTIVE_WEBHOOK
+            if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
+        ]
         if not ACTIVE_WEBHOOK:
             logging.error("No production webhooks found in DCord.json (key: discord_webhooks_export).")
     except FileNotFoundError:
@@ -1429,13 +1449,23 @@ else:
 successes = []
 for url in ACTIVE_WEBHOOK:
     try:
+        # Send first embed (main achievement card)
         response = requests.post(url, json=embed_data, timeout=10)
+        if response.status_code != 204:
+            logging.error(f"Failed to send first embed to {url}. Status code: {response.status_code}")
+            successes.append(False)
+            continue
+        
+        # Add delay to ensure second embed appears after first
+        time.sleep(0.5)  # 500ms delay
+        
+        # Send second embed (stats/info card)
         response = requests.post(url, json=embed_data_2, timeout=10)
         if response.status_code == 204:
-            logging.info(f"Successfully sent to Discord webhook: {url}")
+            logging.info(f"Successfully sent both embeds to Discord webhook: {url}")
             successes.append(True)
         else:
-            logging.error(f"Failed to send to Discord webhook {url}. Status code: {response.status_code}")
+            logging.error(f"Failed to send second embed to {url}. Status code: {response.status_code}")
             successes.append(False)
     except requests.RequestException as e:
         logging.error(f"Network error sending to Discord webhook {url}: {e}")

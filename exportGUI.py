@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import ttk
 import configparser
+from runtime_paths import app_path, resource_path
 import pandas as pd
 import logging
 from logging_config import setup_logging
@@ -13,12 +14,12 @@ from main import EXCEL_FILE_PROD, EXCEL_FILE_TEST
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read('config.config')
+config.read(app_path('config.config'))
 
 # Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
-SETTINGS_FILE = './JSON/persistence.json'
+SETTINGS_FILE = app_path('JSON', 'persistence.json')
 
 
 
@@ -104,7 +105,7 @@ def main():
 
     # Set window icon (SuperEarth.png)
     try:
-        icon_path = os.path.join(os.path.dirname(__file__), "SuperEarth.png")
+        icon_path = resource_path('LaunchMedia', 'SuperEarth.png')
         from PIL import Image, ImageTk
         pil_icon = Image.open(icon_path)
         root._icon_image = ImageTk.PhotoImage(pil_icon)
@@ -323,7 +324,7 @@ def main():
     # Export to Discord (selected or visible rows)
     def load_export_webhooks():
         try:
-            dcord_path = os.path.join(os.path.dirname(__file__), 'JSON', 'DCord.json')
+            dcord_path = app_path('JSON', 'DCord.json')
             with open(dcord_path, 'r', encoding='utf-8') as f:
                 data = json.load(f)
             urls = []
@@ -343,7 +344,7 @@ def main():
 
     def load_discord_json():
         try:
-            dcord_path = os.path.join(os.path.dirname(__file__), 'JSON', 'DCord.json')
+            dcord_path = app_path('JSON', 'DCord.json')
             with open(dcord_path, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except Exception:
