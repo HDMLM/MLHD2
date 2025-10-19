@@ -33,8 +33,13 @@ _preload_started = False
 
 
 def _asset_path(filename: str) -> Optional[str]:
-    base = os.path.dirname(os.path.abspath(__file__))
-    path = os.path.join(base, "media", "SyInt", filename)
+    # Resolve via app_path so development checkout (repo-root media/) is used
+    try:
+        from core.runtime_paths import app_path
+        path = app_path('media', 'SyInt', filename)
+    except Exception:
+        base = os.path.dirname(os.path.abspath(__file__))
+        path = os.path.join(base, "media", "SyInt", filename)
     return path if os.path.isfile(path) else None
 
 

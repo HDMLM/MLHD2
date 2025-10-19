@@ -1047,6 +1047,10 @@ def build_ui(app):
 
     note_font = tkfont.Font(family=font_to_use, size=14)
     note_entry = tk.Text(note_frame, height=3, width=30, wrap="word", font=note_font)
+    try:
+        note_entry.configure(selectforeground='black')
+    except Exception:
+        pass
     note_entry.grid(row=0, column=0, padx=5, pady=(5,0), sticky=(tk.W, tk.E, tk.N, tk.S))
     app.note_entry = note_entry
 

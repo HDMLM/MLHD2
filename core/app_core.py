@@ -388,6 +388,20 @@ class MissionLogGUI:
         # root is passed as first positional argument by the caller
         self.root = args[0] if args else kwargs.get('root')
 
+        # Ensure selected text is readable: default selection foreground to black
+        try:
+            # Generic selection foreground
+            self.root.option_add('*SelectionForeground', 'black')
+            # Per-widget class defaults
+            self.root.option_add('*Entry.selectForeground', 'black')
+            self.root.option_add('*Text.selectForeground', 'black')
+            self.root.option_add('*Listbox.selectForeground', 'black')
+            # Combobox listbox entries used by ttk are handled by apply_theme already,
+            # but set a fallback for the listbox widget used in dropdowns.
+            self.root.option_add('*TCombobox*Listbox.selectForeground', 'black')
+        except Exception:
+            pass
+
         style = ttk.Style()
         apply_theme(style, DEFAULT_THEME, self.root)
         # expose some module-level globals to the instance so the extracted UI
