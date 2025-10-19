@@ -38,6 +38,10 @@ from core.data_manager import (
     read_streaks,
 )
 
+# Load config
+iconconfig = configparser.ConfigParser()
+from core.runtime_paths import app_path
+iconconfig.read(app_path('orphan', 'icon.config'))
 
 def _verify_discordrpc():
     try:

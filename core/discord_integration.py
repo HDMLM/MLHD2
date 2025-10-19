@@ -35,6 +35,17 @@ from core.icon import (
     get_helldiver_banner,
 )
 
+# Load config
+iconconfig = configparser.ConfigParser()
+from core.runtime_paths import app_path
+# Try to load from the standard location first, then orphan as fallback
+iconconfig.read(app_path('icon.config'))
+try:
+    orphan_icon_conf = app_path('orphan', 'icon.config')
+    if os.path.exists(orphan_icon_conf):
+        iconconfig.read(orphan_icon_conf)
+except Exception:
+    pass
 
 def _get_enemy_icon(enemy_type: str) -> str:
     return ENEMY_ICONS.get(enemy_type, "NaN")
@@ -184,14 +195,8 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
     that previously lived in the GUI class.
     """
     try:
-        # Load icon configuration (local copy to avoid importing main)
-        iconconfig = configparser.ConfigParser()
-        try:
-            iconconfig.read(app_path('icon.config'))
-        except Exception:
-            # If icon config can't be read we fallback to empty mapping access
-            pass
-
+        # Use the module-level iconconfig that was already loaded
+        # (no need to reload it here, just use the global one)
         GoldStar = iconconfig['Stars'].get('GoldStar', '') if 'Stars' in iconconfig else ''
         GreyStar = iconconfig['Stars'].get('GreyStar', '') if 'Stars' in iconconfig else ''
 
