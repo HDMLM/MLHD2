@@ -848,11 +848,31 @@ def build_ui(app):
     ttk.Label(details_frame, text="Enemy Subfaction:").grid(row=0, column=2, sticky=tk.W, pady=5)
     subfaction_combo = ttk.Combobox(details_frame, textvariable=app.subfaction_type, state='readonly', width=27)
     subfaction_combo.grid(row=0, column=2, sticky=tk.E, padx=(125,0), pady=5)
+    # Ensure banner updates when subfaction changes
+    try:
+        subfaction_combo.bind('<<ComboboxSelected>>', lambda e: update_biome_banner())
+        app.subfaction_type.trace_add("write", lambda *a: update_biome_banner())
+    except Exception:
+        try:
+            subfaction_combo.bind('<<ComboboxSelected>>', lambda e: update_biome_banner())
+            app.subfaction_type.trace("w", lambda *a: update_biome_banner())
+        except Exception:
+            pass
 
     # HVT Type
     ttk.Label(details_frame, text="High-Value Target:").grid(row=1, column=2, sticky=tk.W, pady=5)
     hvt_combo = ttk.Combobox(details_frame, textvariable=app.hvt_type, state='readonly', width=27)
     hvt_combo.grid(row=1, column=2, padx=(125,0), pady=5)
+    # Ensure banner updates when HVT changes
+    try:
+        hvt_combo.bind('<<ComboboxSelected>>', lambda e: update_biome_banner())
+        app.hvt_type.trace_add("write", lambda *a: update_biome_banner())
+    except Exception:
+        try:
+            hvt_combo.bind('<<ComboboxSelected>>', lambda e: update_biome_banner())
+            app.hvt_type.trace("w", lambda *a: update_biome_banner())
+        except Exception:
+            pass
 
     # Campaign
     ttk.Label(details_frame, text="Mission Campaign:").grid(row=1, column=0, sticky=tk.W, pady=5)

@@ -133,6 +133,7 @@ EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
 
 # Theme System
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
+    combobox_bg = "#D3D3D3"  # light gray for dropdowns
     return {
         ".": {"configure": {"background": bg, "foreground": fg}},
         "TLabel": {"configure": {"background": bg, "foreground": fg}},
@@ -145,9 +146,10 @@ def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=N
         }},
         "TCheckbutton": {"configure": {"background": bg, "foreground": fg}},
         "TCombobox": {"configure": {
-            "background": entry_bg or bg,
+            # Force combobox/dropdown boxes to a light gray regardless of entry_bg
+            "background": combobox_bg,
             "foreground": entry_fg or fg,
-            "fieldbackground": entry_bg or bg,
+            "fieldbackground": combobox_bg,
             "insertcolor": fg,
         }},
         "TFrame": {"configure": {"background": frame_bg or bg}},
@@ -161,17 +163,39 @@ def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=N
 DEFAULT_THEME = make_theme(
     bg="#252526",      # background color
     fg="#FFFFFF",      # foreground/text color
-    entry_bg="#252526",
+    entry_bg="#D3D3D3",
     entry_fg="#000000",
     button_bg="#4C4C4C",
     button_fg="#000000",
     frame_bg="#252526"
 )
 
-def apply_theme(style, theme_dict):
+def apply_theme(style, theme_dict, root=None):
+    # Use clam theme for full control
+    try:
+        style.theme_use('clam')
+    except Exception:
+        pass
+
+    # Apply standard ttk styles
     for widget, opts in theme_dict.items():
         for method, cfg in opts.items():
-            getattr(style, method)(widget, **cfg)
+            try:
+                getattr(style, method)(widget, **cfg)
+            except Exception:
+                pass
+
+    # Handle TCombobox colors (readonly state)
+    combobox_cfg = theme_dict.get("TCombobox", {}).get("configure", {})
+    combobox_bg = combobox_cfg.get("background", "#D3D3D3")
+    style.map("TCombobox",
+              fieldbackground=[("readonly", combobox_bg)],
+              background=[("readonly", combobox_bg)])
+
+
+    if root is not None:
+        root.option_add('*TCombobox*Listbox.background', combobox_bg)
+        root.option_add('*TCombobox*Listbox.foreground', combobox_cfg.get("foreground", "#000000"))
 
 
 def get_enemy_icon(enemy_type: str) -> str:
@@ -360,10 +384,12 @@ class MissionLogGUI:
             init_ui_sounds(preload=True)
         except Exception:
             pass
-        style = ttk.Style()
-        apply_theme(style, DEFAULT_THEME)
+        
         # root is passed as first positional argument by the caller
         self.root = args[0] if args else kwargs.get('root')
+
+        style = ttk.Style()
+        apply_theme(style, DEFAULT_THEME, self.root)
         # expose some module-level globals to the instance so the extracted UI
         # builder can reference them without importing main (avoids circular imports)
         self.GWDate = GWDate

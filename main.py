@@ -1,9 +1,6 @@
 # This file is intentionally small: it validates basic user settings
 # then imports and runs the application core from `app_core.py`.
 
-# The original, full application source has been preserved in
-# `main_full_backup.py` in this repository root.
-
 from core.app_core import MissionLogGUI, app_path, DEBUG
 import json
 import re
