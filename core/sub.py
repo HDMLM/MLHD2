@@ -679,6 +679,26 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         enemy_sections_parts.append(
             f"<div style='margin-bottom:0.8rem;'><h3 style='margin:0 0 .3rem;font-size:.85rem;'>{html_lib.escape(str(enemy_type))}</h3><ul>{''.join(lines)}</ul></div>"
         )
+    
+    # Add unvisited planets section
+    try:
+            with open(app_path('JSON/BiomePlanets.json'), 'r', encoding='utf-8') as f:
+                all_planets_data = json.load(f)
+                all_planets = list(all_planets_data.keys())
+                unvisited_planets = sorted([p for p in all_planets if p not in planets])
+
+                if unvisited_planets:
+                    unvisited_lines = []
+                    for planet in unvisited_planets:
+                        biome = all_planets_data.get(planet, 'Unknown')
+                        unvisited_lines.append(f"<li><strong>{html_lib.escape(str(planet))}</strong> - Biome: {html_lib.escape(str(biome))}</li>")
+                    enemy_sections_parts.append(
+                        f"<div style='margin-bottom:0.8rem;'><h3 style='margin:0 0 .3rem;font-size:.85rem;color:#9fb7c9;'>Unvisited Planets ({len(unvisited_planets)})</h3><ul style='font-size:0.9em;color:#9fb7c9;'>{''.join(unvisited_lines)}</ul></div>"
+                    )
+    except Exception as e:
+            logging.error(f"Error loading unvisited planets: {e}")
+
+
     enemy_sections_html = "".join(enemy_sections_parts)
 
     # Raw data table (limit 2000 rows for size safety)

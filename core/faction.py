@@ -349,7 +349,9 @@ HighestKillIco = iconconfig['MiscIcon']['Highest Kills']
 DeployIco = iconconfig['MiscIcon']['Deployments']
 MODeployIco = iconconfig['MiscIcon']['Major Order Deployments']
 DSSDeployIco = iconconfig['MiscIcon']['DSS Deployments']
-MCDeployIco = iconconfig['MiscIcon']['Mega City Deployments']
+BugMCDeployIco = iconconfig['MiscIcon']['Bug Mega City Deployments']
+BotMCDeployIco = iconconfig['MiscIcon']['Bot Mega City Deployments']
+SquidMCDeployIco = iconconfig['MiscIcon']['Squid Mega City Deployments']
 LastDeployIco = iconconfig['MiscIcon']['Last Deployment']
 LiberationIco = iconconfig['CampaignIcons']['Liberation']
 DefenceIco = iconconfig['CampaignIcons']['Defense']
@@ -408,7 +410,7 @@ embed_data = {
                          f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Terminids']['Enemy Type'].count().sum()}\n" +
                          f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Terminids']['Major Order'].astype(int).sum()}\n" +
                          f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Terminids']['DSS Active'].astype(int).sum()}\n" +
-                         f"> {MCDeployIco} Mega City Deployments - {terminids_mega_city_count}\n" +
+                         f"> {BugMCDeployIco} Mega City Deployments - {terminids_mega_city_count}\n" +
                          f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Terminids')}\n\n" +
 
                          f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
@@ -437,7 +439,7 @@ embed_data = {
                          f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Automatons']['Enemy Type'].count().sum()}\n" +
                          f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Automatons']['Major Order'].astype(int).sum()}\n" +
                          f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Automatons']['DSS Active'].astype(int).sum()}\n" +
-                         f"> {MCDeployIco} Mega City Deployments - {automatons_mega_city_count}\n" +
+                         f"> {BotMCDeployIco} Mega City Deployments - {automatons_mega_city_count}\n" +
                          f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Automatons')}\n\n" +
 
                          f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
@@ -466,7 +468,7 @@ embed_data = {
                          f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Illuminate']['Enemy Type'].count().sum()}\n" +
                          f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Illuminate']['Major Order'].astype(int).sum()}\n" +
                          f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Illuminate']['DSS Active'].astype(int).sum()}\n" +
-                         f"> {MCDeployIco} Mega City Deployments - {illuminate_mega_city_count}\n" +
+                         f"> {SquidMCDeployIco} Mega City Deployments - {illuminate_mega_city_count}\n" +
                          f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Illuminate')}\n\n" +
 
                          f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
