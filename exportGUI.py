@@ -1,45 +1,41 @@
-import tkinter as tk
-from tkinter import ttk
-import configparser
-from runtime_paths import app_path, resource_path
-import pandas as pd
-import logging
-from logging_config import setup_logging
-import threading
-from tkinter import messagebox
-import json
 import os
+import json
+import threading
+import logging
+import configparser
+import urllib.request
+import urllib.error
 
-from main import EXCEL_FILE_PROD, EXCEL_FILE_TEST
+import tkinter as tk
+from tkinter import ttk, messagebox, font as tkfont
 
-# Read configuration from config.config
+import pandas as pd
+
+from runtime_paths import app_path, resource_path
+from logging_config import setup_logging
+from icon import (
+    ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS,
+    CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS
+)
+from ui_sound import (
+    init_ui_sounds, play_button_click, play_button_hover,
+    register_global_click_binding
+)
+
+try:
+    # After refactor these constants live in app_core
+    from app_core import EXCEL_FILE_PROD, EXCEL_FILE_TEST
+except Exception:
+    # Backwards compatibility: fall back to main if app_core is not importable
+    from main import EXCEL_FILE_PROD, EXCEL_FILE_TEST
+
+# Read configuration
 config = configparser.ConfigParser()
 config.read(app_path('config.config'))
 
-# Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)
 SETTINGS_FILE = app_path('JSON', 'persistence.json')
-
-
-
-# Redesigned exportGUI.py to match main.py/settings.py GUI style
-import os
-import tkinter as tk
-from tkinter import ttk, messagebox, font as tkfont
-import urllib.request
-import urllib.error
-import configparser
-import logging
-import pandas as pd
-from logging_config import setup_logging
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS
-from ui_sound import (
-    init_ui_sounds,
-    play_button_click,
-    play_button_hover,
-    register_global_click_binding,
-)
 
 # Theme system (copied from main.py/settings.py)
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
