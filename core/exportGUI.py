@@ -11,23 +11,23 @@ from tkinter import ttk, messagebox, font as tkfont
 
 import pandas as pd
 
-from runtime_paths import app_path, resource_path
-from logging_config import setup_logging
-from icon import (
+from core.runtime_paths import app_path, resource_path
+from core.logging_config import setup_logging
+from core.icon import (
     ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS,
     CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS
 )
-from ui_sound import (
+from core.ui_sound import (
     init_ui_sounds, play_button_click, play_button_hover,
     register_global_click_binding
 )
 
 try:
     # After refactor these constants live in app_core
-    from app_core import EXCEL_FILE_PROD, EXCEL_FILE_TEST
+    from core.app_core import EXCEL_FILE_PROD, EXCEL_FILE_TEST
 except Exception:
     # Backwards compatibility: fall back to main if app_core is not importable
-    from main import EXCEL_FILE_PROD, EXCEL_FILE_TEST
+    from core.main import EXCEL_FILE_PROD, EXCEL_FILE_TEST
 
 # Read configuration
 config = configparser.ConfigParser()
@@ -157,7 +157,7 @@ def main():
 
     # Tab image (only one state)
     try:
-        export_tab_img = load_tab_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExportViewerTabButton.png"))
+        export_tab_img = load_tab_image(app_path('media', 'Exportsys', 'ExportViewerTabButton.png'))
         notebook.add(export_frame, text="", image=export_tab_img, compound=tk.CENTER, padding=0)
         notebook._export_tab_img = export_tab_img
     except Exception as e:
@@ -233,8 +233,8 @@ def main():
             img = img.resize(box, Image.LANCZOS)
         return ImageTk.PhotoImage(img)
 
-    clear_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ClearFiltersButton.png"))
-    clear_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ClearFiltersButtonHover.png"))
+    clear_btn_img = load_button_image(app_path('media', 'Exportsys', 'ClearFiltersButton.png'))
+    clear_btn_img_hover = load_button_image(app_path('media', 'Exportsys', 'ClearFiltersButtonHover.png'))
 
     reset_btn = tk.Label(
         button_frame,
@@ -279,8 +279,8 @@ def main():
         filter_table()
 
     # Load refresh button images
-    refresh_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/RefreshButton.png"))
-    refresh_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/RefreshButtonHover.png"))
+    refresh_btn_img = load_button_image(app_path('media', 'Exportsys', 'RefreshButton.png'))
+    refresh_btn_img_hover = load_button_image(app_path('media', 'Exportsys', 'RefreshButtonHover.png'))
 
     refresh_btn = tk.Label(
         button_frame,
@@ -590,8 +590,8 @@ def main():
         threading.Thread(target=worker, daemon=True).start()
 
     # Load Export to Discord button images
-    extract_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExtractToDiscordButton.png"))
-    extract_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExtractToDiscordButtonHover.png"))
+    extract_btn_img = load_button_image(app_path('media', 'Exportsys', 'ExtractToDiscordButton.png'))
+    extract_btn_img_hover = load_button_image(app_path('media', 'Exportsys', 'ExtractToDiscordButtonHover.png'))
 
     export_btn = tk.Label(
         button_frame,
@@ -627,8 +627,8 @@ def main():
     export_btn.bind("<Button-1>", on_export_click)
 
     # Exit button as image button (styled like other image buttons)
-    exit_btn_img = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExitButton.png"))
-    exit_btn_img_hover = load_button_image(os.path.join(os.path.dirname(__file__), "./media/Exportsys/ExitButtonHover.png"))
+    exit_btn_img = load_button_image(app_path('media', 'Exportsys', 'ExitButton.png'))
+    exit_btn_img_hover = load_button_image(app_path('media', 'Exportsys', 'ExitButtonHover.png'))
 
     exit_btn = tk.Label(
         button_frame,

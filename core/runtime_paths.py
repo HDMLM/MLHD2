@@ -54,7 +54,26 @@ def get_install_dir() -> str:
 
 
 def app_path(*parts: str) -> str:
-    return str(Path(get_install_dir()).joinpath(*parts))
+    """Return an absolute path for a resource relative to the install directory.
+
+    If the resource doesn't exist under the configured install directory, also
+    check a few sensible fallback locations (repository root and current
+    working directory). This keeps development workflows working when the
+    package directory is used as the install dir but data files live in the
+    repository root.
+    """
+    install_dir = Path(get_install_dir())
+    candidates = [install_dir, Path(__file__).parent.parent.resolve(), Path.cwd()]
+    for base in candidates:
+        try:
+            p = base.joinpath(*parts)
+        except Exception:
+            continue
+        if p.exists():
+            return str(p)
+    # No existing file found - return the path under the install dir as a
+    # best-effort fallback (matches previous behaviour).
+    return str(install_dir.joinpath(*parts))
 
 
 def resource_path(*parts: str) -> str:

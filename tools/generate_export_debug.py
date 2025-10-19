@@ -12,7 +12,7 @@ sys.modules['requests'] = types.SimpleNamespace(post=dummy_post)
 # Now import sub safely
 sys.path.insert(0, os.getcwd())
 import importlib.util
-spec = importlib.util.spec_from_file_location('sub', os.path.join(os.getcwd(), 'sub.py'))
+spec = importlib.util.spec_from_file_location('sub', os.path.join(os.getcwd(), 'core', 'sub.py'))
 sub = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(sub)
 

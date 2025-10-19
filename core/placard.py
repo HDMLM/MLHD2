@@ -4,6 +4,7 @@ from PIL import Image, ImageDraw, ImageFont
 import json
 import pandas as pd
 import unicodedata
+from core.runtime_paths import app_path
 
 __all__ = ["generate_helldiver_banner"]
 
@@ -27,8 +28,7 @@ def generate_helldiver_banner(
     def _load_font(size_px: int) -> ImageFont.FreeTypeFont:
         """Load Insignia font if bundled; fallback to default font."""
         try:
-            base = os.path.dirname(os.path.abspath(__file__))
-            default_font = os.path.join(base, "MiscItems", "Fonts", "Insignia.ttf")
+            default_font = os.path.join("MiscItems", "Fonts", "Insignia.ttf")
             if os.path.isfile(default_font):
                 return ImageFont.truetype(default_font, size_px)
         except Exception:
@@ -139,12 +139,19 @@ def generate_helldiver_banner(
         # Platform and dev badges from local JSON settings
         try:
 
-            script_dir = os.path.dirname(os.path.abspath(__file__))
-            dcord_path = os.path.join(script_dir, "JSON", "DCord.json")
             dcord = {}
-            if os.path.isfile(dcord_path):
-                with open(dcord_path, "r", encoding="utf-8") as f:
-                    dcord = json.load(f)
+            # Prefer repo-root JSON via app_path, fallback to package-local JSON
+            try:
+                dpath = app_path('JSON', 'DCord.json')
+                if os.path.isfile(dpath):
+                    with open(dpath, 'r', encoding='utf-8') as f:
+                        dcord = json.load(f)
+            except Exception:
+                script_dir = os.path.dirname(os.path.abspath(__file__))
+                dcord_path = os.path.join(script_dir, "JSON", "DCord.json")
+                if os.path.isfile(dcord_path):
+                    with open(dcord_path, "r", encoding="utf-8") as f:
+                        dcord = json.load(f)
 
             platform = str(dcord.get("platform", "")).strip()
             if platform == "Steam":
@@ -273,7 +280,16 @@ def generate_helldiver_banner(
             ]
             badge_imgs: list[tuple[Image.Image, bool]] = []
             for b in ordered:
-                b_path = os.path.join(script_dir, "media", "badges", b)
+                # Prefer repo-root media badges, fallback to package-local
+                b_path = None
+                try:
+                    cand = app_path('media', 'badges', b)
+                    if os.path.isfile(cand):
+                        b_path = cand
+                except Exception:
+                    pass
+                if not b_path:
+                    b_path = os.path.join(script_dir, "media", "badges", b)
                 if os.path.isfile(b_path):
                     try:
                         im = Image.open(b_path).convert("RGBA")
@@ -389,7 +405,16 @@ def generate_helldiver_banner(
             # Paste decorative placard banner to the LEFT of the badges rectangle, if available.
             # Match its WIDTH to the profile picture width if provided.
             try:
-                banner_path = os.path.join(script_dir, "media", "badges", "placardbanner.png")
+                # decorative placard banner: prefer repo-root then package-local
+                banner_path = None
+                try:
+                    cand = app_path('media', 'badges', 'placardbanner.png')
+                    if os.path.isfile(cand):
+                        banner_path = cand
+                except Exception:
+                    pass
+                if not banner_path:
+                    banner_path = os.path.join(script_dir, "media", "badges", "placardbanner.png")
                 if os.path.isfile(banner_path):
                     deco = Image.open(banner_path).convert("RGBA")
                     # If a profile width was provided, force the decorative banner to match that width
@@ -501,10 +526,7 @@ def generate_helldiver_banner(
         if os.path.isfile(profile_str):
             return profile_str
         search_dirs = []
-        if base:
-            search_dirs.append(os.path.join(base, "media", "profile_pictures"))
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        search_dirs.append(os.path.join(script_dir, "media", "profile_pictures"))
+        search_dirs.append(os.path.join("media", "profile_pictures"))
         for d in search_dirs:
             p = os.path.join(d, f"{profile_str}.png")
             if os.path.isfile(p):
@@ -512,10 +534,17 @@ def generate_helldiver_banner(
         return None
 
     def _resolve_background_path(base: Optional[str]) -> Optional[str]:
-        if not base:
+        """Resolve backing.png preferring repo-root media via app_path, falling back to package-local media."""
+        try:
+            # Prefer repo-root media if available
+            try:
+                p_repo = app_path('media', 'badges', 'backing.png')
+                if os.path.isfile(p_repo):
+                    return p_repo
+            except Exception:
+                pass
+        except Exception:
             return None
-        p = os.path.join(base, "media", "badges", "backing.png")
-        return p if os.path.isfile(p) else None
 
     def _resolve_asset_path(name: str, base: Optional[str]) -> Optional[str]:
         """Resolve an asset by name to an absolute path. Accepts full paths or basenames.
@@ -540,6 +569,14 @@ def generate_helldiver_banner(
             search_dirs.append(os.path.join(base, "media", "profile_pictures"))
             search_dirs.append(os.path.join(base, "media", "SettingsInt"))
         script_dir = os.path.dirname(os.path.abspath(__file__))
+        # Prefer repo-root media via app_path, then package-local fallbacks
+        try:
+            search_dirs.append(app_path('media'))
+            search_dirs.append(app_path('media', 'badges'))
+            search_dirs.append(app_path('media', 'profile_pictures'))
+            search_dirs.append(app_path('media', 'SettingsInt'))
+        except Exception:
+            pass
         search_dirs.append(os.path.join(script_dir, "media"))
         search_dirs.append(os.path.join(script_dir, "media", "badges"))
         search_dirs.append(os.path.join(script_dir, "media", "profile_pictures"))

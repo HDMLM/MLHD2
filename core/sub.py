@@ -1,15 +1,15 @@
 import pandas as pd
 import logging
-from logging_config import setup_logging
+from core.logging_config import setup_logging
 import configparser
-from runtime_paths import app_path
+from core.runtime_paths import app_path
 import requests
 import json
 import os
 import html as html_lib
 from datetime import datetime, timezone, timedelta
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
-from main import VERSION, DEV_RELEASE
+from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
+from core.app_core import VERSION, DEV_RELEASE
 
 
 # Set up application data paths 
@@ -23,12 +23,12 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read(app_path('config.config'))
+config.read(app_path('orphan','config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read(app_path('icon.config'))
+iconconfig.read(app_path('orphan','icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-
+    
 #Constants
 DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
 setup_logging(DEBUG)

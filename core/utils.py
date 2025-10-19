@@ -6,7 +6,7 @@ be tested and maintained in one place.
 from typing import Optional
 import logging
 
-from icon import (
+from core.icon import (
     ENEMY_ICONS,
     DIFFICULTY_ICONS,
     SYSTEM_COLORS,

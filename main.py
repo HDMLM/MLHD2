@@ -4,11 +4,13 @@
 # The original, full application source has been preserved in
 # `main_full_backup.py` in this repository root.
 
-from app_core import MissionLogGUI, app_path, DEBUG
+from core.app_core import MissionLogGUI, app_path, DEBUG
 import json
 import re
 import logging
 import subprocess
+import sys
+import os
 from tkinter import messagebox
 import tkinter as tk
 
@@ -27,13 +29,30 @@ def _validate_dcord() -> None:
         if not (re.match(r'^\d{17,19}$', str(discord_uid)) or (DEBUG and str(discord_uid) == '0')):
             logging.error("Please set a valid Discord ID in the settings.py file")
             messagebox.showerror("Error", "Please set a valid Discord ID in the settings.py file")
-            subprocess.run(['python', 'settings.py'])
+            # Run settings UI as a module so package imports resolve correctly
+            try:
+                subprocess.run([sys.executable, '-m', 'core.settings'])
+            except Exception:
+                # Fallback: execute file directly (older behavior)
+                try:
+                    settings_path = app_path('core', 'settings.py')
+                except Exception:
+                    settings_path = os.path.join(os.path.dirname(__file__), 'core', 'settings.py')
+                subprocess.run([sys.executable, settings_path])
             raise SystemExit(1)
 
         if platform == 'Not Selected':
             logging.error("Please set a valid Platform in settings.py")
             messagebox.showerror("Error", "Please set a valid Platform in settings.py")
-            subprocess.run(['python', 'settings.py'])
+            # Run settings UI as a module so package imports resolve correctly
+            try:
+                subprocess.run([sys.executable, '-m', 'core.settings'])
+            except Exception:
+                try:
+                    settings_path = app_path('core', 'settings.py')
+                except Exception:
+                    settings_path = os.path.join(os.path.dirname(__file__), 'core', 'settings.py')
+                subprocess.run([sys.executable, settings_path])
             raise SystemExit(1)
 
     except (FileNotFoundError, json.JSONDecodeError) as e:

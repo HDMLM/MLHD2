@@ -5,7 +5,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import pandas as pd
 import logging
-from logging_config import setup_logging
+from core.logging_config import setup_logging
 from typing import Dict, List, Optional
 import time
 import configparser
@@ -18,7 +18,8 @@ import webbrowser
 
 # Load config
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+from core.runtime_paths import app_path
+iconconfig.read(app_path('orphan', 'icon.config'))
 
 # Function to get player's first planet from mission log
 def get_first_ingress():
@@ -28,7 +29,7 @@ def get_first_ingress():
         
         # Load config to check DEBUG mode
         config = configparser.ConfigParser()
-        config.read('config.config')
+        config.read(app_path('orphan', 'config.config'))
         DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
         
         # Choose the appropriate Excel file
@@ -204,7 +205,7 @@ else:
         # Load settings to get player's homeworld
         def load_player_homeworld():
             try:
-                from runtime_paths import app_path
+                from core.runtime_paths import app_path
                 with open(app_path('JSON', 'settings.json'), 'r') as f:
                     settings = json.load(f)
                     return settings.get('Player Homeworld', 'Super Earth')

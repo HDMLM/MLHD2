@@ -26,8 +26,8 @@ import tkinter as tk
 from tkinter import ttk
 import tkinter.font as tkfont
 
-from runtime_paths import app_path
-from image_utils import (
+from core.runtime_paths import app_path
+from core.image_utils import (
     load_gw_icon,
     load_profile_preview,
     load_sector_placeholder,
@@ -37,8 +37,8 @@ from image_utils import (
     load_settings_button_images,
     load_biome_banner,
 )
-from ui_effects import bind_image_hover, load_small_icon
-from ui_sound import play_button_click, play_button_hover
+from core.ui_effects import bind_image_hover, load_small_icon
+from core.ui_sound import play_button_click, play_button_hover
 
 
 def build_ui(app):
@@ -57,7 +57,7 @@ def build_ui(app):
     try:
         # Try to use Insignia font by family name (Tkinter does not support loading from file directly)
         app.fs_sinclair_font = None
-        insignia_font_path = os.path.abspath("./MiscItems/Fonts/Insignia.ttf")
+        insignia_font_path = app_path('MiscItems', 'Fonts', 'Insignia.ttf')
         try:
             app.fs_sinclair_font = tkfont.Font(root=app.root, family="Insignia", size=14)
         except tk.TclError:
@@ -262,7 +262,7 @@ def build_ui(app):
     except Exception as e:
         logging.error(f"Failed to load sector preview image: {e}")
 
-    # Banner type selection combobox (similar to aesthetics banner) — place NEXT to the frame label
+    # Banner type selection combobox
     banner_options = ["Biome Banner", "Subfaction Banner", "Helldiver Banner"]
     app.banner_type_var = tk.StringVar(value=banner_type)
 
@@ -293,9 +293,6 @@ def build_ui(app):
         try:
             # Get banner type from the combobox
             banner_type_selected = app.banner_type_var.get()
-
-            base_dir = os.path.dirname(os.path.abspath(__file__))
-
             # Resolve current biome for the selected planet
             planet_name = app.planet.get()
             biome_map = f or {}
@@ -308,65 +305,8 @@ def build_ui(app):
             biome_name = biome_map.get(planet_name, "Mars")
             logging.debug(f"Planet: {planet_name}, Biome: {biome_name}, Banner style: {banner_type_selected}")
             app.current_biome = biome_name
-            pil_banner = None
-            # Style: Subfaction Banner
-            if banner_type_selected == "Subfaction Banner":
-                subfaction = (app.subfaction_type.get() or "Unknown").strip()
-                subf_clean = subfaction.replace(" ", "_")
-                candidates = [
-                    os.path.join(base_dir, 'media', 'subfaction_banner', f"{subfaction}.png"),
-                    os.path.join(base_dir, 'media', 'subfaction_banner', f"{subf_clean}.png"),
-                    # Fallback to the small icon if no banner exists
-                    os.path.join(base_dir, 'media', 'subfactions', f"{subf_clean}.png"),
-                ]
-                for path in candidates:
-                    if os.path.isfile(path):
-                        img = Image.open(path).convert('RGBA')
-                        # If we used the small icon, place it on a banner canvas
-                        if os.path.join('media', 'subfactions') in path.replace('\\', '/'):
-                            W, H = 640, 180
-                            canvas = Image.new('RGBA', (W, H), (37, 37, 38, 0))
-                            # Simple vertical gradient
-                            draw = ImageDraw.Draw(canvas)
-                            for y in range(H):
-                                shade = 37 + int((y / max(1, H - 1)) * 18)
-                                draw.line([(0, y), (W, y)], fill=(shade, shade, shade, 255))
-                            # Scale icon to fit nicely
-                            target_h = H - 40
-                            ratio = target_h / max(1, img.height)
-                            icon_img = img.resize((int(img.width * ratio), target_h), Image.LANCZOS)
-                            x = (W - icon_img.width) // 2
-                            y = (H - icon_img.height) // 2
-                            canvas.paste(icon_img, (x, y), icon_img)
-                            pil_banner = canvas
-                        else:
-                            pil_banner = img
-                        break
 
-            # Style: Helldiver Banner
-            elif banner_type_selected == "Helldiver Banner":
-                try:
-                    idx = random.randint(1, 6)
-                    candidates = [
-                        os.path.join(base_dir, 'media', 'helldiver_banner', f'helldiver{idx}.png'),
-                        os.path.join(base_dir, 'media', 'helldivers', f'helldiver{idx}.png'),
-                        os.path.join(base_dir, f'helldiver{idx}.png'),
-                    ]
-                    hld_path = next((p for p in candidates if os.path.isfile(p)), None)
-                    if hld_path:
-                        img = Image.open(hld_path).convert('RGBA')
-                        W, H = 460, 148
-                        canvas = Image.new('RGBA', (W, H), (37, 37, 38, 0))
-                        # Center without resizing (images are already hard sized)
-                        x = (W - img.width) // 2
-                        y = (H - img.height) // 2
-                        canvas.paste(img, (x, y), img)
-                        pil_banner = canvas
-                except Exception as e:
-                    logging.error(f"Failed to load Helldiver banner: {e}")
-
-            # Default: Biome Banner
-            # Use the centralized image_utils to produce the final banner PhotoImage
+            # Delegate actual loading/selection to image_utils.load_biome_banner which prefers repo-root media
             banner_img = load_biome_banner(app, banner_type_selected, planet_name)
             if banner_img:
                 app.biome_banner_img = banner_img
@@ -375,8 +315,7 @@ def build_ui(app):
             logging.error(f"Failed to load biome banner: {e}")
             # Fallback to default
             try:
-                base_dir = os.path.dirname(os.path.abspath(__file__))
-                banner_path = os.path.join(base_dir, 'media', 'biome_banners', 'Mars.png')
+                banner_path = app_path('media', 'biome_banners', 'Mars.png')
                 pil_banner = Image.open(banner_path).convert('RGBA')
                 bg_color = (37, 37, 38, 255)
                 background = Image.new('RGBA', pil_banner.size, bg_color)
@@ -562,23 +501,23 @@ def build_ui(app):
     def update_row_images(*args):
         # Image 1: Enemy Type
         enemy_type = app.enemy_type.get()
-        enemy_icon_path = os.path.join('./media/factions', f"{enemy_type}.png") if enemy_type else None
+        enemy_icon_path = app_path('media', 'factions', f"{enemy_type}.png") if enemy_type else None
         if not enemy_icon_path or not os.path.exists(enemy_icon_path):
-            enemy_icon_path = "sector-placeholder.png"
+            enemy_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         # Image 2: Subfaction
         subfaction_type = app.subfaction_type.get()
         subfaction_type_clean = subfaction_type.replace(" ", "_") if subfaction_type else ""
-        subfaction_icon_path = os.path.join('./media/subfactions', f"{subfaction_type_clean}.png") if subfaction_type_clean else None
+        subfaction_icon_path = app_path('media', 'subfactions', f"{subfaction_type_clean}.png") if subfaction_type_clean else None
         if not subfaction_icon_path or not os.path.exists(subfaction_icon_path):
-            subfaction_icon_path = "sector-placeholder.png"
+            subfaction_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         # Image 3: Campaign
         campaign_type = app.mission_category.get()
         campaign_type_clean = campaign_type.replace(" ", "_") if campaign_type else ""
-        campaign_icon_path = os.path.join('./media/campaigns', f"{campaign_type_clean}.png") if campaign_type_clean else None
+        campaign_icon_path = app_path('media', 'campaigns', f"{campaign_type_clean}.png") if campaign_type_clean else None
         if not campaign_icon_path or not os.path.exists(campaign_icon_path):
-            campaign_icon_path = "sector-placeholder.png"
+            campaign_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         # Image 4: Difficulty
         try:
@@ -587,12 +526,12 @@ def build_ui(app):
                 difficulty_type_clean = difficulty_type.split('-', 1)[1].strip()
             else:
                 difficulty_type_clean = difficulty_type.replace(" ", "_") if difficulty_type else ""
-            difficulty_icon_path = os.path.join('./media/difficulties', f"{difficulty_type_clean}.png")
+            difficulty_icon_path = app_path('media', 'difficulties', f"{difficulty_type_clean}.png")
             if not difficulty_icon_path or not os.path.exists(difficulty_icon_path):
-                difficulty_icon_path = "sector-placeholder.png"
+                difficulty_icon_path = app_path('orphan', 'sector-placeholder.png')
         except Exception as e:
             logging.error(f"Error loading difficulty icon: {e}")
-            difficulty_icon_path = "sector-placeholder.png"
+            difficulty_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         # Image 5: Mission
         mission_type = app.mission_type.get()
@@ -611,25 +550,25 @@ def build_ui(app):
             mission_icon_filename = "Blitz Destroy Illuminate Warp Ships.png"
         else:
             mission_icon_filename = f"{mission_type}.png" if mission_type else None
-        mission_icon_path = os.path.join('./media/missions', mission_icon_filename) if mission_icon_filename else None
+        mission_icon_path = app_path('media', 'missions', mission_icon_filename) if mission_icon_filename else None
         if not mission_icon_path or not os.path.exists(mission_icon_path):
-            mission_icon_path = "sector-placeholder.png"
+            mission_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         # Image 6: Major Order checkbox
         major_order_active = app.MO.get()
         if major_order_active:
-            major_order_icon_path = os.path.join('./media/major_order', "Major_Order_True.png")
+            major_order_icon_path = app_path('media', 'major_order', "Major_Order_True.png")
         else:
-            major_order_icon_path = os.path.join('./media/major_order', "Major_Order_False.png")
-        if not os.path.exists(major_order_icon_path):
-            major_order_icon_path = "sector-placeholder.png"
+            major_order_icon_path = app_path('media', 'major_order', "Major_Order_False.png")
+        if not major_order_icon_path or not os.path.exists(major_order_icon_path):
+            major_order_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         # Image 7: DSS dropdown
         dss_mod = app.DSSMod.get()
         dss_mod_clean = dss_mod.replace(" ", "_") if dss_mod else ""
-        dss_icon_path = os.path.join('./media/dssmod', f"{dss_mod_clean}.png") if dss_mod_clean else None
+        dss_icon_path = app_path('media', 'dssmod', f"{dss_mod_clean}.png") if dss_mod_clean else None
         if not dss_icon_path or not os.path.exists(dss_icon_path):
-            dss_icon_path = "sector-placeholder.png"
+            dss_icon_path = app_path('orphan', 'sector-placeholder.png')
 
         icon_paths = [
             enemy_icon_path,
@@ -705,9 +644,8 @@ def build_ui(app):
             parent do not trigger in the child process.
             """
             try:
-                settings_path = app_path("settings.py")
-                if not os.path.exists(settings_path):
-                    settings_path = os.path.join(os.path.dirname(__file__), 'settings.py')
+                # Prefer running settings as a module so package-relative imports work
+                settings_module = ['-m', 'core.settings']
 
                 env = os.environ.copy()
                 # Remove environment variables that may cause debugger/pydevd to inject plugins
@@ -720,8 +658,16 @@ def build_ui(app):
                 if os.name == 'nt':
                     creationflags = subprocess.CREATE_NEW_PROCESS_GROUP
 
-                subprocess.Popen([sys.executable, settings_path, '-ML'], env=env,
-                                 creationflags=creationflags, close_fds=True)
+                try:
+                    subprocess.Popen([sys.executable] + settings_module + ['-ML'], env=env,
+                                     creationflags=creationflags, close_fds=True)
+                except Exception:
+                    # Fallback to running the file directly if module invocation fails
+                    settings_path = app_path("settings.py")
+                    if not os.path.exists(settings_path):
+                        settings_path = os.path.join(os.path.dirname(__file__), 'settings.py')
+                    subprocess.Popen([sys.executable, settings_path, '-ML'], env=env,
+                                     creationflags=creationflags, close_fds=True)
             except Exception as e:
                 logging.error(f"Failed to open settings: {e}")
 
@@ -739,8 +685,8 @@ def build_ui(app):
         # Anchor to top-right, adjust x/y padding as needed
         app.top_right_info_frame.place(relx=1.0, rely=0.0, anchor="ne", x=-8, y=8)
 
-        app.help_btn_img_default = load_small_icon("./media/SyInt/HelpButton.png")
-        app.help_btn_img_hover = load_small_icon("./media/SyInt/HelpButtonHover.png")
+        app.help_btn_img_default = load_small_icon(app_path('media', 'SyInt', 'HelpButton.png'))
+        app.help_btn_img_hover = load_small_icon(app_path('media', 'SyInt', 'HelpButtonHover.png'))
 
         app.help_btn_label = tk.Label(
         app.top_right_info_frame,
@@ -777,7 +723,7 @@ def build_ui(app):
             try:
                 if show_easter_egg:
                     # Easter egg: show egg.png at larger size
-                    pil_img = Image.open("./media/SyInt/egg.png").convert('RGBA')
+                    pil_img = Image.open(app_path('media', 'SyInt', 'egg.png')).convert('RGBA')
                     # Scale up the image (2x size)
                     pil_img = pil_img.resize((pil_img.width * 2, pil_img.height * 2), Image.LANCZOS)
                     img = ImageTk.PhotoImage(pil_img)
@@ -786,7 +732,7 @@ def build_ui(app):
                     lbl.pack(padx=0, pady=0)
                 else:
                     # Normal: show Tips.png
-                    pil_img = Image.open("./media/SyInt/Tips.png").convert('RGBA')
+                    pil_img = Image.open(app_path('media', 'SyInt', 'Tips.png')).convert('RGBA')
                     # Subsample the image (resize to half size)
                     pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
                     img = ImageTk.PhotoImage(pil_img)
@@ -814,8 +760,8 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.invite_btn_img_default = load_invite_btn_img("./media/SyInt/InviteButton.png")
-        app.invite_btn_img_hover = load_invite_btn_img("./media/SyInt/InviteButtonHover.png")
+        app.invite_btn_img_default = load_invite_btn_img(app_path('media', 'SyInt', 'InviteButton.png'))
+        app.invite_btn_img_hover = load_invite_btn_img(app_path('media', 'SyInt', 'InviteButtonHover.png'))
 
         app.invite_btn_label = tk.Label(
         button_icon_frame,
@@ -1137,10 +1083,10 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.submit_img_default = load_btn_img("./media/SyInt/SubmitButtonNH.png")
-        app.submit_img_hover = load_btn_img("./media/SyInt/SubmitButtonHover.png")
-        app.submit_img_yes = load_btn_img("./media/SyInt/SubmitButtonYes.png")
-        app.submit_img_no = load_btn_img("./media/SyInt/SubmitButtonNo.png")
+        app.submit_img_default = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonNH.png'))
+        app.submit_img_hover = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonHover.png'))
+        app.submit_img_yes = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonYes.png'))
+        app.submit_img_no = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonNo.png'))
 
         app._submit_img_state = app.submit_img_default
         app.submit_label = tk.Label(content, image=app.submit_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
@@ -1169,7 +1115,7 @@ def build_ui(app):
 
     # Submission overlay image placed behind the submit button
     try:
-        overlay_img_path = "./media/SyInt/SubmissionOverlay.png"
+        overlay_img_path = app_path('media', 'SyInt', 'SubmissionOverlay.png')
         pil_overlay = Image.open(overlay_img_path).convert('RGBA')
         new_width = int(pil_overlay.width * 1.05)
         new_height = pil_overlay.height
@@ -1179,7 +1125,7 @@ def build_ui(app):
         pil_overlay = Image.alpha_composite(background, pil_overlay)
         app.submit_overlay_img = ImageTk.PhotoImage(pil_overlay)
         app.submit_overlay_label = tk.Label(
-        content, image=app.submit_overlay_img, borderwidth=0, highlightthickness=0, bg="#252526"
+            content, image=app.submit_overlay_img, borderwidth=0, highlightthickness=0, bg="#252526"
         )
         app.submit_overlay_label.grid(row=3, column=0, pady=(10, 0), padx=(0, 5), sticky="n")
         app.submit_overlay_label.lower(app.submit_label)
@@ -1204,32 +1150,48 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.export_gui_img_default = load_export_gui_img("./media/SyInt/ExportGUIButton.png")
-        app.export_gui_img_hover = load_export_gui_img("./media/SyInt/ExportGUIButtonHover.png")
+        app.export_gui_img_default = load_export_gui_img(app_path('media', 'SyInt', 'ExportGUIButton.png'))
+        app.export_gui_img_hover = load_export_gui_img(app_path('media', 'SyInt', 'ExportGUIButtonHover.png'))
 
         # Pad left side by increasing padx
         app.export_gui_label = tk.Label(export_frame, image=app.export_gui_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_gui_label.grid(row=4, column=0, pady=15, padx=(20,0))  # <-- Increased left padding here
 
         def on_export_gui_enter(e):
-                app.export_gui_label.configure(image=app.export_gui_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.export_gui_label.configure(image=app.export_gui_img_hover)
+            try:
+                play_button_hover()
+            except Exception:
+                pass
+
         def on_export_gui_leave(e):
             app.export_gui_label.configure(image=app.export_gui_img_default)
 
         def on_export_gui_click(e):
             play_button_click()
-            subprocess.run(['python', 'exportGUI.py'], shell=False)
+            try:
+                # prefer running as a module so package imports resolve
+                subprocess.run([sys.executable, '-m', 'core.exportGUI'], shell=False)
+            except Exception:
+                try:
+                    exportgui_path = app_path('core', 'exportGUI.py')
+                except Exception:
+                    exportgui_path = os.path.join(os.path.dirname(__file__), 'exportGUI.py')
+                subprocess.run([sys.executable, exportgui_path], shell=False)
 
         app.export_gui_label.bind("<Enter>", on_export_gui_enter)
         app.export_gui_label.bind("<Leave>", on_export_gui_leave)
         app.export_gui_label.bind("<Button-1>", on_export_gui_click)
     except Exception as e:
         logging.error(f"Failed to load Export GUI button image: {e}")
-        GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=lambda: subprocess.run(['python', 'exportGUI.py'], shell=False), padding=(6,5), width=14)
+        def _launch_export_gui():
+            try:
+                exportgui_path = app_path('core', 'exportGUI.py')
+            except Exception:
+                exportgui_path = os.path.join(os.path.dirname(__file__), 'exportGUI.py')
+            subprocess.run([sys.executable, exportgui_path], shell=False)
+
+        GUIbutton = ttk.Button(export_frame, text=" Open\nExport\n  GUI", command=_launch_export_gui, padding=(6,5), width=14)
         GUIbutton.grid(row=4, column=0, pady=15, padx=(20,0))  # <-- Increased left padding here
 
     # Planet aggregation export (with image and hover effect)
@@ -1242,31 +1204,46 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.export_planet_img_default = load_export_planet_img("./media/SyInt/ExportPlanetButton.png")
-        app.export_planet_img_hover = load_export_planet_img("./media/SyInt/ExportPlanetButtonHover.png")
+        app.export_planet_img_default = load_export_planet_img(app_path('media', 'SyInt', 'ExportPlanetButton.png'))
+        app.export_planet_img_hover = load_export_planet_img(app_path('media', 'SyInt', 'ExportPlanetButtonHover.png'))
 
         app.export_planet_label = tk.Label(export_frame, image=app.export_planet_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_planet_label.grid(row=4, column=1, padx=(20,0), pady=15)
 
         def on_export_planet_enter(e):
-                app.export_planet_label.configure(image=app.export_planet_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.export_planet_label.configure(image=app.export_planet_img_hover)
+            try:
+                play_button_hover()
+            except Exception:
+                pass
+
         def on_export_planet_leave(e):
             app.export_planet_label.configure(image=app.export_planet_img_default)
 
         def on_export_planet_click(e):
             play_button_click()
-            subprocess.run(['python', 'sub.py'], shell=False)
+            try:
+                subprocess.run([sys.executable, '-m', 'core.sub'], shell=False)
+            except Exception:
+                try:
+                    sub_path = app_path('core', 'sub.py')
+                except Exception:
+                    sub_path = os.path.join(os.path.dirname(__file__), 'sub.py')
+                subprocess.run([sys.executable, sub_path], shell=False)
 
         app.export_planet_label.bind("<Enter>", on_export_planet_enter)
         app.export_planet_label.bind("<Leave>", on_export_planet_leave)
         app.export_planet_label.bind("<Button-1>", on_export_planet_click)
     except Exception as e:
         logging.error(f"Failed to load Export Planet button image: {e}")
-        export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=lambda: subprocess.run(['python', 'sub.py']), padding=(6,5), width=14)
+        def _launch_sub():
+            try:
+                sub_path = app_path('core', 'sub.py')
+            except Exception:
+                sub_path = os.path.join(os.path.dirname(__file__), 'sub.py')
+            subprocess.run([sys.executable, sub_path], shell=False)
+
+        export_button = ttk.Button(export_frame, text="Export Planet\n     Data to\n   Webhook", command=_launch_sub, padding=(6,5), width=14)
         export_button.grid(row=4, column=1, padx=(20,0), pady=15)
 
     # Faction aggregation export (with image and hover effect)
@@ -1279,31 +1256,46 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.export_faction_img_default = load_export_faction_img("./media/SyInt/ExportFactionButton.png")
-        app.export_faction_img_hover = load_export_faction_img("./media/SyInt/ExportFactionButtonHover.png")
+        app.export_faction_img_default = load_export_faction_img(app_path('media', 'SyInt', 'ExportFactionButton.png'))
+        app.export_faction_img_hover = load_export_faction_img(app_path('media', 'SyInt', 'ExportFactionButtonHover.png'))
 
         app.export_faction_label = tk.Label(export_frame, image=app.export_faction_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_faction_label.grid(row=4, column=2, padx=(20,0), pady=15)
 
         def on_export_faction_enter(e):
-                app.export_faction_label.configure(image=app.export_faction_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.export_faction_label.configure(image=app.export_faction_img_hover)
+            try:
+                play_button_hover()
+            except Exception:
+                pass
+
         def on_export_faction_leave(e):
             app.export_faction_label.configure(image=app.export_faction_img_default)
 
         def on_export_faction_click(e):
             play_button_click()
-            subprocess.run(['python', 'faction.py'], shell=False)
+            try:
+                subprocess.run([sys.executable, '-m', 'core.faction'], shell=False)
+            except Exception:
+                try:
+                    faction_path = app_path('core', 'faction.py')
+                except Exception:
+                    faction_path = os.path.join(os.path.dirname(__file__), 'faction.py')
+                subprocess.run([sys.executable, faction_path], shell=False)
 
         app.export_faction_label.bind("<Enter>", on_export_faction_enter)
         app.export_faction_label.bind("<Leave>", on_export_faction_leave)
         app.export_faction_label.bind("<Button-1>", on_export_faction_click)
     except Exception as e:
         logging.error(f"Failed to load Export Faction button image: {e}")
-        export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=lambda: subprocess.run(['python', 'faction.py']), padding=(6,5), width=14)
+        def _launch_faction():
+            try:
+                faction_path = app_path('core', 'faction.py')
+            except Exception:
+                faction_path = os.path.join(os.path.dirname(__file__), 'faction.py')
+            subprocess.run([sys.executable, faction_path], shell=False)
+
+        export_button = ttk.Button(export_frame, text="Export Faction\n      Data to\n    Webhook", command=_launch_faction, padding=(6,5), width=14)
         export_button.grid(row=4, column=2, padx=(20,0), pady=15)
 
     # Prior 7 days aggregation export (with image and hover effect)
@@ -1316,24 +1308,32 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.export_7days_img_default = load_export_7days_img("./media/SyInt/Export7DaysButton.png")
-        app.export_7days_img_hover = load_export_7days_img("./media/SyInt/Export7DaysButtonHover.png")
+        app.export_7days_img_default = load_export_7days_img(app_path('media', 'SyInt', 'Export7DaysButton.png'))
+        app.export_7days_img_hover = load_export_7days_img(app_path('media', 'SyInt', 'Export7DaysButtonHover.png'))
 
         app.export_7days_label = tk.Label(export_frame, image=app.export_7days_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_7days_label.grid(row=4, column=3, padx=(20,0), pady=15)
 
         def on_export_7days_enter(e):
-                app.export_7days_label.configure(image=app.export_7days_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.export_7days_label.configure(image=app.export_7days_img_hover)
+            try:
+                play_button_hover()
+            except Exception:
+                pass
+
         def on_export_7days_leave(e):
             app.export_7days_label.configure(image=app.export_7days_img_default)
 
         def on_export_7days_click(e):
             play_button_click()
-            subprocess.run(['python', 'expWeek.py'], shell=False)
+            try:
+                subprocess.run([sys.executable, '-m', 'core.expWeek'], shell=False)
+            except Exception:
+                try:
+                    expweek_path = app_path('core', 'expWeek.py')
+                except Exception:
+                    expweek_path = os.path.join(os.path.dirname(__file__), 'expWeek.py')
+                subprocess.run([sys.executable, expweek_path], shell=False)
 
         app.export_7days_label.bind("<Enter>", on_export_7days_enter)
         app.export_7days_label.bind("<Leave>", on_export_7days_leave)
@@ -1341,7 +1341,14 @@ def build_ui(app):
 
     except Exception as e:
         logging.error(f"Failed to load Export 7 Days button image: {e}")
-        export_button = ttk.Button(export_frame, text="Export Last 7 Days\n       Data to\n     Webhook", command=lambda: subprocess.run(['python', 'expWeek.py']), padding=(6,5), width=16)
+        def _launch_expweek():
+            try:
+                expweek_path = app_path('core', 'expWeek.py')
+            except Exception:
+                expweek_path = os.path.join(os.path.dirname(__file__), 'expWeek.py')
+            subprocess.run([sys.executable, expweek_path], shell=False)
+
+        export_button = ttk.Button(export_frame, text="Export Last 7 Days\n       Data to\n     Webhook", command=_launch_expweek, padding=(6,5), width=16)
         export_button.grid(row=4, column=3, padx=(20,0), pady=15)
 
     # Favourite aggregation export (with image and hover effect)
@@ -1354,31 +1361,46 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.export_favourites_img_default = load_export_favourites_img("./media/SyInt/ExportFavouritesButton.png")
-        app.export_favourites_img_hover = load_export_favourites_img("./media/SyInt/ExportFavouritesButtonHover.png")
+        app.export_favourites_img_default = load_export_favourites_img(app_path('media', 'SyInt', 'ExportFavouritesButton.png'))
+        app.export_favourites_img_hover = load_export_favourites_img(app_path('media', 'SyInt', 'ExportFavouritesButtonHover.png'))
 
         app.export_favourites_label = tk.Label(export_frame, image=app.export_favourites_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_favourites_label.grid(row=4, column=4, padx=(20,0), pady=15)
 
         def on_export_favourites_enter(e):
-                app.export_favourites_label.configure(image=app.export_favourites_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.export_favourites_label.configure(image=app.export_favourites_img_hover)
+            try:
+                play_button_hover()
+            except Exception:
+                pass
+
         def on_export_favourites_leave(e):
             app.export_favourites_label.configure(image=app.export_favourites_img_default)
 
         def on_export_favourites_click(e):
             play_button_click()
-            subprocess.run(['python', 'favourites.py'], shell=False)
+            try:
+                subprocess.run([sys.executable, '-m', 'core.favourites'], shell=False)
+            except Exception:
+                try:
+                    fav_path = app_path('core', 'favourites.py')
+                except Exception:
+                    fav_path = os.path.join(os.path.dirname(__file__), 'favourites.py')
+                subprocess.run([sys.executable, fav_path], shell=False)
 
         app.export_favourites_label.bind("<Enter>", on_export_favourites_enter)
         app.export_favourites_label.bind("<Leave>", on_export_favourites_leave)
         app.export_favourites_label.bind("<Button-1>", on_export_favourites_click)
     except Exception as e:
         logging.error(f"Failed to load Export Favourites button image: {e}")
-        export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'favourites.py']), padding=(6,5), width=16)
+        def _launch_favourites():
+            try:
+                fav_path = app_path('core', 'favourites.py')
+            except Exception:
+                fav_path = os.path.join(os.path.dirname(__file__), 'favourites.py')
+            subprocess.run([sys.executable, fav_path], shell=False)
+
+        export_button = ttk.Button(export_frame, text="Export Favourites\n        Data to\n     Webhook", command=_launch_favourites, padding=(6,5), width=16)
         export_button.grid(row=4, column=4, padx=(20,0), pady=15)
 
     image_button_frame = ttk.Frame(mission_frame)
@@ -1394,8 +1416,8 @@ def build_ui(app):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        app.export_achievements_img_default = load_export_achievements_img("./media/SyInt/ExportAchievementsButton.png")
-        app.export_achievements_img_hover = load_export_achievements_img("./media/SyInt/ExportAchievementsButtonHover.png")
+        app.export_achievements_img_default = load_export_achievements_img(app_path('media', 'SyInt', 'ExportAchievementsButton.png'))
+        app.export_achievements_img_hover = load_export_achievements_img(app_path('media', 'SyInt', 'ExportAchievementsButtonHover.png'))
 
         app.export_achievements_label = tk.Label(export_frame, image=app.export_achievements_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_achievements_label.grid(row=4, column=5, padx=(20,0), pady=15)
@@ -1403,24 +1425,39 @@ def build_ui(app):
         app.export_achievements_label.grid(row=4, column=5, padx=(20,0), pady=15)
 
         def on_export_achievements_enter(e):
-                app.export_achievements_label.configure(image=app.export_achievements_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.export_achievements_label.configure(image=app.export_achievements_img_hover)
+            try:
+                play_button_hover()
+            except Exception:
+                pass
+
         def on_export_achievements_leave(e):
             app.export_achievements_label.configure(image=app.export_achievements_img_default)
 
         def on_export_achievements_click(e):
             play_button_click()
-            subprocess.run(['python', 'achievements.py'], shell=False)
+            try:
+                subprocess.run([sys.executable, '-m', 'core.Achievements'], shell=False)
+            except Exception:
+                try:
+                    achievements_path = app_path('core', 'Achievements.py')
+                except Exception:
+                    achievements_path = os.path.join(os.path.dirname(__file__), 'Achievements.py')
+                subprocess.run([sys.executable, achievements_path], shell=False)
 
         app.export_achievements_label.bind("<Enter>", on_export_achievements_enter)
         app.export_achievements_label.bind("<Leave>", on_export_achievements_leave)
         app.export_achievements_label.bind("<Button-1>", on_export_achievements_click)
     except Exception as e:
         logging.error(f"Failed to load Export Achievements button image: {e}")
-        export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=lambda: subprocess.run(['python', 'achievements.py']), padding=(6,5), width=16)
+        def _launch_achievements():
+            try:
+                achievements_path = app_path('core', 'Achievements.py')
+            except Exception:
+                achievements_path = os.path.join(os.path.dirname(__file__), 'Achievements.py')
+            subprocess.run([sys.executable, achievements_path], shell=False)
+
+        export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=_launch_achievements, padding=(6,5), width=16)
         export_button.grid(row=4, column=5, padx=(20,0), pady=15)
 
     def _force_no_faction_for_observing(*_):

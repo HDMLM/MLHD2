@@ -12,7 +12,7 @@ from typing import Optional, Tuple
 
 from PIL import Image, ImageTk, ImageDraw
 
-from runtime_paths import app_path
+from core.runtime_paths import app_path
 
 
 def _composite_bg(pil_img: Image.Image, bg_color=(37, 37, 38, 255)) -> Image.Image:
@@ -29,9 +29,30 @@ def pil_to_photo(pil_img: Image.Image) -> ImageTk.PhotoImage:
     return ImageTk.PhotoImage(pil_img)
 
 
+def _media_path(*parts: str) -> str:
+    """Return a filename for media resources.
+
+    Try (in order):
+      - install-aware app_path(base parts)
+      - package-local path under this module
+      - current working directory
+    Always return a string path (may not exist).
+    """
+    try:
+        candidate = app_path(*parts)
+        if os.path.exists(candidate):
+            return candidate
+    except Exception:
+        pass
+    local = os.path.join(os.path.dirname(__file__), *parts)
+    if os.path.exists(local):
+        return local
+    return os.path.join(os.getcwd(), *parts)
+
+
 def load_gw_icon() -> Optional[ImageTk.PhotoImage]:
     try:
-        path = os.path.join('media', 'SyInt', 'gw_icon.png')
+        path = _media_path('media', 'SyInt', 'gw_icon.png')
         pil = Image.open(path).convert('RGBA')
         pil = pil.resize((max(1, pil.width // 55), max(1, pil.height // 55)), Image.LANCZOS)
         return pil_to_photo(pil)
@@ -42,7 +63,7 @@ def load_gw_icon() -> Optional[ImageTk.PhotoImage]:
 
 def load_profile_preview(profile_name: str, size: Tuple[int, int] = (120, 120)) -> Optional[ImageTk.PhotoImage]:
     try:
-        img_path = os.path.join('media', 'profile_pictures', f"{profile_name}.png")
+        img_path = _media_path('media', 'profile_pictures', f"{profile_name}.png")
         pil = Image.open(img_path).convert('RGBA')
         pil = pil.resize(size, Image.LANCZOS)
         return pil_to_photo(pil)
@@ -53,7 +74,10 @@ def load_profile_preview(profile_name: str, size: Tuple[int, int] = (120, 120)) 
 
 def load_sector_placeholder(size: Optional[Tuple[int, int]] = None) -> Optional[ImageTk.PhotoImage]:
     try:
-        path = 'sector-placeholder.png'
+        # Try orphan folder first (user moved placeholder there), then regular media resolution
+        path = _media_path('orphan', 'sector-placeholder.png')
+        if not os.path.exists(path):
+            path = _media_path('sector-placeholder.png')
         pil = Image.open(path).convert('RGBA')
         if size:
             pil = pil.resize(size, Image.LANCZOS)
@@ -65,7 +89,7 @@ def load_sector_placeholder(size: Optional[Tuple[int, int]] = None) -> Optional[
 
 def load_planet_preview(biome_name: str) -> Optional[ImageTk.PhotoImage]:
     try:
-        img_path = os.path.join('media', 'planets', f"{biome_name}.png")
+        img_path = _media_path('media', 'planets', f"{biome_name}.png")
         pil = Image.open(img_path).convert('RGBA')
         return pil_to_photo(pil)
     except Exception as e:
@@ -75,7 +99,7 @@ def load_planet_preview(biome_name: str) -> Optional[ImageTk.PhotoImage]:
 
 def load_sector_preview(sector_name: str, enemy_type: str) -> Optional[ImageTk.PhotoImage]:
     try:
-        img_path = os.path.join('media', 'sectors', f"{sector_name}.png")
+        img_path = _media_path('media', 'sectors', f"{sector_name}.png")
         pil = Image.open(img_path).convert('RGBA')
 
         # Replace near-white pixels with chroma color depending on enemy type
@@ -105,9 +129,15 @@ def load_sector_preview(sector_name: str, enemy_type: str) -> Optional[ImageTk.P
 
 def load_row_image(img_path: str, size: Tuple[int, int] = (60, 60)) -> Optional[ImageTk.PhotoImage]:
     try:
-        if not img_path or not os.path.exists(img_path):
+        if not img_path:
             return None
-        pil = Image.open(img_path).convert('RGBA')
+        # Resolve relative media paths first
+        p = img_path
+        if not os.path.isabs(p):
+            p = _media_path(*p.split(os.path.sep) if os.path.sep in p else (p,))
+        if not os.path.exists(p):
+            return None
+        pil = Image.open(p).convert('RGBA')
         pil = pil.resize(size, Image.LANCZOS)
         return pil_to_photo(pil)
     except Exception as e:
@@ -118,7 +148,8 @@ def load_row_image(img_path: str, size: Tuple[int, int] = (60, 60)) -> Optional[
 def load_settings_button_images() -> Tuple[Optional[ImageTk.PhotoImage], Optional[ImageTk.PhotoImage]]:
     try:
         def _load(path):
-            pil = Image.open(path).convert('RGBA')
+            p = path if os.path.isabs(path) else _media_path(*path.split(os.path.sep) if os.path.sep in path else (path,))
+            pil = Image.open(p).convert('RGBA')
             pil = pil.resize((max(1, pil.width // 4), max(1, pil.height // 4)), Image.LANCZOS)
             return pil_to_photo(pil)
 
@@ -136,17 +167,16 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
     This mirrors the original logic in gui_components but packaged here.
     """
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-
         pil_banner = None
+
         # Subfaction banner
         if banner_type_selected == "Subfaction Banner":
             subfaction = (getattr(app, 'subfaction_type', None) and app.subfaction_type.get()) or "Unknown"
             subf_clean = subfaction.replace(" ", "_")
             candidates = [
-                os.path.join(base_dir, 'media', 'subfaction_banner', f"{subfaction}.png"),
-                os.path.join(base_dir, 'media', 'subfaction_banner', f"{subf_clean}.png"),
-                os.path.join(base_dir, 'media', 'subfactions', f"{subf_clean}.png"),
+                _media_path('media', 'subfaction_banner', f"{subfaction}.png"),
+                _media_path('media', 'subfaction_banner', f"{subf_clean}.png"),
+                _media_path('media', 'subfactions', f"{subf_clean}.png"),
             ]
             for path in candidates:
                 if os.path.isfile(path):
@@ -174,9 +204,9 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
             try:
                 idx = random.randint(1, 6)
                 candidates = [
-                    os.path.join(base_dir, 'media', 'helldiver_banner', f'helldiver{idx}.png'),
-                    os.path.join(base_dir, 'media', 'helldivers', f'helldiver{idx}.png'),
-                    os.path.join(base_dir, f'helldiver{idx}.png'),
+                    _media_path('media', 'helldiver_banner', f'helldiver{idx}.png'),
+                    _media_path('media', 'helldivers', f'helldiver{idx}.png'),
+                    _media_path(f'helldiver{idx}.png'),
                 ]
                 hld_path = next((p for p in candidates if os.path.isfile(p)), None)
                 if hld_path:
@@ -193,9 +223,9 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
         # Default biome banner
         if pil_banner is None:
             biome_name = planet_name or 'Mars'
-            path = os.path.join(base_dir, 'media', 'biome_banners', f"{biome_name}.png")
+            path = _media_path('media', 'biome_banners', f"{biome_name}.png")
             if not os.path.isfile(path):
-                path = os.path.join(base_dir, 'media', 'biome_banners', 'Mars.png')
+                path = _media_path('media', 'biome_banners', 'Mars.png')
             pil_banner = Image.open(path).convert('RGBA')
 
         # Overlay HVT if present
@@ -205,13 +235,13 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
                 hvt_norm = hvt_name.replace(" ", "")
                 hvt_underscored = hvt_name.replace(" ", "_")
                 candidates = [
-                    os.path.join(base_dir, "media", "overlays", f"{hvt_underscored}_Overlay.png"),
-                    os.path.join(base_dir, "media", "overlays", f"{hvt_norm}_Overlay.png"),
-                    os.path.join(base_dir, "media", "overlays", f"{hvt_underscored}.png"),
+                    _media_path("media", "overlays", f"{hvt_underscored}_Overlay.png"),
+                    _media_path("media", "overlays", f"{hvt_norm}_Overlay.png"),
+                    _media_path("media", "overlays", f"{hvt_underscored}.png"),
                 ]
                 if hvt_name == "Hive Lords":
-                    candidates.append(os.path.join(base_dir, "media", "overlays", "Hive_Lords_Overlay.png"))
-                    candidates.append(os.path.join(base_dir, "Hive_Lords_Overlay.png"))
+                    candidates.append(_media_path("media", "overlays", "Hive_Lords_Overlay.png"))
+                    candidates.append(_media_path("Hive_Lords_Overlay.png"))
                 overlay_path = next((p for p in candidates if os.path.isfile(p)), None)
                 if overlay_path:
                     hvt_img = Image.open(overlay_path).convert('RGBA')

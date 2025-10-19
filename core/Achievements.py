@@ -1,21 +1,21 @@
 import pandas as pd
 from datetime import datetime, timezone, timedelta
 import configparser
-from runtime_paths import app_path
+from core.runtime_paths import app_path
 import requests
 import json
 import logging
 import os
 import time
-from logging_config import setup_logging
-from icon import TITLE_ICONS
-from main import VERSION, DEV_RELEASE
+from core.logging_config import setup_logging
+from core.icon import TITLE_ICONS
+from core.app_core import VERSION, DEV_RELEASE
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
-config.read(app_path('config.config'))
+config.read(app_path('orphan', 'config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read(app_path('icon.config'))
+iconconfig.read(app_path('orphan', 'icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 

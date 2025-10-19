@@ -10,12 +10,12 @@ from datetime import datetime, timezone, timedelta
 import json
 import pandas as pd
 import logging
-from logging_config import setup_logging
+from core.logging_config import setup_logging
 from typing import Dict, List, Optional
 from PIL import Image, ImageTk, ImageDraw, ImageFont
 import time
 import configparser
-from runtime_paths import app_path, get_install_dir
+from core.runtime_paths import app_path, get_install_dir
 import threading
 import os
 import subprocess
@@ -24,14 +24,14 @@ import random
 import re
 import webbrowser
 import discordrpc
-from ui_sound import (
+from core.ui_sound import (
     init_ui_sounds,
     play_button_click,
     play_button_hover,
     register_global_click_binding,
     set_ui_sounds_enabled,
 )
-from data_manager import (
+from core.data_manager import (
     load_persistent_settings,
     save_persistent_settings,
     append_mission_to_excel,
@@ -63,8 +63,8 @@ from tkinter import font as tkfont
 os.environ["PILLOW_DEBUG"] = "0"
 
 from PIL import Image, ImageTk
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, SUBFACTION_BANNERS, HELLDIVER_BANNERS, get_subfaction_banner, get_helldiver_banner
-from utils import (
+from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, SUBFACTION_BANNERS, HELLDIVER_BANNERS, get_subfaction_banner, get_helldiver_banner
+from core.utils import (
     is_valid_numeric_value,
     clean_numeric_string,
     normalize_subfaction_name,
@@ -95,7 +95,16 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 # Load config
 config = configparser.ConfigParser()
 # Prefer install-aware config paths
+# Prefer install-aware config paths; also try orphan folder where the user moved configs
 config.read(app_path('config.config'))
+# If user moved the config into orphan/, prefer that value (app_path will check install dir then repo root)
+try:
+    # Try orphan explicitly first if present
+    orphan_conf = app_path('orphan', 'config.config')
+    if os.path.exists(orphan_conf):
+        config.read(orphan_conf)
+except Exception:
+    pass
 DISCORD_CLIENT_ID = config.get('Discord', 'DISCORD_CLIENT_ID', fallback='0')
 iconconfig = configparser.ConfigParser()
 iconconfig.read(app_path('icon.config'))
@@ -381,7 +390,7 @@ class MissionLogGUI:
         self.last_rpc_update = 0
         def load_icon():
             try:
-                pil_icon = Image.open('SuperEarth.png').convert('RGBA')
+                pil_icon = Image.open(app_path('orphan', 'SuperEarth.png')).convert('RGBA')
                 bg_color = (37, 37, 38, 255)  # #252526
                 background = Image.new('RGBA', pil_icon.size, bg_color)
                 pil_icon = Image.alpha_composite(background, pil_icon)
@@ -435,7 +444,6 @@ class MissionLogGUI:
         self.MO = tk.BooleanVar()
         self.DSS = tk.BooleanVar()
         self.DSSMod = tk.StringVar()
-        self.report_style = tk.StringVar(value='Modern')
         self.note = tk.StringVar()
         self.shipName1 = tk.StringVar()
         self.shipName2 = tk.StringVar()
@@ -477,7 +485,7 @@ class MissionLogGUI:
     def _setup_discord_rpc(self) -> None:
         # Delegate to discord_integration.setup_discord_rpc to keep main focused
         try:
-            from discord_integration import setup_discord_rpc
+            from core.discord_integration import setup_discord_rpc
             setup_discord_rpc(self, DISCORD_CLIENT_ID)
         except Exception as e:
             logging.error(f"Failed to initialize Discord RPC via discord_integration: {e}")
@@ -485,7 +493,7 @@ class MissionLogGUI:
     def _setup_ui(self) -> None:
         # Delegate UI construction to gui_components to keep main file focused
         try:
-            from gui_components import build_ui
+            from core.gui_components import build_ui
             build_ui(self)
         except Exception as e:
             logging.error(f"Failed to build UI from gui_components: {e}")
@@ -493,7 +501,7 @@ class MissionLogGUI:
 
     def _update_discord_presence(self) -> None:
         try:
-            from discord_integration import update_discord_presence
+            from core.discord_integration import update_discord_presence
             update_discord_presence(self, RPC_UPDATE_INTERVAL)
         except Exception as e:
             logging.error(f"Failed to update Discord presence via discord_integration: {e}")
@@ -793,7 +801,7 @@ class MissionLogGUI:
 
     def _send_to_discord(self, data: Dict) -> bool:
         try:
-            from discord_integration import send_to_discord
+            from core.discord_integration import send_to_discord
             excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
             return send_to_discord(self, data, excel_file, DEBUG, DATE_FORMAT, VERSION, DEV_RELEASE)
         except Exception as e:
@@ -834,7 +842,11 @@ class MissionLogGUI:
 
     def export_excel(self):
         try:
-            subprocess.run(['python', 'sub.py'], 
+            try:
+                sub_path = app_path('core', 'sub.py')
+            except Exception:
+                sub_path = os.path.join(os.path.dirname(__file__), 'core', 'sub.py')
+            subprocess.run([sys.executable, sub_path], 
                           shell=False,
                           check=True,
                           capture_output=True)

@@ -17,8 +17,8 @@ import requests
 import pandas as pd
 import configparser
 
-from runtime_paths import app_path
-from icon import (
+from core.runtime_paths import app_path
+from core.icon import (
     ENEMY_ICONS,
     DIFFICULTY_ICONS,
     SYSTEM_COLORS,

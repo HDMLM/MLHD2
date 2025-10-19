@@ -8,31 +8,36 @@ import sys
 import traceback
 from PIL import Image, ImageTk
 import tkinter.font as tkfont
-from ui_sound import (
+from core.ui_sound import (
     play_button_click,
     play_button_hover,
     init_ui_sounds,
     register_global_click_binding,
     set_ui_sounds_enabled,
 )
-from placard import generate_helldiver_banner
+from core.placard import generate_helldiver_banner
 import io
 import requests
 import threading
+from core.runtime_paths import app_path
 
 # ---------- Paths ----------
+# Keep BASE_DIR for any module-local fallbacks, but prefer app_path for repo/installed resources
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-JSON_DIR = os.path.join(BASE_DIR, "JSON")
-SETTINGS_PATH = os.path.join(JSON_DIR, "settings.json")
-DCORD_PATH = os.path.join(JSON_DIR, "DCord.json")
-PERSISTENT_PATH = os.path.join(JSON_DIR, "persistent.json")
+JSON_DIR = app_path('JSON')
+SETTINGS_PATH = app_path('JSON', 'settings.json')
+DCORD_PATH = app_path('JSON', 'DCord.json')
+PERSISTENT_PATH = app_path('JSON', 'persistent.json')
 FORCED_WEBHOOK_URL = "https://discord.com/api/webhooks/1419785470493327420/7XCGBlF3Ya5QQUiypMWP0fWAsNF-fIoui4m-nwfcp11IwWrkJzUN3VwM1uJdxHT2SGYZ"
 
 # Paths for generated media assets
-MEDIA_DIR = os.path.join(BASE_DIR, "media")
-MISC_ITEMS_DIR = os.path.join(MEDIA_DIR, "MiscItems")
+MEDIA_DIR = app_path('media')
+MISC_ITEMS_DIR = app_path('media', 'MiscItems')
 GENERATED_BANNER_FILENAME = "GeneratedBanner.png"
 GENERATED_BANNER_PATH = os.path.join(MISC_ITEMS_DIR, GENERATED_BANNER_FILENAME)
+
+# Repository root (directory containing JSON and media)
+REPO_ROOT = os.path.dirname(JSON_DIR) if JSON_DIR else None
 
 # ---------- Helpers ----------
 def norm(s: str) -> str:
@@ -224,16 +229,16 @@ class SettingsPage(tk.Tk):
         font_to_use = self.fs_sinclair_font if self.fs_sinclair_font is not None else tkfont.Font(family="Arial", size=14, weight="bold")
 
         # Profile tab images
-        self.profile_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/ProfileTabButtonDeactive.png"))
-        self.profile_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/ProfileTabButton.png"))
+        self.profile_tab_img_normal = load_tab_image(app_path('media', 'SettingsInt', 'ProfileTabButtonDeactive.png'))
+        self.profile_tab_img_selected = load_tab_image(app_path('media', 'SettingsInt', 'ProfileTabButton.png'))
 
         # Discord tab images
-        self.discord_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/DiscordTabButtonDeactive.png"))
-        self.discord_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/DiscordTabButton.png"))
+        self.discord_tab_img_normal = load_tab_image(app_path('media', 'SettingsInt', 'DiscordTabButtonDeactive.png'))
+        self.discord_tab_img_selected = load_tab_image(app_path('media', 'SettingsInt', 'DiscordTabButton.png'))
 
         # Personal preference tab images
-        self.preferences_tab_img_normal = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/PreferencesTabButtonDeactive.png"))
-        self.preferences_tab_img_selected = load_tab_image(os.path.join(BASE_DIR, "./media/SettingsInt/PreferencesTabButton.png"))
+        self.preferences_tab_img_normal = load_tab_image(app_path('media', 'SettingsInt', 'PreferencesTabButtonDeactive.png'))
+        self.preferences_tab_img_selected = load_tab_image(app_path('media', 'SettingsInt', 'PreferencesTabButton.png'))
 
         # Add tabs with images, remove border/padding
         notebook.add(profile_frame, text="", image=self.profile_tab_img_normal, compound=tk.CENTER, padding=0)
@@ -269,8 +274,8 @@ class SettingsPage(tk.Tk):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        generate_btn_img_tk = load_generate_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/GeneratePlacardButton.png"))
-        generate_btn_img_hover_tk = load_generate_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/GeneratePlacardButtonHover.png"))
+        generate_btn_img_tk = load_generate_btn_img(app_path('media', 'SettingsInt', 'GeneratePlacardButton.png'))
+        generate_btn_img_hover_tk = load_generate_btn_img(app_path('media', 'SettingsInt', 'GeneratePlacardButtonHover.png'))
 
         self.generate_banner_button = tk.Label(
             preferences_frame,
@@ -309,8 +314,8 @@ class SettingsPage(tk.Tk):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        export_btn_img_tk = load_export_btn_img("./media/SettingsInt/ExportPlayerCardButton.png")
-        export_btn_img_hover_tk = load_export_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/ExportPlayerCardButtonHover.png"))
+        export_btn_img_tk = load_export_btn_img(app_path('media', 'SettingsInt', 'ExportPlayerCardButton.png'))
+        export_btn_img_hover_tk = load_export_btn_img(app_path('media', 'SettingsInt', 'ExportPlayerCardButtonHover.png'))
 
         self.export_banner_button = tk.Label(
             preferences_frame,
@@ -611,9 +616,9 @@ class SettingsPage(tk.Tk):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        homeworld_btn_img_tk = load_homeworld_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/SetHomeworldButton.png"))
-        homeworld_btn_img_hover_tk = load_homeworld_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/SetHomeworldButtonHover.png"))
-        homeworld_btn_img_deactive_tk = load_homeworld_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/SetHomeworldButtonDeactive.png"))
+        homeworld_btn_img_tk = load_homeworld_btn_img(app_path('media', 'SettingsInt', 'SetHomeworldButton.png'))
+        homeworld_btn_img_hover_tk = load_homeworld_btn_img(app_path('media', 'SettingsInt', 'SetHomeworldButtonHover.png'))
+        homeworld_btn_img_deactive_tk = load_homeworld_btn_img(app_path('media', 'SettingsInt', 'SetHomeworldButtonDeactive.png'))
 
         self.save_homeworld_button = tk.Label(
             homeworld_lf,
@@ -679,7 +684,7 @@ class SettingsPage(tk.Tk):
             
             try:
                 # Load BiomePlanets.json to get the biome
-                biome_path = os.path.join(os.path.dirname(__file__), "JSON", "BiomePlanets.json")
+                biome_path = app_path('JSON', 'BiomePlanets.json')
                 with open(biome_path, "r", encoding="utf-8") as f:
                     biome_data = json.load(f)
                 
@@ -687,8 +692,8 @@ class SettingsPage(tk.Tk):
                 biome = biome_data.get(selected_planet, "Tundra")  # Default to Tundra if not found
                 
                 # Load the planet image
-                planet_img_path = os.path.join(os.path.dirname(__file__), "media", "planets", f"{biome}.png")
-                if os.path.exists(planet_img_path):
+                planet_img_path = app_path('media', 'planets', f"{biome}.png")
+                if planet_img_path and os.path.exists(planet_img_path):
                     planet_img = Image.open(planet_img_path).convert("RGBA")
                     planet_img = planet_img.resize((120, 120), Image.Resampling.LANCZOS)
                     
@@ -729,8 +734,8 @@ class SettingsPage(tk.Tk):
                 enemy_color = enemy_colors.get(enemy_type, "#41639C")
                 
                 # Load the sector image
-                sector_img_path = os.path.join(os.path.dirname(__file__), "media", "sectors", f"{selected_sector}.png")
-                if os.path.exists(sector_img_path):
+                sector_img_path = app_path('media', 'sectors', f"{selected_sector}.png")
+                if sector_img_path and os.path.exists(sector_img_path):
                     sector_img = Image.open(sector_img_path).convert("RGBA")
                     sector_img = sector_img.resize((120, 120), Image.Resampling.LANCZOS)
                     
@@ -884,7 +889,7 @@ class SettingsPage(tk.Tk):
                 logging.warning(f"[settings] Failed to load preview image: {e}")
                 return None
 
-        preview_img = load_large_preview_image(os.path.join(BASE_DIR, "./media/SettingsInt/SuperDestroyerWF.png"))
+        preview_img = load_large_preview_image(app_path('media', 'SettingsInt', 'SuperDestroyerWF.png'))
         if preview_img:
             self.preview_image_label.config(image=preview_img)
             self.preview_image_label.image = preview_img
@@ -934,9 +939,9 @@ class SettingsPage(tk.Tk):
             for plat in platforms:
                 active, inactive = badge_files[plat]
                 if plat == selected_platform:
-                    paths.append(os.path.join(BASE_DIR, f"./media/SettingsInt/{active}"))
+                    paths.append(app_path('media', 'SettingsInt', active))
                 else:
-                    paths.append(os.path.join(BASE_DIR, f"./media/SettingsInt/{inactive}"))
+                    paths.append(app_path('media', 'SettingsInt', inactive))
             return paths
 
         badge_paths = get_badge_paths(self.platform_var.get())
@@ -997,10 +1002,9 @@ class SettingsPage(tk.Tk):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        add_btn_img_tk = load_add_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/AddButton.png"))
-        add_btn_img_hover_tk = load_add_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/AddButtonHover.png"))
+        add_btn_img_tk = load_add_btn_img(app_path('media', 'SettingsInt', 'AddButton.png'))
+        add_btn_img_hover_tk = load_add_btn_img(app_path('media', 'SettingsInt', 'AddButtonHover.png'))
 
-        # Image button (borderless label) for Add (logging)
         self.add_webhook_logging_btn = tk.Label(
             log_controls,
             image=add_btn_img_tk,
@@ -1015,7 +1019,6 @@ class SettingsPage(tk.Tk):
         def play_add_click(e):
             play_button_click()
             self.add_webhook_logging()
-        
 
         def on_add_btn_enter(e):
             self.add_webhook_logging_btn.configure(image=add_btn_img_hover_tk)
@@ -1039,8 +1042,8 @@ class SettingsPage(tk.Tk):
                 pil_img = Image.alpha_composite(background, pil_img)
                 return ImageTk.PhotoImage(pil_img)
 
-            remove_btn_img_tk = load_remove_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButton.png"))
-            remove_btn_img_hover_tk = load_remove_btn_img(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButtonHover.png"))
+            remove_btn_img_tk = load_remove_btn_img(app_path('media', 'SettingsInt', 'RemoveSelectedButton.png'))
+            remove_btn_img_hover_tk = load_remove_btn_img(app_path('media', 'SettingsInt', 'RemoveSelectedButtonHover.png'))
 
             self.remove_webhook_logging_btn = tk.Label(
                 log_controls,
@@ -1072,9 +1075,9 @@ class SettingsPage(tk.Tk):
         except Exception as e:
             logging.warning(f"Failed to load remove button image: {e}")
             fallback_btn = ttk.Button(
-            log_controls,
-            text="Remove",
-            command=self.remove_webhook_logging
+                log_controls,
+                text="Remove",
+                command=self.remove_webhook_logging
             )
             fallback_btn.pack(side=tk.LEFT, padx=5)
 
@@ -1109,8 +1112,8 @@ class SettingsPage(tk.Tk):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        add_btn_img_export_tk = load_add_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/AddButton.png"))
-        add_btn_img_export_hover_tk = load_add_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/AddButtonHover.png"))
+        add_btn_img_export_tk = load_add_btn_img_export(app_path('media', 'SettingsInt', 'AddButton.png'))
+        add_btn_img_export_hover_tk = load_add_btn_img_export(app_path('media', 'SettingsInt', 'AddButtonHover.png'))
 
         self.add_webhook_export_btn = tk.Label(
             exp_controls,
@@ -1144,8 +1147,8 @@ class SettingsPage(tk.Tk):
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        remove_btn_img_export_tk = load_remove_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButton.png"))
-        remove_btn_img_export_hover_tk = load_remove_btn_img_export(os.path.join(BASE_DIR, "./media/SettingsInt/RemoveSelectedButtonHover.png"))
+        remove_btn_img_export_tk = load_remove_btn_img_export(app_path('media', 'SettingsInt', 'RemoveSelectedButton.png'))
+        remove_btn_img_export_hover_tk = load_remove_btn_img_export(app_path('media', 'SettingsInt', 'RemoveSelectedButtonHover.png'))
 
         self.remove_webhook_export_btn = tk.Label(
             exp_controls,
@@ -1182,11 +1185,11 @@ class SettingsPage(tk.Tk):
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, expand=True, pady=10)
         # Load and subsample images for Reset to Defaults button
-        reset_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/ResetToDefaultButton.png"))
+        reset_btn_img = Image.open(app_path('media', 'SettingsInt', 'ResetToDefaultButton.png'))
         reset_btn_img = reset_btn_img.resize((reset_btn_img.width // 2, reset_btn_img.height // 2), Image.LANCZOS)
         reset_btn_img_tk = ImageTk.PhotoImage(reset_btn_img)
 
-        reset_btn_img_hover = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/ResetToDefaultButtonHover.png"))
+        reset_btn_img_hover = Image.open(app_path('media', 'SettingsInt', 'ResetToDefaultButtonHover.png'))
         reset_btn_img_hover = reset_btn_img_hover.resize((reset_btn_img_hover.width // 2, reset_btn_img_hover.height // 2), Image.LANCZOS)
         reset_btn_img_hover_tk = ImageTk.PhotoImage(reset_btn_img_hover)
 
@@ -1219,11 +1222,11 @@ class SettingsPage(tk.Tk):
         self.reset_defaults_btn.bind("<Leave>", on_reset_btn_leave)
         self.reset_defaults_btn.bind("<Button-1>", play_reset_click)
         # Load and subsample images for Cancel button
-        cancel_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/CancelButton.png"))
+        cancel_btn_img = Image.open(app_path('media', 'SettingsInt', 'CancelButton.png'))
         cancel_btn_img = cancel_btn_img.resize((cancel_btn_img.width // 2, cancel_btn_img.height // 2), Image.LANCZOS)
         cancel_btn_img_tk = ImageTk.PhotoImage(cancel_btn_img)
 
-        cancel_btn_img_hover = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/CancelButtonHover.png"))
+        cancel_btn_img_hover = Image.open(app_path('media', 'SettingsInt', 'CancelButtonHover.png'))
         cancel_btn_img_hover = cancel_btn_img_hover.resize((cancel_btn_img_hover.width // 2, cancel_btn_img_hover.height // 2), Image.LANCZOS)
         cancel_btn_img_hover_tk = ImageTk.PhotoImage(cancel_btn_img_hover)
 
@@ -1255,11 +1258,11 @@ class SettingsPage(tk.Tk):
         self.cancel_btn.bind("<Leave>", on_cancel_btn_leave)
         self.cancel_btn.bind("<Button-1>", play_cancel_click)
         # Load and subsample images for Save Settings button
-        save_btn_img = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/SaveSettingsButton.png"))
+        save_btn_img = Image.open(app_path('media', 'SettingsInt', 'SaveSettingsButton.png'))
         save_btn_img = save_btn_img.resize((save_btn_img.width // 2, save_btn_img.height // 2), Image.LANCZOS)
         save_btn_img_tk = ImageTk.PhotoImage(save_btn_img)
 
-        save_btn_img_hover = Image.open(os.path.join(BASE_DIR, "./media/SettingsInt/SaveSettingsButtonHover.png"))
+        save_btn_img_hover = Image.open(app_path('media', 'SettingsInt', 'SaveSettingsButtonHover.png'))
         save_btn_img_hover = save_btn_img_hover.resize((save_btn_img_hover.width // 2, save_btn_img_hover.height // 2), Image.LANCZOS)
         save_btn_img_hover_tk = ImageTk.PhotoImage(save_btn_img_hover)
 

@@ -1,13 +1,13 @@
 import pandas as pd
 import logging
-from logging_config import setup_logging
+from core.logging_config import setup_logging
 import configparser
-from runtime_paths import app_path
+from core.runtime_paths import app_path
 import requests
 import json
 from datetime import datetime, timezone, timedelta
-from icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
-from main import VERSION, DEV_RELEASE
+from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
+from core.main import VERSION, DEV_RELEASE
 import os
 
 # Set up application data paths 
@@ -21,9 +21,9 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 
 # Read config file
 config = configparser.ConfigParser()
-config.read('config.config')
+config.read(app_path('orphan', 'config.config'))
 iconconfig = configparser.ConfigParser()
-iconconfig.read('icon.config')
+iconconfig.read(app_path('orphan', 'icon.config'))
 
 date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
 
