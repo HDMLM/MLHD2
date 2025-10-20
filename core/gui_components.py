@@ -1117,13 +1117,15 @@ def build_ui(app):
         app.submit_label.grid(row=3, column=0, pady=15)
 
         def on_enter(e):
-                app.submit_label.configure(image=app.submit_img_hover)
-                try:
-                    play_button_hover()
-                except Exception:
-                    pass
+            app.submit_label.configure(image=app.submit_img_hover)
+            app.submit_label.image = app.submit_img_hover  # Prevent garbage collection
+            try:
+                play_button_hover()
+            except Exception:
+                pass
         def on_leave(e):
             app.submit_label.configure(image=app._submit_img_state)
+            app.submit_label.image = app._submit_img_state  # Prevent garbage collection
 
         def on_click(e):
             play_button_click()
