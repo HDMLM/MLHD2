@@ -7,6 +7,7 @@ on failure. The functions avoid side-effects other than reading files.
 import os
 import logging
 import random
+import json
 from datetime import datetime
 from typing import Optional, Tuple
 
@@ -222,9 +223,26 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
 
         # Default biome banner
         if pil_banner is None:
-            biome_name = planet_name or 'Mars'
+            # Look up the biome type for this planet from BiomePlanets.json
+            biome_name = 'Mars'  # Default fallback
+            try:
+                biome_planets_path = _media_path('JSON', 'BiomePlanets.json')
+                # Also try app_path if _media_path doesn't find it
+                if not os.path.isfile(biome_planets_path):
+                    from core.runtime_paths import app_path
+                    biome_planets_path = app_path('JSON', 'BiomePlanets.json')
+                
+                if os.path.isfile(biome_planets_path):
+                    with open(biome_planets_path, 'r', encoding='utf-8') as f:
+                        biome_map = json.load(f)
+                        biome_name = biome_map.get(planet_name, 'Mars')
+                        logging.debug(f"Looked up biome for planet '{planet_name}': '{biome_name}'")
+            except Exception as e:
+                logging.warning(f"Could not load BiomePlanets.json: {e}, using fallback biome 'Mars'")
+            
             path = _media_path('media', 'biome_banners', f"{biome_name}.png")
             if not os.path.isfile(path):
+                logging.warning(f"Biome banner not found for '{biome_name}', falling back to Mars.png")
                 path = _media_path('media', 'biome_banners', 'Mars.png')
             pil_banner = Image.open(path).convert('RGBA')
 
