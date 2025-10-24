@@ -202,6 +202,7 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
 
         rating_stars = {
             "Outstanding Patriotism": 5,
+            "Gallantry Beyond Measure": 5,
             "Superior Valour": 4,
             "Costly Failure": 4,
             "Honourable Duty": 3,

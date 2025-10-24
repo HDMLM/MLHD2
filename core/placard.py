@@ -605,6 +605,7 @@ def generate_helldiver_banner(
 
             rating_map = {
                 "Outstanding Patriotism": 5,
+                "Gallantry Beyond Measure": 5,
                 "Superior Valour": 4,
                 "Costly Failure": 4,
                 "Honourable Duty": 3,
@@ -1063,6 +1064,7 @@ def generate_helldiver_banner(
             try:
                 labels = {
                     5: "Outstanding Patriotism",
+                    5: "Gallantry Beyond Measure",
                     4: "Superior Valour",
                     3: "Honourable Duty",
                     2: "Unremarkable Performance",

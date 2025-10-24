@@ -70,7 +70,7 @@ max_rating = total_rows * 5
 # Initialize counter for rating
 total_rating = 0
 # Create rating mapping
-rating_mapping = {"Outstanding Patriotism": 5, "Superior Valour": 4, "Costly Failure": 4, "Honourable Duty":3, "Unremarkable Performance":2, "Dissapointing Service":1, "Disgraceful Conduct":0}
+rating_mapping = {"Outstanding Patriotism": 5, "Gallantry Beyond Measure": 5, "Superior Valour": 4, "Costly Failure": 4, "Honourable Duty":3, "Unremarkable Performance":2, "Dissapointing Service":1, "Disgraceful Conduct":0}
 # Calculate total rating
 total_rating = sum(rating_mapping[row["Rating"]] for index, row in df.iterrows() if "Rating" in df.columns and row["Rating"] in rating_mapping)
 Rating_Percentage = (total_rating / max_rating) * 100
