@@ -130,7 +130,7 @@ def generate_helldiver_banner(
 
     # assign pngs to strings for badges
     #list of badge png names
-    badge_pngs = ["bcal.png", "bcyb.png", "bdev.png", "bmal.png", "bpla.png", "bpop.png", "bste.png", "bsup.png", "bxbo.png", "bsey.png", "btst.png", "b1ye.png"]
+    badge_pngs = ["bcal.png", "bcyb.png", "bdev.png", "bmal.png", "bpla.png", "bpop.png", "bste.png", "bsup.png", "bxbo.png", "bsey.png", "bosh.png", "btst.png", "b1ye.png"]
 
     #reuse code from main to get elegibal badges
     def _get_eligible_badges(level: int) -> list[str]:
@@ -220,6 +220,7 @@ def generate_helldiver_banner(
                     _norm_planet("Popli IX"): "bpop.png",  # also matches Pöpli IX after normalization
                     _norm_planet("Super Earth"): "bsup.png",
                     _norm_planet("Seyshel Beach"): "bsey.png",
+                    _norm_planet("Oshaune"): "bosh.png",
                 }
                 for planet_norm, badge in planet_to_badge_norm.items():
                     if planet_norm in planets and badge not in eligible:
@@ -239,7 +240,7 @@ def generate_helldiver_banner(
             pass
 
         # Stable ordering
-        order = ["bcal.png", "btst.png", "b1ye.png", "bcyb.png", "bdev.png", "bmal.png", "bpla.png", "bpop.png", "bste.png", "bsup.png", "bxbo.png", "bsey.png"]
+        order = ["bcal.png", "btst.png", "b1ye.png", "bcyb.png", "bdev.png", "bmal.png", "bpla.png", "bpop.png", "bste.png", "bsup.png", "bxbo.png", "bsey.png", "bosh.png"]
         eligible_set = set(eligible)
         return [b for b in order if b in eligible_set]
     # apply badges to banner
@@ -277,6 +278,7 @@ def generate_helldiver_banner(
                 "bcal.png",  # Calypso
                 "bpop.png",  # Popli IX
                 "bsey.png",  # Seyshel Beach
+                "bosh.png",  # Oshaune
             ]
             badge_imgs: list[tuple[Image.Image, bool]] = []
             for b in ordered:

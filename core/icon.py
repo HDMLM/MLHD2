@@ -106,15 +106,15 @@ _BASE_PLANET_ICONS = {
     "Zagon Prime": iconconfig['PlanetIcons']['Hive World'],
     "Hellmire": iconconfig['PlanetIcons']['Hellmire'],
     "Omicron": iconconfig['PlanetIcons']['Hive World'],
-    "Oshaune": iconconfig['PlanetIcons']['Hive World'],
-    "Fori Prime": iconconfig['PlanetIcons']['Gloom'],
+    "Oshaune": iconconfig['PlanetIcons']['Oshaune'],
+    "Fori Prime": iconconfig['PlanetIcons']['Formerly Gloom'],
     "Socorro III": iconconfig['PlanetIcons']['Gloom'],
     "Esker": iconconfig['PlanetIcons']['Gloom'],
-    "Overgoe Prime": iconconfig['PlanetIcons']['Gloom'],
-    "Partion": iconconfig['PlanetIcons']['Gloom'],
-    "Estanu": iconconfig['PlanetIcons']['Gloom'],
-    "Erata Prime": iconconfig['PlanetIcons']['Gloom'],
-    "Crimsica": iconconfig['PlanetIcons']['Gloom'],
+    "Overgoe Prime": iconconfig['PlanetIcons']['Formerly Gloom'],
+    "Partion": iconconfig['PlanetIcons']['Formerly Gloom'],
+    "Estanu": iconconfig['PlanetIcons']['Formerly Gloom'],
+    "Erata Prime": iconconfig['PlanetIcons']['Formerly Gloom'],
+    "Crimsica": iconconfig['PlanetIcons']['Formerly Gloom'],
     "Aurora Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Chort Bay": iconconfig['PlanetIcons']['Jet Brigade Factories'],
     "Widow's Harbor": iconconfig['PlanetIcons']['Free Springs Retreat'],
@@ -1020,3 +1020,84 @@ def get_subfaction_banner(subfaction: str) -> str:
 def get_helldiver_banner(helldiver_key: str) -> str:
     """Return helldiver banner URL from config."""
     return HELLDIVER_BANNERS.get(helldiver_key, "")
+
+def get_badge_icons(debug: bool = False, app_data_path: str = None, date_format: str = "%d-%m-%Y %H:%M:%S"):
+    """
+    Centralized function to get Discord user badges and platform icons.
+    
+    Args:
+        debug: Whether running in debug mode (affects excel file selection)
+        app_data_path: Path to application data directory
+        date_format: Date format string for parsing Excel timestamps
+        
+    Returns:
+        dict: Dictionary containing all badge icon values
+    """
+    from core.runtime_paths import app_path
+    import json
+    import pandas as pd
+    import os
+    
+    # Set default app_data_path if not provided
+    if app_data_path is None:
+        app_data_path = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+    
+    # Initialize return dictionary with default values
+    badge_icons = {
+        'bicon': '',
+        'ticon': '',
+        'PIco': '',
+        'yearico': '',
+        'bsuperearth': '',
+        'bcyberstan': '',
+        'bmaleveloncreek': '',
+        'bcalypso': '',
+        'bpopliix': '',
+        'bseyshelbeach': '',
+        'boshaune': ''
+    }
+    
+    try:
+        # Get discord_uid from DCord.json
+        with open(app_path('JSON', 'DCord.json'), 'r') as f:
+            dcord_data = json.load(f)
+            user_discord_uid = dcord_data.get('discord_uid', '')
+
+        # Set badge icons based on user ID
+        badge_icons['bicon'] = iconconfig['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+        badge_icons['ticon'] = iconconfig['BadgeIcons']['Test'] if user_discord_uid in ['332209233577771008'] else ''
+                
+        # Set platform icon based on platform
+        if dcord_data.get('platform') == 'Steam':
+            badge_icons['PIco'] = iconconfig['BadgeIcons-Platform']['Steam']
+        elif dcord_data.get('platform') == 'PlayStation':
+            badge_icons['PIco'] = iconconfig['BadgeIcons-Platform']['PlayStation']
+        elif dcord_data.get('platform') == 'Xbox':
+            badge_icons['PIco'] = iconconfig['BadgeIcons-Platform']['Xbox']
+        else:
+            badge_icons['PIco'] = ''
+            
+        # Check mission log for planet visits
+        excel_file = 'mission_log_test.xlsx' if debug else 'mission_log.xlsx'
+        try:
+            df = pd.read_excel(os.path.join(app_data_path, excel_file))
+            # Parse and use the known time format when checking for last year's missions
+            times = pd.to_datetime(df['Time'], format=date_format, errors='coerce')
+            if (times.dt.year == datetime.now().year - 1).any():
+                badge_icons['yearico'] = iconconfig["BadgeIcons"]["1 Year"]
+            else:
+                badge_icons['yearico'] = ''
+            badge_icons['bsuperearth'] = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
+            badge_icons['bcyberstan'] = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
+            badge_icons['bmaleveloncreek'] = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
+            badge_icons['bcalypso'] = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
+            badge_icons['bpopliix'] = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
+            badge_icons['bseyshelbeach'] = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
+            badge_icons['boshaune'] = iconconfig['BadgeIcons']['Oshaune'] if 'Oshaune' in df['Planet'].values else ''
+        except Exception as e:
+            logging.error(f"Error checking mission log for planet visits: {e}")
+            
+    except Exception as e:
+        logging.error(f"Error loading badge icons: {e}")
+    
+    return badge_icons

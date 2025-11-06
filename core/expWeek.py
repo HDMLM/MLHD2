@@ -4,7 +4,7 @@ from datetime import datetime, timezone, timedelta
 import json
 import requests
 import configparser
-from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS
+from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS, get_badge_icons
 from core.app_core import VERSION, DEV_RELEASE
 import os
 
@@ -110,40 +110,19 @@ elif Rating_Percentage >= 10:
 else:
     Rating = "Disgraceful Conduct"
 
-# Get discord_uid from DCord.json
-with open(app_path('JSON', 'DCord.json'), 'r') as f:
-    dcord_data = json.load(f)
-    user_discord_uid = dcord_data.get('discord_uid', '')
-
-bicon = iconconfig['BadgeIcons']['Icon'] if user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
-ticon = iconconfig['BadgeIcons']['Test'] if user_discord_uid in ['332209233577771008'] else ''
-            
-if dcord_data.get('platform') == 'Steam':
-        PIco = iconconfig['BadgeIcons-Platform']['Steam']
-elif dcord_data.get('platform') == 'PlayStation':
-        PIco = iconconfig['BadgeIcons-Platform']['PlayStation']
-elif dcord_data.get('platform') == 'Xbox':
-        PIco = iconconfig['BadgeIcons-Platform']['Xbox']
-else:
-        PIco = ''
-# Check mission log for planet visits
-excel_file = 'mission_log_test.xlsx' if DEBUG else 'mission_log.xlsx'
-try:
-    df = pd.read_excel(os.path.join(APP_DATA, excel_file))
-    # Parse and use the known time format when checking for last year's missions
-    times = pd.to_datetime(df['Time'], format=DATE_FORMAT, errors='coerce')
-    if (times.dt.year == datetime.now().year - 1).any():
-        yearico = iconconfig["BadgeIcons"]["1 Year"]
-    else:
-        yearico = ''
-    bsuperearth = iconconfig['BadgeIcons']['Super Earth'] if 'Super Earth' in df['Planet'].values else ''
-    bcyberstan = iconconfig['BadgeIcons']['Cyberstan'] if 'Cyberstan' in df['Planet'].values else ''
-    bmaleveloncreek = iconconfig['BadgeIcons']['Malevelon Creek'] if 'Malevelon Creek' in df['Planet'].values else ''
-    bcalypso = iconconfig['BadgeIcons']['Calypso'] if 'Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
-    bpopliix = iconconfig['BadgeIcons']['Popli IX'] if 'Pöpli IX' in df['Planet'].values else ''
-    bseyshelbeach = iconconfig['BadgeIcons']['Seyshel Beach'] if 'Seyshel Beach' in df['Planet'].values else ''
-except Exception as e:
-    logging.error(f"Error checking mission log for planet visits: {e}")
+# Get badge icons using centralized function
+badge_data = get_badge_icons(DEBUG, APP_DATA, DATE_FORMAT)
+bicon = badge_data['bicon']
+ticon = badge_data['ticon']
+PIco = badge_data['PIco']
+yearico = badge_data['yearico']
+bsuperearth = badge_data['bsuperearth']
+bcyberstan = badge_data['bcyberstan']
+bmaleveloncreek = badge_data['bmaleveloncreek']
+bcalypso = badge_data['bcalypso']
+bpopliix = badge_data['bpopliix']
+bseyshelbeach = badge_data['bseyshelbeach']
+boshaune = badge_data['boshaune']
 
 highest_streak = 0
 profile_picture = ""
@@ -164,7 +143,7 @@ embed_data = {
     "content": None,
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}",
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}{boshaune}",
             "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n"
                            f"\"{latest_note}\"\n\n"
                            f"{FlairLeftIco} {FlairSkullIco} Combat Statistics {FlairSkullIco} {FlairRightIco}\n"

@@ -33,6 +33,7 @@ from core.icon import (
     PROFILE_PICTURES,
     get_subfaction_banner,
     get_helldiver_banner,
+    get_badge_icons,
 )
 
 # Load config
@@ -254,41 +255,20 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         title_icon = _get_title_icon(data['Title'])
         profile_picture = _get_profile_picture(app.profile_picture.get())
 
-        with open(app_path('JSON', 'DCord.json'), 'r') as f:
-            dcord_data = json.load(f)
-            user_discord_uid = dcord_data.get('discord_uid', '')
-
-        bicon = iconconfig['BadgeIcons'].get('Icon', '') if 'BadgeIcons' in iconconfig and user_discord_uid in ['695767541393653791', '850139032720900116'] else ''
-        ticon = iconconfig['BadgeIcons'].get('Test', '') if 'BadgeIcons' in iconconfig and user_discord_uid in ['332209233577771008'] else ''
-
-        PIco = ''
-        if dcord_data.get('platform') == 'Steam':
-            PIco = iconconfig['BadgeIcons-Platform'].get('Steam', '') if 'BadgeIcons-Platform' in iconconfig else ''
-        elif dcord_data.get('platform') == 'PlayStation':
-            PIco = iconconfig['BadgeIcons-Platform'].get('PlayStation', '') if 'BadgeIcons-Platform' in iconconfig else ''
-        elif dcord_data.get('platform') == 'Xbox':
-            PIco = iconconfig['BadgeIcons-Platform'].get('Xbox', '') if 'BadgeIcons-Platform' in iconconfig else ''
-
-        # Check mission log for planet visits
-        try:
-            if os.path.exists(excel_file):
-                df = pd.read_excel(excel_file)
-                times = pd.to_datetime(df['Time'], format=date_format, errors='coerce')
-                if (times.dt.year == datetime.now().year - 1).any():
-                    yearico = iconconfig.get("BadgeIcons", {}).get("1 Year", "") if 'BadgeIcons' in iconconfig else ''
-                else:
-                    yearico = ''
-                bsuperearth = iconconfig['BadgeIcons'].get('Super Earth', '') if 'BadgeIcons' in iconconfig and 'Super Earth' in df['Planet'].values else ''
-                bcyberstan = iconconfig['BadgeIcons'].get('Cyberstan', '') if 'BadgeIcons' in iconconfig and 'Cyberstan' in df['Planet'].values else ''
-                bmaleveloncreek = iconconfig['BadgeIcons'].get('Malevelon Creek', '') if 'BadgeIcons' in iconconfig and 'Malevelon Creek' in df['Planet'].values else ''
-                bcalypso = iconconfig['BadgeIcons'].get('Calypso', '') if 'BadgeIcons' in iconconfig and ('Calypso' in df['Planet'].values or user_discord_uid in ['695767541393653791', '850139032720900116']) else ''
-                bpopliix = iconconfig['BadgeIcons'].get('Popli IX', '') if 'BadgeIcons' in iconconfig and 'Pöpli IX' in df['Planet'].values else ''
-                bseyshelbeach = iconconfig['BadgeIcons'].get('Seyshel Beach', '') if 'BadgeIcons' in iconconfig and 'Seyshel Beach' in df['Planet'].values else ''
-            else:
-                bsuperearth = bcyberstan = bmaleveloncreek = bcalypso = bpopliix = bseyshelbeach = ''
-        except Exception as e:
-            logging.error(f"Error checking mission log for planet visits: {e}")
-            bsuperearth = bcyberstan = bmaleveloncreek = bcalypso = bpopliix = bseyshelbeach = ''
+        # Get badge icons using centralized function
+        app_data_path = os.path.dirname(excel_file) if excel_file else os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+        badge_data = get_badge_icons(debug, app_data_path, date_format)
+        bicon = badge_data['bicon']
+        ticon = badge_data['ticon']
+        PIco = badge_data['PIco']
+        yearico = badge_data['yearico']
+        bsuperearth = badge_data['bsuperearth']
+        bcyberstan = badge_data['bcyberstan']
+        bmaleveloncreek = badge_data['bmaleveloncreek']
+        bcalypso = badge_data['bcalypso']
+        bpopliix = badge_data['bpopliix']
+        bseyshelbeach = badge_data['bseyshelbeach']
+        boshaune = badge_data['boshaune']
 
         # Dynamic performance tracking icons (previous mission comparison)
         try:
@@ -402,7 +382,7 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         message_content = {
             "content": None,
             "embeds": [{
-                "title": f"{data.get('Super Destroyer')}\nDeployed {data.get('Helldivers')}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}",
+                "title": f"{data.get('Super Destroyer')}\nDeployed {data.get('Helldivers')}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}{boshaune}",
                 "description": f"**Level {data.get('Level')} | {data.get('Title')} {title_icon}\nMission: {total_missions_main}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {planet_icon} {FlairRightIco}\n> Sector: {data.get('Sector')}\n> Planet: {data.get('Planet')}\n> Mega City: {data.get('Mega City')}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data.get('DSS Modifier')} {dss_icon}\n\n",
                 "color": system_color,
                 "fields": [{

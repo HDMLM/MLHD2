@@ -89,9 +89,9 @@ from core.utils import (
 import random
 
 # Manual Configuration
-GWDay = "Day: 617"
-GWDate = "Date: 17/10/2025"
-VERSION = "1.7.009"
+GWDay = "Day: 637"
+GWDate = "Date: 06/11/2025"
+VERSION = "1.7.010"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
