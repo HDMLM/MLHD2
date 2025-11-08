@@ -204,6 +204,7 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         rating_stars = {
             "Outstanding Patriotism": 5,
             "Gallantry Beyond Measure": 5,
+            "Truly Exceptional Heroism": 5,
             "Superior Valour": 4,
             "Costly Failure": 4,
             "Honourable Duty": 3,
@@ -303,44 +304,47 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
             killico = ''
             deathico = ''
 
-        # Streak tracking
+        # Streak tracking - use the streak calculated by the app_core
         try:
             helldiver_name = "Helldiver"
             streak_data = {}
             if os.path.exists(app_path('JSON', 'streak_data.json')):
                 with open(app_path('JSON', 'streak_data.json'), 'r') as f:
                     streak_data = json.load(f)
-            user_data = streak_data.get(helldiver_name, {'streak': 0, 'last_time': None})
-            streak = 1
+            user_data = streak_data.get(helldiver_name, {'streak': 0, 'highest_streak': 0})
+            
+            # Use the streak from the mission data (already calculated correctly)
+            streak = data.get('Streak', 1)
             streak_emoji = ''
-            if user_data.get('last_time'):
-                last_time = datetime.strptime(user_data['last_time'], "%Y-%m-%d %H:%M:%S")
-                time_diff = datetime.now() - last_time
-                if time_diff.total_seconds() <= 3600:
-                    streak = user_data['streak'] + 1
-                    if streak >= 30:
-                        streak_emoji = "🔥 x" + str(streak) + " WTF!"
-                    elif streak >= 24:
-                        streak_emoji = "🔥 x" + str(streak) + " TRULY HELLDIVING!"
-                    elif streak >= 21:
-                        streak_emoji = "🔥 x" + str(streak) + " IMPOSSIBLE!"
-                    elif streak >= 18:
-                        streak_emoji = "🔥 x" + str(streak) + " SUICIDAL!"
-                    elif streak >= 15:
-                        streak_emoji = "🔥 x" + str(streak) + " PATRIOTIC!"
-                    elif streak >= 12:
-                        streak_emoji = "🔥 x" + str(streak) + " DEMOCRATIC!"
-                    elif streak >= 9:
-                        streak_emoji = "🔥 x" + str(streak) + " LIBERATING!"
-                    elif streak >= 6:
-                        streak_emoji = "🔥 x" + str(streak) + " SUPER!"
-                    elif streak >= 3:
-                        streak_emoji = "🔥 x" + str(streak) + " COMMENDABLE!"
-                    else:
-                        streak_emoji = "🔥 x" + str(streak)
+            
+            # Generate streak emoji based on streak value (only for streaks of 2 or higher)
+            if streak >= 30:
+                streak_emoji = "🔥 x" + str(streak) + " WTF!"
+            elif streak >= 24:
+                streak_emoji = "🔥 x" + str(streak) + " TRULY HELLDIVING!"
+            elif streak >= 21:
+                streak_emoji = "🔥 x" + str(streak) + " IMPOSSIBLE!"
+            elif streak >= 18:
+                streak_emoji = "🔥 x" + str(streak) + " SUICIDAL!"
+            elif streak >= 15:
+                streak_emoji = "🔥 x" + str(streak) + " PATRIOTIC!"
+            elif streak >= 12:
+                streak_emoji = "🔥 x" + str(streak) + " DEMOCRATIC!"
+            elif streak >= 9:
+                streak_emoji = "🔥 x" + str(streak) + " LIBERATING!"
+            elif streak >= 6:
+                streak_emoji = "🔥 x" + str(streak) + " SUPER!"
+            elif streak >= 3:
+                streak_emoji = "🔥 x" + str(streak) + " COMMENDABLE!"
+            elif streak >= 2:
+                streak_emoji = "🔥 x" + str(streak)
+            # If streak is 1, streak_emoji remains empty (no display)
+                
             highest_streak = user_data.get('highest_streak', 0)
             if streak > highest_streak:
                 highest_streak = streak
+                
+            # Update the JSON file with the current streak and timestamp
             streak_data[helldiver_name] = {
                 'streak': streak,
                 'highest_streak': highest_streak,
@@ -396,7 +400,7 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
                     "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&"
                 },
                 "footer": {
-                    "text": f"{streak_emoji}\n{UID}     v{version}{dev_release}",
+                    "text": f"{streak_emoji + chr(10) if streak_emoji else ''}{UID}     v{version}{dev_release}",
                     "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&"
                 },
                 "image": {"url": f"{banner}"},

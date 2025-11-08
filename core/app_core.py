@@ -24,6 +24,7 @@ import random
 import re
 import webbrowser
 import discordrpc
+import sys
 from core.ui_sound import (
     init_ui_sounds,
     play_button_click,
@@ -453,12 +454,22 @@ class MissionLogGUI:
         self._create_main_frame()
         self._setup_ui()
         self.root.after(100, self.load_settings)
+        self.root.after(200, self._initialize_dynamic_icons)
         self.root.after(2000, self._periodic_rpc_update)
         # Save settings on window close
         try:
             self.root.protocol("WM_DELETE_WINDOW", self._on_close)
         except Exception as e:
             logging.error(f"Failed to bind WM_DELETE_WINDOW handler: {e}")
+
+    def _initialize_dynamic_icons(self) -> None:
+        """Initialize the dynamic icons cache on application startup"""
+        try:
+            from core.dynamic_icons import initialize_dynamic_icons_cache
+            initialize_dynamic_icons_cache()
+            logging.info("Dynamic icons cache initialized on startup")
+        except Exception as e:
+            logging.warning(f"Failed to initialize dynamic icons cache: {e}")
 
     def _periodic_rpc_update(self) -> None:
         try:
@@ -792,6 +803,29 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to show info dialog: {e}")
 
+    def _calculate_current_streak(self) -> int:
+        """Calculate the current streak based on the streak data and time difference."""
+        try:
+            streak_data = read_streaks(streak_file)
+            helldiver_name = "Helldiver"
+            user_data = streak_data.get(helldiver_name, {'streak': 0, 'last_time': None})
+            
+            # Default to streak 1 (reset)
+            streak = 1
+            
+            # Check if we should continue the streak based on time difference
+            if user_data.get('last_time'):
+                last_time = datetime.strptime(user_data['last_time'], "%Y-%m-%d %H:%M:%S")
+                time_diff = datetime.now() - last_time
+                # If last mission was within 1 hour (3600 seconds), continue the streak
+                if time_diff.total_seconds() <= 3600:
+                    streak = user_data['streak'] + 1
+            
+            return streak
+        except Exception as e:
+            logging.error(f"Error calculating current streak: {e}")
+            return 1  # Default to 1 on error
+
     def _collect_mission_data(self) -> Dict:
     # Collect all mission data into a dictionary.
         # Read the current note text directly from the Text widget if available to avoid stale cached values
@@ -804,14 +838,8 @@ class MissionLogGUI:
             logging.error(f"Failed to read note text: {e}")
             note_value = (self.note.get() or "").strip()
 
-        # Get streak data from streak_data.json
-        try:
-            streak_data = read_streaks(streak_file)
-            helldiver_name = "Helldiver"
-            current_streak = streak_data.get(helldiver_name, {}).get('streak', 0) + 1
-        except Exception as e:
-            logging.error(f"Error reading streak data: {e}")
-            current_streak = 0
+        # Calculate the correct streak based on time difference
+        current_streak = self._calculate_current_streak()
 
         return {
             'Super Destroyer': self.shipname1_default +" "+ self.shipname2_default,
@@ -841,7 +869,19 @@ class MissionLogGUI:
     def _save_to_excel(self, data: Dict) -> bool:
     # Save mission data to Excel file by appending new rows.
         excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
-        return append_mission_to_excel(excel_file, data)
+        success = append_mission_to_excel(excel_file, data)
+        
+        # Update dynamic icons cache after successful mission submission
+        if success:
+            try:
+                from core.dynamic_icons import update_dynamic_icons_from_excel
+                update_dynamic_icons_from_excel()
+                logging.info("Dynamic icons cache updated after mission submission")
+            except Exception as e:
+                logging.warning(f"Failed to update dynamic icons cache: {e}")
+                # Don't fail the mission submission if cache update fails
+        
+        return success
 
     def _send_to_discord(self, data: Dict) -> bool:
         try:

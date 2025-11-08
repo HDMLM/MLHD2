@@ -1093,7 +1093,7 @@ def build_ui(app):
     ttk.Entry(stats_frame, textvariable=app.deaths, width=30).grid(row=2, column=1, padx=5, pady=5)
 
     ttk.Label(stats_frame, text="Performance:").grid(row=3, column=0, sticky=tk.W, pady=5)
-    ratings = ["Outstanding Patriotism", "Gallantry Beyond Measure", "Superior Valour", "Costly Failure", "Honourable Duty", "Unremarkable Performance", "Disappointing Service", "Disgraceful Conduct"]
+    ratings = ["Outstanding Patriotism", "Gallantry Beyond Measure", "Truly Exceptional Heroism", "Superior Valour", "Costly Failure", "Honourable Duty", "Unremarkable Performance", "Disappointing Service", "Disgraceful Conduct"]
     rating_combo = ttk.Combobox(stats_frame, textvariable=app.rating, values=ratings, state='readonly', width=27)
     rating_combo.grid(row=3, column=1, padx=5, pady=5)
 

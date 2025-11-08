@@ -21,46 +21,8 @@ iconconfig = configparser.ConfigParser()
 from core.runtime_paths import app_path
 iconconfig.read(app_path('orphan', 'icon.config'))
 
-# Function to get player's first planet from mission log
-def get_first_ingress():
-    try:
-        # Set up application data paths 
-        APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
-        
-        # Load config to check DEBUG mode
-        config = configparser.ConfigParser()
-        config.read(app_path('orphan', 'config.config'))
-        DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
-        
-        # Choose the appropriate Excel file
-        EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
-        EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
-        excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
-        
-        # Read the mission log
-        if os.path.exists(excel_file):
-            df = pd.read_excel(excel_file)
-            
-            # Check if required columns exist
-            if 'Time' in df.columns and 'Planet' in df.columns and not df.empty:
-                # Convert Time column to datetime and sort by earliest first
-                df['Time'] = pd.to_datetime(df['Time'].astype(str).str.replace('/', '-', regex=False), errors='coerce', dayfirst=True)
-                df_sorted = df.dropna(subset=['Time', 'Planet']).sort_values('Time')
-                
-                # Get the first planet (chronologically)
-                if not df_sorted.empty:
-                    first_planet = df_sorted['Planet'].iloc[0]
-                    return str(first_planet).strip()
-        
-        # Default fallback if no data found
-        return "Super Earth"
-        
-    except Exception as e:
-        logging.error(f"Error reading mission log for homeworld: {e}")
-        return "Super Earth"
-
-# Get player's homeworld planet
-first_ingress = get_first_ingress()
+# Import dynamic icons functionality
+from core.dynamic_icons import apply_dynamic_planet_icons
 
 ENEMY_ICONS = {
     "Automatons": iconconfig['EnemyIcons']['Automatons'],
@@ -88,7 +50,7 @@ SYSTEM_COLORS = {
 }
 
 
-# Base planet icons without First Ingress
+# Base planet icons (static only)
 _BASE_PLANET_ICONS = {
     "Super Earth": iconconfig['PlanetIcons']['Human Homeworld'],
     "Cyberstan": iconconfig['PlanetIcons']['Automaton Homeworld'],
@@ -140,91 +102,8 @@ _BASE_PLANET_ICONS = {
     "Seyshel Beach": iconconfig['PlanetIcons']['Seyshel Beach']
 }
 
-# Create combined PLANET_ICONS with homeworld support
-PLANET_ICONS = _BASE_PLANET_ICONS.copy()
-
-# Add or combine First Ingress icon
-first_ingress_icon = iconconfig['PlanetIcons']['First Ingress']
-if first_ingress in PLANET_ICONS:
-    # Planet already has an icon, combine them
-    existing_icon = PLANET_ICONS[first_ingress]
-    PLANET_ICONS[first_ingress] = f"{existing_icon}{first_ingress_icon}"
-else:
-    # Planet doesn't have an icon, just add the homeworld icon
-    PLANET_ICONS[first_ingress] = first_ingress_icon
-
-    # Function to get player's most played planet from mission log
-    def get_most_played_planet():
-        try:
-            # Set up application data paths 
-            APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
-            
-            # Load config to check DEBUG mode
-            config = configparser.ConfigParser()
-            config.read('config.config')
-            DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
-            
-            # Choose the appropriate Excel file
-            EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
-            EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
-            excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
-            
-            # Read the mission log
-            if os.path.exists(excel_file):
-                df = pd.read_excel(excel_file)
-                
-                # Check if Planet column exists
-                if 'Planet' in df.columns and not df.empty:
-                    # Count occurrences of each planet and get the most frequent
-                    planet_counts = df['Planet'].value_counts()
-                    
-                    if not planet_counts.empty:
-                        most_played_planet = planet_counts.index[0]
-                        return str(most_played_planet).strip()
-            
-            # Default fallback if no data found
-            return "Super Earth"
-            
-        except Exception as e:
-            logging.error(f"Error reading mission log for most played planet: {e}")
-            return "Super Earth"
-
-    # Get player's most played planet
-    most_played_planet = get_most_played_planet()
-
-    # Add or combine Favourite Planet icon
-    favourite_planet_icon = iconconfig['PlanetIcons']['Favourite Planet']
-    if most_played_planet in PLANET_ICONS:
-        # Planet already has an icon, combine them
-        existing_icon = PLANET_ICONS[most_played_planet]
-        PLANET_ICONS[most_played_planet] = f"{existing_icon}{favourite_planet_icon}"
-    else:
-        # Planet doesn't have an icon, just add the favourite planet icon
-        PLANET_ICONS[most_played_planet] = favourite_planet_icon
-
-        # Load settings to get player's homeworld
-        def load_player_homeworld():
-            try:
-                from core.runtime_paths import app_path
-                with open(app_path('JSON', 'settings.json'), 'r') as f:
-                    settings = json.load(f)
-                    return settings.get('Player Homeworld', 'Super Earth')
-            except Exception as e:
-                logging.error(f"Error loading player homeworld from settings: {e}")
-                return 'Super Earth'
-
-        # Get player's homeworld from settings
-        player_homeworld = load_player_homeworld()
-
-        # Add or combine Player Homeworld icon
-        player_homeworld_icon = iconconfig['PlanetIcons']['Player Homeworld']
-        if player_homeworld in PLANET_ICONS:
-            # Planet already has an icon, combine them
-            existing_icon = PLANET_ICONS[player_homeworld]
-            PLANET_ICONS[player_homeworld] = f"{existing_icon}{player_homeworld_icon}"
-        else:
-            # Planet doesn't have an icon, just add the homeworld icon
-            PLANET_ICONS[player_homeworld] = player_homeworld_icon
+# Apply dynamic planet icons to create final PLANET_ICONS dictionary
+PLANET_ICONS = apply_dynamic_planet_icons(_BASE_PLANET_ICONS)
 
 CAMPAIGN_ICONS = {
     "Defense": iconconfig['CampaignIcons']['Defense'],

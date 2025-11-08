@@ -93,7 +93,7 @@ helldiver_title = recent_df['Title'].iloc[-1] if 'Title' in recent_df.columns el
 # Rating calculation (same as faction.py)
 total_rows = len(recent_df)
 max_rating = total_rows * 5
-rating_mapping = {"Outstanding Patriotism": 5, "Gallantry Beyond Measure": 5, "Superior Valour": 4, "Costly Failure": 4, "Honourable Duty":3, "Unremarkable Performance":2, "Dissapointing Service":1, "Disgraceful Conduct":0}
+rating_mapping = {"Outstanding Patriotism": 5, "Gallantry Beyond Measure": 5, "Truly Exceptional Heroism": 5, "Superior Valour": 4, "Costly Failure": 4, "Honourable Duty":3, "Unremarkable Performance":2, "Dissapointing Service":1, "Disgraceful Conduct":0}
 total_rating = sum(rating_mapping.get(row["Rating"], 0) for index, row in recent_df.iterrows() if "Rating" in recent_df.columns and row["Rating"] in rating_mapping)
 Rating_Percentage = (total_rating / max_rating) * 100 if max_rating > 0 else 0
 
