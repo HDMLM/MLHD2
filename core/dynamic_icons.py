@@ -49,6 +49,8 @@ def load_dynamic_icons_cache() -> Dict[str, str]:
                 # Ensure all required keys exist with defaults
                 return {
                     'first_ingress': data.get('first_ingress', 'Super Earth'),
+                    'ingress_100': data.get('ingress_100', 'Super Earth'),
+                    'ingress_1k': data.get('ingress_1k', 'Super Earth'),
                     'favourite_planet': data.get('favourite_planet', 'Super Earth'),
                     'player_homeworld': data.get('player_homeworld', 'Super Earth'),
                     'highest_kills_planet': data.get('highest_kills_planet', 'Super Earth'),
@@ -61,6 +63,8 @@ def load_dynamic_icons_cache() -> Dict[str, str]:
     # Return defaults if file doesn't exist or error occurred
     return {
         'first_ingress': 'Super Earth',
+        'ingress_100': 'Super Earth',
+        'ingress_1k': 'Super Earth',
         'favourite_planet': 'Super Earth',
         'player_homeworld': 'Super Earth',
         'highest_kills_planet': 'Super Earth',
@@ -128,6 +132,84 @@ def get_first_ingress_from_excel() -> str:
     except Exception as e:
         logging.error(f"Error reading mission log for homeworld: {e}")
         return "Super Earth"
+
+
+def get_ingress_100_from_excel() -> str:
+    """Get the planet where the player's 100th mission took place (reads Excel directly)"""
+    try:
+        # Set up application data paths 
+        APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+        
+        # Load config to check DEBUG mode
+        config = configparser.ConfigParser()
+        config.read(app_path('orphan', 'config.config'))
+        DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+        
+        # Choose the appropriate Excel file
+        EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+        EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+        excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+        
+        # Read the mission log
+        if os.path.exists(excel_file):
+            df = pd.read_excel(excel_file)
+            
+            # Check if required columns exist
+            if 'Time' in df.columns and 'Planet' in df.columns and not df.empty:
+                # Convert Time column to datetime and sort by earliest first to get mission order
+                df['Time'] = pd.to_datetime(df['Time'].astype(str).str.replace('/', '-', regex=False), errors='coerce', dayfirst=True)
+                df_sorted = df.dropna(subset=['Time', 'Planet']).sort_values('Time')
+                
+                # Get the planet where the 100th mission took place (index 99 since 0-based)
+                if len(df_sorted) >= 100:
+                    ingress_100_planet = df_sorted['Planet'].iloc[99]
+                    return str(ingress_100_planet).strip()
+        
+        # Default fallback if no data found or less than 100 missions
+        return ""
+        
+    except Exception as e:
+        logging.error(f"Error reading mission log for 100th ingress: {e}")
+        return ""
+
+
+def get_ingress_1k_from_excel() -> str:
+    """Get the planet where the player's 1000th mission took place (reads Excel directly)"""
+    try:
+        # Set up application data paths 
+        APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+        
+        # Load config to check DEBUG mode
+        config = configparser.ConfigParser()
+        config.read(app_path('orphan', 'config.config'))
+        DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+        
+        # Choose the appropriate Excel file
+        EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
+        EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+        excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
+        
+        # Read the mission log
+        if os.path.exists(excel_file):
+            df = pd.read_excel(excel_file)
+            
+            # Check if required columns exist
+            if 'Time' in df.columns and 'Planet' in df.columns and not df.empty:
+                # Convert Time column to datetime and sort by earliest first to get mission order
+                df['Time'] = pd.to_datetime(df['Time'].astype(str).str.replace('/', '-', regex=False), errors='coerce', dayfirst=True)
+                df_sorted = df.dropna(subset=['Time', 'Planet']).sort_values('Time')
+                
+                # Get the planet where the 1000th mission took place (index 999 since 0-based)
+                if len(df_sorted) >= 1000:
+                    ingress_1k_planet = df_sorted['Planet'].iloc[999]
+                    return str(ingress_1k_planet).strip()
+        
+        # Default fallback if no data found or less than 1000 missions
+        return ""
+        
+    except Exception as e:
+        logging.error(f"Error reading mission log for 1000th ingress: {e}")
+        return ""
 
 
 def get_most_played_planet_from_excel() -> str:
@@ -269,6 +351,8 @@ def apply_dynamic_planet_icons(base_planet_icons: Dict[str, str]) -> Dict[str, s
     # Get dynamic planet data from cache
     dynamic_data = load_dynamic_icons_cache()
     first_ingress = dynamic_data['first_ingress']
+    ingress_100 = dynamic_data['ingress_100']
+    ingress_1k = dynamic_data['ingress_1k']
     most_played_planet = dynamic_data['favourite_planet'] 
     player_homeworld = dynamic_data['player_homeworld']
     highest_kills_planet = dynamic_data['highest_kills_planet']
@@ -281,6 +365,22 @@ def apply_dynamic_planet_icons(base_planet_icons: Dict[str, str]) -> Dict[str, s
         planet_icons[first_ingress] = f"{existing_icon}{first_ingress_icon}"
     else:
         planet_icons[first_ingress] = first_ingress_icon
+    
+    # Apply 100th Ingress icon
+    ingress_100_icon = iconconfig['PlanetIcons']['Ingress 100']
+    if ingress_100 in planet_icons and ingress_100 != "Super Earth":
+        existing_icon = planet_icons[ingress_100]
+        planet_icons[ingress_100] = f"{existing_icon}{ingress_100_icon}"
+    elif ingress_100 != "Super Earth":
+        planet_icons[ingress_100] = ingress_100_icon
+    
+    # Apply 1000th Ingress icon
+    ingress_1k_icon = iconconfig['PlanetIcons']['Ingress 1k']
+    if ingress_1k in planet_icons and ingress_1k != "Super Earth":
+        existing_icon = planet_icons[ingress_1k]
+        planet_icons[ingress_1k] = f"{existing_icon}{ingress_1k_icon}"
+    elif ingress_1k != "Super Earth":
+        planet_icons[ingress_1k] = ingress_1k_icon
     
     # Apply Favourite Planet icon
     favourite_planet_icon = iconconfig['PlanetIcons']['Favourite Planet']
@@ -345,6 +445,8 @@ def update_dynamic_icons_from_excel() -> bool:
         # Get fresh data from Excel and settings
         data = {
             'first_ingress': get_first_ingress_from_excel(),
+            'ingress_100': get_ingress_100_from_excel(),
+            'ingress_1k': get_ingress_1k_from_excel(),
             'favourite_planet': get_most_played_planet_from_excel(),
             'player_homeworld': load_player_homeworld_from_settings(),
             'highest_kills_planet': get_highest_kills_planet_from_excel(),
@@ -378,7 +480,7 @@ def initialize_dynamic_icons_cache() -> bool:
         
         # Check if cache has all required keys
         cache_data = load_dynamic_icons_cache()
-        required_keys = ['first_ingress', 'favourite_planet', 'player_homeworld', 
+        required_keys = ['first_ingress', 'ingress_100', 'ingress_1k', 'favourite_planet', 'player_homeworld', 
                         'highest_kills_planet', 'highest_deaths_planet']
         
         if not all(key in cache_data for key in required_keys):

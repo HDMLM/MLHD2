@@ -7,7 +7,7 @@ from typing import Optional
 import logging
 
 from core.icon import (
-    ENEMY_ICONS,
+    ENEMY_ICONS,  
     DIFFICULTY_ICONS,
     SYSTEM_COLORS,
     PLANET_ICONS,
@@ -19,6 +19,7 @@ from core.icon import (
     PROFILE_PICTURES,
     SUBFACTION_ICONS,
     HVT_ICONS,
+    get_planet_image,
 )
 
 
@@ -127,3 +128,8 @@ def get_hvt_icon(hvt_type: str) -> str:
     icon = HVT_ICONS.get(normalize_hvt_name(hvt_type), "NaN")
     logging.info(f"Getting HVT icon for '{hvt_type}', found: {icon}")
     return "" if icon == "NaN" else icon
+
+
+def get_planet_image_url(planet_name: str) -> str:
+    """Get the planet image URL based on the planet name."""
+    return get_planet_image(planet_name)

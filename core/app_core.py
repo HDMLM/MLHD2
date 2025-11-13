@@ -90,9 +90,9 @@ from core.utils import (
 import random
 
 # Manual Configuration
-GWDay = "Day: 637"
-GWDate = "Date: 06/11/2025"
-VERSION = "1.7.010"
+GWDay = "Day: 644"
+GWDate = "Date: 13/11/2025"
+VERSION = "1.7.011"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -345,9 +345,19 @@ class MissionLogGUI:
             logging.error(f"Failed to update submit button image: {e}")
 
     def _reset_submit_button_image(self):
+        """Reset button image to appropriate default based on current faction."""
         if hasattr(self, 'submit_label'):
-            self.submit_label.configure(image=self.submit_img_default)
-            self.submit_label.image = self.submit_img_default
+            # Check current faction to determine correct default button
+            if hasattr(self, 'enemy_type') and self.enemy_type.get() == "Observing":
+                # Reset to observe button if faction is still Observing
+                self.submit_label.configure(image=self.observe_img_default)
+                self.submit_label.image = self.observe_img_default
+                self._submit_img_state = self.observe_img_default
+            else:
+                # Reset to submit button for other factions
+                self.submit_label.configure(image=self.submit_img_default)
+                self.submit_label.image = self.submit_img_default
+                self._submit_img_state = self.submit_img_default
             self._submit_img_state = self.submit_img_default
 
         # Safely bind tooltip handlers to the submit label if it exists.
@@ -619,10 +629,7 @@ class MissionLogGUI:
         self.save_settings()
         self.update_time()
 
-        if self.enemy_type.get() == "Observing":
-            self._show_error("ADVISORY: You cannot submit an observation mission")
-            self.update_submit_button_image("Fail")
-            return
+        # Observing faction is handled by observe_data() method
 
         if Platform == "Not Selected":
             self._show_error("ADVISORY: You must select a platform in settings before submitting")
@@ -676,6 +683,39 @@ class MissionLogGUI:
                     self.note.set("")
             except Exception as e:
                 logging.error(f"Failed to reset note state: {e}")
+            
+    def observe_data(self) -> None:
+        """Handle observation data by running the observation.py script."""
+        try:
+            logging.info("Running observation script...")
+            observation_path = app_path('core', 'observation.py')
+            # Pass current planet from GUI to observation script
+            current_planet = self.planet.get() if hasattr(self, 'planet') else "Unknown"
+            subprocess.run([sys.executable, observation_path, current_planet], shell=False)
+            self.update_submit_button_image("Passed")
+        except Exception as e:
+            logging.error(f"Failed to run observation script: {e}")
+            self._show_error(f"Failed to run observation: {e}")
+            self.update_submit_button_image("Fail")
+    
+    def _update_button_for_faction(self) -> None:
+        """Update button appearance based on selected faction."""
+        try:
+            if not hasattr(self, 'submit_label'):
+                return
+                
+            if self.enemy_type.get() == "Observing":
+                # Switch to observe button
+                self.submit_label.configure(image=self.observe_img_default)
+                self.submit_label.image = self.observe_img_default
+                self._submit_img_state = self.observe_img_default
+            else:
+                # Switch to submit button
+                self.submit_label.configure(image=self.submit_img_default)
+                self.submit_label.image = self.submit_img_default
+                self._submit_img_state = self.submit_img_default
+        except Exception as e:
+            logging.error(f"Failed to update button for faction: {e}")
             
     def _validate_submission(self) -> bool:
     # Validate all required fields before submission.

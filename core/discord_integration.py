@@ -34,6 +34,7 @@ from core.icon import (
     get_subfaction_banner,
     get_helldiver_banner,
     get_badge_icons,
+    get_planet_image,
 )
 
 # Load config
@@ -255,6 +256,7 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         dss_icon = _get_dss_icon(data['DSS Modifier'])
         title_icon = _get_title_icon(data['Title'])
         profile_picture = _get_profile_picture(app.profile_picture.get())
+        planet_image = get_planet_image(data['Planet'])
 
         # Get badge icons using centralized function
         app_data_path = os.path.dirname(excel_file) if excel_file else os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')

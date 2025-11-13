@@ -1111,14 +1111,26 @@ def build_ui(app):
         app.submit_img_hover = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonHover.png'))
         app.submit_img_yes = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonYes.png'))
         app.submit_img_no = load_btn_img(app_path('media', 'SyInt', 'SubmitButtonNo.png'))
+        
+        # Observe button images
+        app.observe_img_default = load_btn_img(app_path('media', 'SyInt', 'ObserveButton.png'))
+        app.observe_img_hover = load_btn_img(app_path('media', 'SyInt', 'ObserveButtonHover.png'))
+        
+        # Observe button images
+        app.observe_img_default = load_btn_img(app_path('media', 'SyInt', 'ObserveButton.png'))
+        app.observe_img_hover = load_btn_img(app_path('media', 'SyInt', 'ObserveButtonHover.png'))
 
         app._submit_img_state = app.submit_img_default
         app.submit_label = tk.Label(content, image=app.submit_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.submit_label.grid(row=3, column=0, pady=15)
 
         def on_enter(e):
-            app.submit_label.configure(image=app.submit_img_hover)
-            app.submit_label.image = app.submit_img_hover  # Prevent garbage collection
+            if app.enemy_type.get() == "Observing":
+                app.submit_label.configure(image=app.observe_img_hover)
+                app.submit_label.image = app.observe_img_hover
+            else:
+                app.submit_label.configure(image=app.submit_img_hover)
+                app.submit_label.image = app.submit_img_hover
             try:
                 play_button_hover()
             except Exception:
@@ -1129,7 +1141,10 @@ def build_ui(app):
 
         def on_click(e):
             play_button_click()
-            app.submit_data()
+            if app.enemy_type.get() == "Observing":
+                app.observe_data()
+            else:
+                app.submit_data()
 
         app.submit_label.bind("<Enter>", on_enter)
         app.submit_label.bind("<Leave>", on_leave)
@@ -1501,6 +1516,8 @@ def build_ui(app):
                         app.subfaction_type.set("No Faction")
                     except tk.TclError:
                         pass
+            # Update button based on faction
+            app._update_button_for_faction()
         app.root.after_idle(_apply)
 
     # Re-apply whenever enemy changes and once after initial setup/persistence load
