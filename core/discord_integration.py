@@ -58,7 +58,11 @@ def _get_difficulty_icon(difficulty: str) -> str:
 
 
 def _get_planet_icon(planet: str) -> str:
-    return PLANET_ICONS.get(planet, "")
+    # Get fresh dynamic planet icons to ensure favourite planet icons are current
+    from core.dynamic_icons import apply_dynamic_planet_icons
+    from core.icon import _BASE_PLANET_ICONS
+    fresh_planet_icons = apply_dynamic_planet_icons(_BASE_PLANET_ICONS)
+    return fresh_planet_icons.get(planet, "")
 
 
 def _get_system_color(enemy_type: str) -> int:
@@ -203,9 +207,9 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         GreyStar = iconconfig['Stars'].get('GreyStar', '') if 'Stars' in iconconfig else ''
 
         rating_stars = {
-            "Outstanding Patriotism": 5,
             "Gallantry Beyond Measure": 5,
-            "Truly Exceptional Heroism": 5,
+            "Outstanding Patriotism": 5,           
+            "Truly Exceptional Heroism": 4,
             "Superior Valour": 4,
             "Costly Failure": 4,
             "Honourable Duty": 3,

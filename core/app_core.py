@@ -502,7 +502,7 @@ class MissionLogGUI:
         self.hvt_type = tk.StringVar()
         self.Helldivers = tk.StringVar()
         self.mission_category = tk.StringVar()
-        self.rating = tk.StringVar(value="Outstanding Patriotism")
+        self.rating = tk.StringVar(value="Gallantry Beyond Measure")
         self.level = tk.IntVar()
         self.title = tk.StringVar()
         self.difficulty = tk.StringVar()
@@ -675,7 +675,7 @@ class MissionLogGUI:
             clear_text_widgets(self.root)
             self.kills.set("")
             self.deaths.set("")
-            self.rating.set("Outstanding Patriotism")
+            self.rating.set("Gallantry Beyond Measure")
             # Ensure underlying note state is also cleared so empty notes don't reuse previous content
             try:
                 if hasattr(self, 'note_entry'):

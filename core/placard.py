@@ -606,9 +606,9 @@ def generate_helldiver_banner(
                 return None
 
             rating_map = {
-                "Outstanding Patriotism": 5,
                 "Gallantry Beyond Measure": 5,
-                "Truly Exceptional Heroism": 5,
+                "Outstanding Patriotism": 5,               
+                "Truly Exceptional Heroism": 4,
                 "Superior Valour": 4,
                 "Costly Failure": 4,
                 "Honourable Duty": 3,
@@ -1066,9 +1066,9 @@ def generate_helldiver_banner(
         if gold_count is not None:
             try:
                 labels = {
-                    5: "Outstanding Patriotism",
                     5: "Gallantry Beyond Measure",
-                    5: "Truly Exceptional Heroism",
+                    5: "Outstanding Patriotism",                    
+                    4: "Truly Exceptional Heroism",
                     4: "Superior Valour",
                     3: "Honourable Duty",
                     2: "Unremarkable Performance",
