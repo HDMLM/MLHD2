@@ -312,8 +312,20 @@ terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega Cit
 automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
 illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
 
-FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
-FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+from core.utils import get_effective_flair
+flair_colour = get_effective_flair()
+if flair_colour.lower() == 'gold':
+    FlairLeftIco = iconconfig['MiscIcon'].get('Gold Flair Left', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get('Gold Flair Right', iconconfig['MiscIcon']['Flair Right'])
+elif flair_colour.lower() == 'blue':
+    FlairLeftIco = iconconfig['MiscIcon'].get('Blue Flair Left', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get('Blue Flair Right', iconconfig['MiscIcon']['Flair Right'])
+elif flair_colour.lower() == 'red':
+    FlairLeftIco = iconconfig['MiscIcon'].get('Red Flair Left', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get('Red Flair Right', iconconfig['MiscIcon']['Flair Right'])
+else:
+    FlairLeftIco = iconconfig['MiscIcon'].get(f'Flair Left {flair_colour}', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get(f'Flair Right {flair_colour}', iconconfig['MiscIcon']['Flair Right'])
 GoldStarIco = iconconfig['Stars']['GoldStar']
 FlairSkullIco = iconconfig['MiscIcon']['Flair Skull']
 FlairSEIco = iconconfig['MiscIcon']['Flair Super Earth']

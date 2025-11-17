@@ -1,18 +1,3 @@
-"""
-gui_components.py
-
-Extracted UI builder for the MLHD2 application.
-This module exposes a single function `build_ui(app)` which takes the
-MissionLogGUI instance (from main.py) and constructs all Tkinter widgets
-previously held inside MissionLogGUI._setup_ui.
-
-Important: keep the widget names/variable names identical so existing
-logic in main.py continues to work without modification.
-
-This file was created by automated refactor. It preserves visual styles,
-image loading, fonts and widget bindings exactly as before.
-"""
-
 import os
 import json
 import random
@@ -47,7 +32,26 @@ def build_ui(app):
     This function intentionally mirrors the original _setup_ui implementation
     but references `app` instead of `self`.
     """
+
     root = app.root
+
+    # --- Flair Colour Logic ---
+    flair_colour = 'default'
+    flair_colours = {
+        'gold': {'fg': '#FFD700', 'outline': '#FFD700'},
+        'blue': {'fg': '#00BFFF', 'outline': '#00BFFF'},
+        'red': {'fg': '#FF4040', 'outline': '#FF4040'},
+        'default': {'fg': '#FFFFFF', 'outline': '#666666'}
+    }
+    try:
+        from core.utils import get_effective_flair
+        flair_colour = get_effective_flair().lower()
+        if flair_colour not in flair_colours:
+            flair_colour = 'default'
+    except Exception:
+        flair_colour = 'default'
+    flair_fg = flair_colours[flair_colour]['fg']
+    flair_outline = flair_colours[flair_colour]['outline']
 
     # Create main content frame
     content = ttk.Frame(app.frame, padding=(20, 10))
@@ -91,7 +95,7 @@ def build_ui(app):
     external_frame = ttk.Frame(header_frame)
 
     font_to_use = app.fs_sinclair_font if app.fs_sinclair_font is not None else tkfont.Font(family="Arial", size=14, weight="bold")
-    ttk.Label(header_frame, text="Operation Details", font=font_to_use).pack(side=tk.LEFT)
+    ttk.Label(header_frame, text="Operation Details", font=font_to_use, foreground=flair_fg).pack(side=tk.LEFT)
 
     # Galactic War label and toggle
     gw_frame = ttk.Frame(external_frame)
@@ -111,16 +115,16 @@ def build_ui(app):
     except Exception as e:
         logging.error(f"Failed to load GW icon: {e}")
 
-    ttk.Label(top_right_frame, text="Galactic War").pack(side=tk.LEFT)
+    ttk.Label(top_right_frame, text="Galactic War", foreground=flair_fg).pack(side=tk.LEFT)
 
-    gw_label = ttk.Label(top_right_frame, textvariable=gw_date_var, cursor="hand2", width=14, anchor="w")
+    gw_label = ttk.Label(top_right_frame, textvariable=gw_date_var, cursor="hand2", width=14, anchor="w", foreground=flair_fg)
     gw_label.pack(side=tk.LEFT, padx=(2,0))
     gw_label.bind("<Button-1>", toggle_gw_date)
 
     # Pack external_frame so its children are visible
     external_frame.pack(side=tk.LEFT, padx=(10,0))
 
-    mission_frame = ttk.LabelFrame(content, padding=10, labelwidget=header_frame)
+    mission_frame = ttk.LabelFrame(content, padding=10, labelwidget=header_frame, style="Flair.TLabelframe")
 
     def update_time():
         mission_time_var.set((datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%H:%M:%S"))
@@ -160,10 +164,10 @@ def build_ui(app):
     if not app.Helldivers.get():
         app.Helldivers.set(app.helldiver_default or "")
 
-    ttk.Label(mission_frame, text="Level:").grid(row=0, column=2, sticky=tk.W, padx=0, pady=5)
+    ttk.Label(mission_frame, text="Level:", foreground=flair_fg).grid(row=0, column=2, sticky=tk.W, padx=0, pady=5)
     ttk.Entry(mission_frame, textvariable=app.level, width=35).grid(row=0, column=2, sticky=tk.W, padx=(45,0), pady=5)
 
-    ttk.Label(mission_frame, text="Title:").grid(row=1, column=2, sticky=tk.W, pady=5)
+    ttk.Label(mission_frame, text="Title:", foreground=flair_fg).grid(row=1, column=2, sticky=tk.W, pady=5)
     # Load titles from json file
     with open(app_path('JSON', 'Titles.json'), 'r') as f:
         titles_data = json.load(f)
@@ -173,7 +177,7 @@ def build_ui(app):
     app.title_combo.grid(row=1, column=2, sticky=tk.W, padx=(45,0), pady=5)
     app.title_combo.set(app.titles[0])
 
-    ttk.Label(mission_frame, text="Profile:").grid(row=2, column=2, sticky=tk.W, pady=5)
+    ttk.Label(mission_frame, text="Profile:", foreground=flair_fg).grid(row=2, column=2, sticky=tk.W, pady=5)
     # Load profile pictures from json
     with open(app_path('JSON', 'ProfilePictures.json'), 'r') as f:
         profile_data = json.load(f)
@@ -185,12 +189,12 @@ def build_ui(app):
 
     # --- Mission Details Section ---
     # Create details_frame with custom font for the label
-    details_frame = ttk.LabelFrame(content, padding=10)
-    details_label = ttk.Label(details_frame, text="Mission Details", font=font_to_use)
+    details_frame = ttk.LabelFrame(content, padding=10, style="Flair.TLabelframe")
+    details_label = ttk.Label(details_frame, text="Mission Details", font=font_to_use, foreground=flair_fg)
     details_frame['labelwidget'] = details_label
     details_frame.grid(row=1, column=0, padx=5, pady=5, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-    profile_preview_frame = ttk.LabelFrame(mission_frame, labelwidget=ttk.Label(mission_frame, text="Profile Preview", font=("Arial", 10, "bold"), anchor="center", justify="center"), padding=5)
+    profile_preview_frame = ttk.LabelFrame(mission_frame, labelwidget=ttk.Label(mission_frame, text="Profile Preview", font=("Arial", 10, "bold"), anchor="center", justify="center", foreground=flair_fg), padding=5, style="Flair.TLabelframe")
     profile_preview_frame.grid(row=0, column=3, rowspan=6, sticky=tk.N, padx=(20,0))  # Adjusted row span and sticky
 
     # Create label to hold the preview image with fixed square dimensions
@@ -228,19 +232,19 @@ def build_ui(app):
     # Initial preview update
     update_profile_preview()
 
-    ttk.Label(mission_frame, text="Sector:").grid(row=0, column=0, sticky=tk.W, pady=5)
+    ttk.Label(mission_frame, text="Sector:", foreground=flair_fg).grid(row=0, column=0, sticky=tk.W, pady=5)
     sector_combo = ttk.Combobox(mission_frame, textvariable=app.sector, values=sector_list, state='readonly', width=27)
     sector_combo.grid(row=0, column=1, padx=5, pady=5)
     sector_combo.set(sector_list[0])
 
-    ttk.Label(mission_frame, text="Planet:").grid(row=1, column=0, sticky=tk.W, pady=5)
+    ttk.Label(mission_frame, text="Planet:", foreground=flair_fg).grid(row=1, column=0, sticky=tk.W, pady=5)
     planet_combo = ttk.Combobox(mission_frame, textvariable=app.planet, state='readonly', width=27)
     planet_combo.grid(row=1, column=1, padx=5, pady=5)
     app.sector_combo = sector_combo
     app.planet_combo = planet_combo
 
     # Create frame for planet preview with increased size
-    planet_preview_frame = ttk.LabelFrame(mission_frame, labelwidget=ttk.Label(mission_frame, text="Planet Preview", font=("Arial", 10, "bold"), anchor="center", justify="center"), padding=5)
+    planet_preview_frame = ttk.LabelFrame(mission_frame, labelwidget=ttk.Label(mission_frame, text="Planet Preview", font=("Arial", 10, "bold"), anchor="center", justify="center", foreground=flair_fg), padding=5, style="Flair.TLabelframe")
     planet_preview_frame.grid(row=0, column=4, rowspan=6, sticky=tk.N, padx=(20,0))
 
     # Create label to hold the preview image with fixed square dimensions
@@ -248,7 +252,7 @@ def build_ui(app):
     app.planet_preview_label.pack(padx=0, pady=0)
 
     # sector frame and label
-    sector_frame = ttk.LabelFrame(mission_frame, labelwidget=ttk.Label(mission_frame, text="Sector Preview", font=("Arial", 10, "bold"), anchor="center", justify="center"), padding=5)
+    sector_frame = ttk.LabelFrame(mission_frame, labelwidget=ttk.Label(mission_frame, text="Sector Preview", font=("Arial", 10, "bold"), anchor="center", justify="center", foreground=flair_fg), padding=5, style="Flair.TLabelframe")
     sector_frame.grid(row=0, column=5, rowspan=6, sticky=tk.N, padx=(20,0))
 
     app.sector_info_label = tk.Label(sector_frame, borderwidth=0)
@@ -268,7 +272,7 @@ def build_ui(app):
 
     # Header containing the label and the combobox, used as the LabelFrame's labelwidget
     banner_header = ttk.Frame(details_frame)
-    ttk.Label(banner_header, text="Banner Selection").pack(side=tk.LEFT)
+    ttk.Label(banner_header, text="Banner Selection", foreground=flair_fg).pack(side=tk.LEFT)
     app.biome_banner_combo = ttk.Combobox(
         banner_header,
         textvariable=app.banner_type_var,
@@ -279,7 +283,7 @@ def build_ui(app):
     app.biome_banner_combo.pack(side=tk.LEFT, padx=(6, 0))
 
     # Frame reserved only for the image; header sits in the label area
-    biome_frame = ttk.LabelFrame(details_frame, padding=5)
+    biome_frame = ttk.LabelFrame(details_frame, padding=5, style="Flair.TLabelframe")
     biome_frame['labelwidget'] = banner_header
     biome_frame.grid(row=0, column=6, rowspan=6, sticky=tk.N, padx=(20,0))
 
@@ -444,7 +448,7 @@ def build_ui(app):
     # Initial preview update
     update_planet_preview()
 
-    ttk.Label(mission_frame, text="Mega City:").grid(row=2, column=0, sticky=tk.W, pady=5)
+    ttk.Label(mission_frame, text="Mega City:", foreground=flair_fg).grid(row=2, column=0, sticky=tk.W, pady=5)
     mega_cities_combo = ttk.Combobox(mission_frame, textvariable=app.mega_cities, state='readonly', width=27)
     mega_cities_combo.grid(row=2, column=1, sticky=tk.W, padx=(8,0), pady=5)
     app.mega_cities_combo = mega_cities_combo
@@ -791,7 +795,7 @@ def build_ui(app):
         invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
 
     # Enemy selection
-    ttk.Label(details_frame, text="Enemy Type:").grid(row=0, column=0, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="Enemy Type:", foreground=flair_fg).grid(row=0, column=0, sticky=tk.W, pady=5)
 
     enemy_types = []
     try:
@@ -812,16 +816,16 @@ def build_ui(app):
     enemy_combo.grid(row=0, column=1, padx=5, pady=5)
 
     # Major Order + DSS toggles
-    ttk.Label(details_frame, text="Major Order:").grid(row=2, column=2, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="Major Order:", foreground=flair_fg).grid(row=2, column=2, sticky=tk.W, pady=5)
     ttk.Checkbutton(details_frame, variable=app.MO).grid(row=2, column=2, sticky=tk.W, padx=(100,0), pady=5)
 
     # DSS modifier dropdown (shown only if active)
-    ttk.Label(details_frame, text="DSS Active:").grid(row=2, column=2, sticky=tk.W, pady=5, padx=(150,0))
+    ttk.Label(details_frame, text="DSS Active:", foreground=flair_fg).grid(row=2, column=2, sticky=tk.W, pady=5, padx=(150,0))
     ttk.Checkbutton(details_frame, variable=app.DSS).grid(row=2, column=2, sticky=tk.W, padx=(250,0), pady=5)
 
     app.dss_frame = ttk.Frame(details_frame)
     app.dss_frame.grid(row=3, column=2, sticky=tk.W, pady=5)
-    ttk.Label(app.dss_frame, text="DSS Modifier:").pack(side=tk.LEFT)
+    ttk.Label(app.dss_frame, text="DSS Modifier:", foreground=flair_fg).pack(side=tk.LEFT)
     dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm", "Eagle Blockade"]
     app.DSSMod.set("Inactive")  # Set default value
     app.dss_combo = ttk.Combobox(app.dss_frame, textvariable=app.DSSMod, values=dss_mods, state='readonly', width=27)
@@ -845,7 +849,7 @@ def build_ui(app):
             pass
 
     # Subfaction
-    ttk.Label(details_frame, text="Enemy Subfaction:").grid(row=0, column=2, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="Enemy Subfaction:", foreground=flair_fg).grid(row=0, column=2, sticky=tk.W, pady=5)
     subfaction_combo = ttk.Combobox(details_frame, textvariable=app.subfaction_type, state='readonly', width=27)
     subfaction_combo.grid(row=0, column=2, sticky=tk.E, padx=(125,0), pady=5)
     # Ensure banner updates when subfaction changes
@@ -860,7 +864,7 @@ def build_ui(app):
             pass
 
     # HVT Type
-    ttk.Label(details_frame, text="High-Value Target:").grid(row=1, column=2, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="High-Value Target:", foreground=flair_fg).grid(row=1, column=2, sticky=tk.W, pady=5)
     hvt_combo = ttk.Combobox(details_frame, textvariable=app.hvt_type, state='readonly', width=27)
     hvt_combo.grid(row=1, column=2, padx=(125,0), pady=5)
     # Ensure banner updates when HVT changes
@@ -875,17 +879,17 @@ def build_ui(app):
             pass
 
     # Campaign
-    ttk.Label(details_frame, text="Mission Campaign:").grid(row=1, column=0, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="Mission Campaign:", foreground=flair_fg).grid(row=1, column=0, sticky=tk.W, pady=5)
     mission_cat_combo = ttk.Combobox(details_frame, textvariable=app.mission_category, state='readonly', width=27)
     mission_cat_combo.grid(row=1, column=1, padx=5, pady=5)
 
     # Difficulty
-    ttk.Label(details_frame, text="Mission Difficulty:").grid(row=2, column=0, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="Mission Difficulty:", foreground=flair_fg).grid(row=2, column=0, sticky=tk.W, pady=5)
     difficulty_combo = ttk.Combobox(details_frame, textvariable=app.difficulty, state='readonly', width=27)
     difficulty_combo.grid(row=2, column=1, padx=5, pady=5)
 
     # Mission type
-    ttk.Label(details_frame, text="Mission Name:").grid(row=3, column=0, sticky=tk.W, pady=5)
+    ttk.Label(details_frame, text="Mission Name:", foreground=flair_fg).grid(row=3, column=0, sticky=tk.W, pady=5)
     mission_type_combo = ttk.Combobox(details_frame, textvariable=app.mission_type, state='readonly', width=27)
     mission_type_combo.grid(row=3, column=1, padx=5, pady=5)
 
@@ -1032,14 +1036,14 @@ def build_ui(app):
     stats_note_container.grid(row=2, column=0, padx=5, pady=5, sticky=(tk.W, tk.E))
 
     # Stats
-    stats_frame = ttk.LabelFrame(stats_note_container, text="Mission Results", padding=10)
-    stats_label = ttk.Label(stats_frame, text="Mission Results", font=font_to_use)
+    stats_frame = ttk.LabelFrame(stats_note_container, text="Mission Results", padding=10, style="Flair.TLabelframe")
+    stats_label = ttk.Label(stats_frame, text="Mission Results", font=font_to_use, foreground=flair_fg)
     stats_frame['labelwidget'] = stats_label
     stats_frame.pack(side=tk.LEFT, padx=5, fill=tk.BOTH, expand=True)
 
     # Note
-    note_frame = ttk.LabelFrame(stats_note_container, text="Notes", padding=10)
-    note_label = ttk.Label(note_frame, text="Notes", font=font_to_use)
+    note_frame = ttk.LabelFrame(stats_note_container, text="Notes", padding=10, style="Flair.TLabelframe")
+    note_label = ttk.Label(note_frame, text="Notes", font=font_to_use, foreground=flair_fg)
     note_frame['labelwidget'] = note_label
     note_frame.pack(side=tk.RIGHT, padx=5, fill=tk.BOTH, expand=True)
 
@@ -1086,13 +1090,13 @@ def build_ui(app):
     note_frame.columnconfigure(0, weight=1)
     note_frame.rowconfigure(0, weight=1)
 
-    ttk.Label(stats_frame, text="Kills:").grid(row=1, column=0, sticky=tk.W, pady=5)
+    ttk.Label(stats_frame, text="Kills:", foreground=flair_fg).grid(row=1, column=0, sticky=tk.W, pady=5)
     ttk.Entry(stats_frame, textvariable=app.kills, width=30).grid(row=1, column=1, padx=5, pady=5)
 
-    ttk.Label(stats_frame, text="Deaths:").grid(row=2, column=0, sticky=tk.W, pady=5)
+    ttk.Label(stats_frame, text="Deaths:", foreground=flair_fg).grid(row=2, column=0, sticky=tk.W, pady=5)
     ttk.Entry(stats_frame, textvariable=app.deaths, width=30).grid(row=2, column=1, padx=5, pady=5)
 
-    ttk.Label(stats_frame, text="Performance:").grid(row=3, column=0, sticky=tk.W, pady=5)
+    ttk.Label(stats_frame, text="Performance:", foreground=flair_fg).grid(row=3, column=0, sticky=tk.W, pady=5)
     ratings = ["Gallantry Beyond Measure", "Outstanding Patriotism", "Truly Exceptional Heroism", "Superior Valour", "Costly Failure", "Honourable Duty", "Unremarkable Performance", "Disappointing Service", "Disgraceful Conduct"]
     rating_combo = ttk.Combobox(stats_frame, textvariable=app.rating, values=ratings, state='readonly', width=27)
     rating_combo.grid(row=3, column=1, padx=5, pady=5)
@@ -1154,9 +1158,23 @@ def build_ui(app):
         submit_button = ttk.Button(content, text="Submit Mission Report", command=app.submit_data, width=130, padding=(0, 30))
         submit_button.grid(row=3, column=0, pady=15)
 
-    # Submission overlay image placed behind the submit button
+    # Submission overlay image placed behind the submit button, with flair colour support
     try:
-        overlay_img_path = app_path('media', 'SyInt', 'SubmissionOverlay.png')
+        # Default to SubmissionOverlay.png
+        overlay_img_name = 'SubmissionOverlay.png'
+        # Try to read flair_colour from DCord.json
+        try:
+            from core.utils import get_effective_flair
+            flair_colour = get_effective_flair().lower()
+            if flair_colour == 'gold':
+                overlay_img_name = 'GoldSubmissionOverlay.png'
+            elif flair_colour == 'blue':
+                overlay_img_name = 'BlueSubmissionOverlay.png'
+            elif flair_colour == 'red':
+                overlay_img_name = 'RedSubmissionOverlay.png'
+        except Exception as e:
+            logging.warning(f"Could not determine effective flair colour: {e}")
+        overlay_img_path = app_path('media', 'SyInt', overlay_img_name)
         pil_overlay = Image.open(overlay_img_path).convert('RGBA')
         new_width = int(pil_overlay.width * 1.05)
         new_height = pil_overlay.height
@@ -1174,12 +1192,17 @@ def build_ui(app):
         logging.error(f"Failed to load submission overlay image: {e}")
 
     # Export + Style sections
-    bottom_frame = ttk.LabelFrame(content, text="Report Style and Export", padding=10)
+    bottom_frame = ttk.LabelFrame(content, text="Report Style and Export", padding=10, style="Flair.TLabelframe")
     bottom_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
 
     # Export buttons / integrations
-    export_frame = ttk.LabelFrame(content, text="Exporting", padding=10)
+    export_label = ttk.Label(content, text="Exporting", font=font_to_use, foreground=flair_fg)
+    export_frame = ttk.LabelFrame(content, padding=10, style="Flair.TLabelframe", labelwidget=export_label)
     export_frame.grid(row=4, column=0, pady=5, sticky=(tk.W, tk.E))
+    # --- Apply custom style for flair outlines ---
+    style = ttk.Style()
+    style.configure("Flair.TLabelframe", bordercolor=flair_outline, borderwidth=3)
+    style.configure("Flair.TLabelframe.Label", foreground=flair_fg)
 
     # Export GUI launcher with image and hover effect, with sound effect on click
     try:

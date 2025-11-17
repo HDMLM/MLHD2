@@ -919,8 +919,8 @@ class SettingsPage(tk.Tk):
 # START BADGE PREVIEW
         # Platform Badges (horizontal images underneath webhook frame)
         platform_badges_frame = ttk.Frame(discord_frame)
-        # Place with reduced left and top margins
-        platform_badges_frame.place(relx=0.12, rely=0.85, anchor="w")
+        # Place with reduced left and top margins, adjust y to close the gap
+        platform_badges_frame.place(relx=0.12, rely=0.88, anchor="w")
 
         def load_platform_badge(path, size=(100, 100)):
             img = Image.open(path)
@@ -1178,8 +1178,84 @@ class SettingsPage(tk.Tk):
         self.remove_webhook_export_btn.bind("<Enter>", on_remove_btn_export_enter)
         self.remove_webhook_export_btn.bind("<Leave>", on_remove_btn_export_leave)
         self.remove_webhook_export_btn.bind("<Button-1>", play_remove_click)
+
+
         self.show_urls_chk = ttk.Checkbutton(hooks_lf, text="Show URLs (otherwise show labels)", variable=self.show_urls_var, command=self.refresh_webhook_listboxes)
-        self.show_urls_chk.grid(row=8, column=0, columnspan=2, sticky=tk.W, pady=5)
+        self.show_urls_chk.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        # Flair Colour Section (moved below Show URLs)
+        flair_label = ttk.Label(hooks_lf, text="Flair Colour", font=("Arial", 10, "bold"))
+        flair_label.grid(row=11, column=0, sticky=tk.W, pady=(10, 2))
+        # Load flair colour from DCord.json if available
+        flair_default = "Default"
+        try:
+            with open(DCORD_PATH, 'r') as f:
+                dcord_data = json.load(f)
+            flair_from_json = dcord_data.get('flair_colour', '').capitalize()
+            if flair_from_json in ["Default", "Gold", "Blue", "Red"]:
+                flair_default = flair_from_json
+        except Exception:
+            pass
+        self.flair_colour_var = tk.StringVar(value=flair_default)
+        flair_options = ["Default", "Gold", "Blue", "Red"]
+
+        # --- Updated Unlock Logic ---
+        import pandas as pd
+        import json as _json
+        from core.runtime_paths import app_path as _app_path
+        import os as _os
+        # Check mission_log.xlsx for deployments and Super Earth
+        APP_DATA = _os.path.join(_os.getenv('LOCALAPPDATA'), 'MLHD2')
+        excel_file = _os.path.join(APP_DATA, 'mission_log.xlsx')
+        total_deployments = 0
+        has_super_earth = False
+        excel_highest_streak = 0
+        if _os.path.exists(excel_file):
+            try:
+                df = pd.read_excel(excel_file)
+                total_deployments = len(df)
+                has_super_earth = 'Super Earth' in df['Planet'].values if 'Planet' in df.columns else False
+                if 'Streak' in df.columns:
+                    excel_highest_streak = int(df['Streak'].max())
+            except Exception:
+                pass
+        # Check streak_data.json for highest_streak
+        json_highest_streak = 0
+        streak_path = _app_path('JSON', 'streak_data.json')
+        if _os.path.exists(streak_path):
+            try:
+                with open(streak_path, 'r') as sf:
+                    streak_data = _json.load(sf)
+                json_highest_streak = streak_data.get('Helldiver', {}).get('highest_streak', 0)
+            except Exception:
+                pass
+        # Use the higher of the two for red flair
+        highest_streak = max(excel_highest_streak, json_highest_streak)
+
+        self.flair_colour_combo = ttk.Combobox(hooks_lf, textvariable=self.flair_colour_var, values=flair_options, state="readonly", width=12)
+        self.flair_colour_combo.grid(row=11, column=0, sticky=tk.W, padx=(110, 0), pady=(10, 2), columnspan=1)
+
+        def on_flair_colour_selected(event=None):
+            val = self.flair_colour_var.get()
+            try:
+                from core.utils import validate_flair
+                ok, msg, stats = validate_flair(val)
+                if not ok:
+                    messagebox.showinfo("Locked", msg)
+                    self.flair_colour_var.set("Default")
+            except Exception:
+                # Fallback to previous local checks if helper is unavailable
+                if val == "Gold" and total_deployments < 1000:
+                    messagebox.showinfo("Locked", "Gold Flair requires 1000 deployments (currently: {} deployments).".format(total_deployments))
+                    self.flair_colour_var.set("Default")
+                elif val == "Blue" and not has_super_earth:
+                    messagebox.showinfo("Locked", "Blue Flair requires a deployment on Super Earth.")
+                    self.flair_colour_var.set("Default")
+                elif val == "Red" and highest_streak < 30:
+                    messagebox.showinfo("Locked", "Red Flair requires a 30 streak (highest: {}).".format(highest_streak))
+                    self.flair_colour_var.set("Default")
+
+        self.flair_colour_combo.bind("<<ComboboxSelected>>", on_flair_colour_selected)
 
         # Buttons
         button_frame = ttk.Frame(main_frame)
@@ -1587,17 +1663,55 @@ class SettingsPage(tk.Tk):
                     existing_homeworld = existing_data.get("Player Homeworld")
         except Exception:
             pass
-        
+
+        # --- Flair Colour Change Detection ---
+        flair_changed = False
+        try:
+            if os.path.exists(DCORD_PATH):
+                with open(DCORD_PATH, "r", encoding="utf-8") as f:
+                    dcord_data = json.load(f)
+                prev_flair = dcord_data.get("flair_colour", "Default").capitalize()
+                curr_flair = self.flair_colour_var.get().capitalize()
+                if prev_flair != curr_flair:
+                    flair_changed = True
+        except Exception:
+            pass
+
+        # --- Validate Flair Requirements using shared helper ---
+        try:
+            from core.utils import validate_flair
+            # Validate the current selection; if invalid, show message and revert
+            curr = self.flair_colour_var.get()
+            ok, msg, stats = validate_flair(curr)
+            if not ok:
+                messagebox.showinfo("Locked", msg)
+                self.flair_colour_var.set("Default")
+            # Recompute flair_changed using stored DCord.json value
+            try:
+                if os.path.exists(DCORD_PATH):
+                    with open(DCORD_PATH, "r", encoding="utf-8") as f:
+                        dcord_data = json.load(f)
+                    prev_flair = dcord_data.get("flair_colour", "Default").capitalize()
+                else:
+                    prev_flair = None
+            except Exception:
+                prev_flair = None
+            curr_flair = self.flair_colour_var.get().capitalize()
+            flair_changed = (prev_flair != curr_flair)
+        except Exception:
+            # If helper isn't available for any reason, don't block save
+            flair_changed = flair_changed
+
         settings_data = {
             "shipName1": self.shipName1_var.get(),
             "shipName2": self.shipName2_var.get(),
             "username": self.Helldivers.get(),
         }
-        
+
         # Preserve Player Homeworld if it exists
         if existing_homeworld:
             settings_data["Player Homeworld"] = existing_homeworld
-        
+
         # Write DCord.json
         def _extract(items):
             return [w.get("url", "").strip() for w in items if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))]
@@ -1617,6 +1731,7 @@ class SettingsPage(tk.Tk):
                 "platform": self.platform_var.get() or "Not Selected",
                 "dont_send_to_discord": True,
                 "webhooks_backup": self._webhooks_backup,
+                "flair_colour": self.flair_colour_var.get(),
             }
         else:
             # Normal save; if there is a backup but flag is off, write without forcing
@@ -1629,6 +1744,7 @@ class SettingsPage(tk.Tk):
                 "discord_webhooks_export_labeled": self.webhooks_export,
                 "platform": self.platform_var.get() or "Not Selected",
                 "dont_send_to_discord": False,
+                "flair_colour": self.flair_colour_var.get(),
             }
         try:
             with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
@@ -1637,6 +1753,8 @@ class SettingsPage(tk.Tk):
                 json.dump(dcord, f, indent=4)
             msg = "Settings saved successfully!" if "-ML" in sys.argv else "Settings saved! Please run MLHD2-Launcher.exe"
             messagebox.showinfo("Success", msg)
+            if flair_changed:
+                messagebox.showinfo("Relaunch Required", "You have changed your Flair Colour. Please relaunch the Main App for any visual changes to apply.")
             self.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Could not save settings: {e}")

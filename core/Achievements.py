@@ -669,8 +669,10 @@ else:
             if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
         ]
 
-FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
-FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+from core.utils import get_effective_flair
+flair_colour = get_effective_flair()
+FlairLeftIco = iconconfig['MiscIcon'].get(f'Flair Left {flair_colour}', iconconfig['MiscIcon']['Flair Left'])
+FlairRightIco = iconconfig['MiscIcon'].get(f'Flair Right {flair_colour}', iconconfig['MiscIcon']['Flair Right'])
 Locked1Ico = iconconfig['MiscIcon']['Locked 1']
 Locked2Ico = iconconfig['MiscIcon']['Locked 2']
 Locked3Ico = iconconfig['MiscIcon']['Locked 3']

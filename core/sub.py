@@ -462,15 +462,27 @@ with open(app_path('JSON', 'streak_data.json'), 'r') as f:
     profile_picture = streak_data.get("Helldiver", streak_data.get(helldiver_ses, {})).get("profile_picture_name", "")
 
 GoldStarIco = iconconfig['Stars']['GoldStar']
-FlairLeftIco = iconconfig['MiscIcon']['Flair Left']
-FlairRightIco = iconconfig['MiscIcon']['Flair Right']
+from core.utils import get_effective_flair
+flair_colour = get_effective_flair()
+if flair_colour.lower() == 'gold':
+    FlairLeftIco = iconconfig['MiscIcon'].get('Gold Flair Left', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get('Gold Flair Right', iconconfig['MiscIcon']['Flair Right'])
+elif flair_colour.lower() == 'blue':
+    FlairLeftIco = iconconfig['MiscIcon'].get('Blue Flair Left', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get('Blue Flair Right', iconconfig['MiscIcon']['Flair Right'])
+elif flair_colour.lower() == 'red':
+    FlairLeftIco = iconconfig['MiscIcon'].get('Red Flair Left', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get('Red Flair Right', iconconfig['MiscIcon']['Flair Right'])
+else:
+    FlairLeftIco = iconconfig['MiscIcon'].get(f'Flair Left {flair_colour}', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get(f'Flair Right {flair_colour}', iconconfig['MiscIcon']['Flair Right'])
 FlairSkullIco = iconconfig['MiscIcon']['Flair Skull']
 FlairSEIco = iconconfig['MiscIcon']['Flair Super Earth']
 FlairGSSkullIco = iconconfig['MiscIcon']['Flair Gold Spinning Skull']
 
-# Load DCord.json data
-with open(app_path('JSON', 'DCord.json'), 'r') as f:
-    dcord_data = json.load(f)
+# Load DCord.json data (used elsewhere in file)
+from core.utils import get_effective_flair
+_dcord_effective_flair = get_effective_flair()
     
 def _build_primary_embed_description() -> str:
     """Compose the primary embed description (kept modular so we can reuse in HTML)."""

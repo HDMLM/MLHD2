@@ -37,6 +37,7 @@ from core.icon import (
     get_planet_image,
 )
 
+
 # Load config
 iconconfig = configparser.ConfigParser()
 from core.runtime_paths import app_path
@@ -48,6 +49,16 @@ try:
         iconconfig.read(orphan_icon_conf)
 except Exception:
     pass
+
+# Flair icon dynamic selection
+from core.utils import get_effective_flair
+
+
+def get_flair_icons():
+    flair_colour = get_effective_flair()
+    FlairLeftIco = iconconfig['MiscIcon'].get(f'Flair Left {flair_colour}', iconconfig['MiscIcon']['Flair Left'])
+    FlairRightIco = iconconfig['MiscIcon'].get(f'Flair Right {flair_colour}', iconconfig['MiscIcon']['Flair Right'])
+    return FlairLeftIco, FlairRightIco
 
 def _get_enemy_icon(enemy_type: str) -> str:
     return ENEMY_ICONS.get(enemy_type, "NaN")
@@ -386,8 +397,20 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
 
         MICo = str(data.get("Major Order")) + " " + (iconconfig['MiscIcon'].get('MO', '') if 'MiscIcon' in iconconfig else '') if data.get("Major Order") else str(data.get("Major Order"))
         DSSIco = str(data.get("DSS Active")) + " " + (iconconfig['MiscIcon'].get('DSS', '') if 'MiscIcon' in iconconfig else '') if data.get("DSS Active") else str(data.get("DSS Active"))
-        FlairLeftIco = iconconfig['MiscIcon'].get('Flair Left', '') if 'MiscIcon' in iconconfig else ''
-        FlairRightIco = iconconfig['MiscIcon'].get('Flair Right', '') if 'MiscIcon' in iconconfig else ''
+        # Flair icons based on flair_colour
+        flair_colour = data.get('flair_colour', 'Default')
+        if flair_colour == 'Gold':
+            FlairLeftIco = iconconfig['MiscIcon'].get('Gold Flair Left', '') if 'MiscIcon' in iconconfig else ''
+            FlairRightIco = iconconfig['MiscIcon'].get('Gold Flair Right', '') if 'MiscIcon' in iconconfig else ''
+        elif flair_colour == 'Blue':
+            FlairLeftIco = iconconfig['MiscIcon'].get('Blue Flair Left', '') if 'MiscIcon' in iconconfig else ''
+            FlairRightIco = iconconfig['MiscIcon'].get('Blue Flair Right', '') if 'MiscIcon' in iconconfig else ''
+        elif flair_colour == 'Red':
+            FlairLeftIco = iconconfig['MiscIcon'].get('Red Flair Left', '') if 'MiscIcon' in iconconfig else ''
+            FlairRightIco = iconconfig['MiscIcon'].get('Red Flair Right', '') if 'MiscIcon' in iconconfig else ''
+        else:
+            FlairLeftIco = iconconfig['MiscIcon'].get('Flair Left', '') if 'MiscIcon' in iconconfig else ''
+            FlairRightIco = iconconfig['MiscIcon'].get('Flair Right', '') if 'MiscIcon' in iconconfig else ''
 
         message_content = {
             "content": None,

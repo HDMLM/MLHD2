@@ -90,9 +90,9 @@ from core.utils import (
 import random
 
 # Manual Configuration
-GWDay = "Day: 644"
-GWDate = "Date: 13/11/2025"
-VERSION = "1.7.011"
+GWDay = "Day: 648"
+GWDate = "Date: 17/11/2025"
+VERSION = "1.7.012"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -617,46 +617,98 @@ class MissionLogGUI:
                 os._exit(0)
 
     def submit_data(self) -> None:
+        # Load Discord settings and flair
         with open(app_path('JSON', 'DCord.json'), 'r') as f:
             discord_data = json.load(f)
             global Platform
             Platform = discord_data.get('platform', 'Not Selected')
+            flair_colour = discord_data.get('flair_colour', 'Default')
 
-    # Handle mission report submission.
+        # --- Backend Flair Validation ---
+        # Gather requirements
+        total_deployments = 0
+        has_super_earth = False
+        highest_streak = 0
+        try:
+            # Count deployments from mission log
+            import pandas as pd
+            APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+            DEBUG = False
+            try:
+                import configparser
+                config = configparser.ConfigParser()
+                config.read(app_path('orphan', 'config.config'))
+                DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+            except Exception:
+                pass
+            excel_file = os.path.join(APP_DATA, 'mission_log_test.xlsx') if DEBUG else os.path.join(APP_DATA, 'mission_log.xlsx')
+            if os.path.exists(excel_file):
+                df = pd.read_excel(excel_file)
+                total_deployments = len(df)
+                has_super_earth = 'Super Earth' in df['Planet'].values if 'Planet' in df.columns else False
+        except Exception:
+            pass
+        try:
+            # Highest streak from streak_data.json
+            streak_path = app_path('JSON', 'streak_data.json')
+            if os.path.exists(streak_path):
+                with open(streak_path, 'r') as sf:
+                    streak_data = json.load(sf)
+                user = 'Helldiver'
+                highest_streak = streak_data.get(user, {}).get('highest_streak', 0)
+        except Exception:
+            pass
+
+        # Validate flair
+        valid_flair = 'Default'
+        if flair_colour == 'Gold' and total_deployments >= 1000:
+            valid_flair = 'Gold'
+        elif flair_colour == 'Blue' and has_super_earth:
+            valid_flair = 'Blue'
+        elif flair_colour == 'Red' and highest_streak >= 30:
+            valid_flair = 'Red'
+        elif flair_colour == 'Default':
+            valid_flair = 'Default'
+        else:
+            # Flair is not unlocked, revert and notify
+            self._show_error(f"You attempted to use a locked flair ('{flair_colour}'). It has been reverted to 'Default'.")
+            # Update DCord.json to revert flair
+            discord_data['flair_colour'] = 'Default'
+            with open(app_path('JSON', 'DCord.json'), 'w', encoding='utf-8') as f:
+                json.dump(discord_data, f, indent=4)
+            flair_colour = 'Default'
+
+        # Continue with normal submission
         if not self._validate_submission():
             return
-            
         self.save_settings()
         self.update_time()
 
         # Observing faction is handled by observe_data() method
-
         if Platform == "Not Selected":
             self._show_error("ADVISORY: You must select a platform in settings before submitting")
             self.update_submit_button_image("Fail")
             return
-
         if self.mission_type.get() == "No missions available":
             self._show_error("ADVISORY: You cannot submit without selecting a mission")
             self.update_submit_button_image("Fail")
             return
-
         if self.planet.get() == "Meridia":
             self._show_error("ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Meridian Black Hole.")
             self.update_submit_button_image("Fail")
             return
-
         if self.planet.get() in ["Angel's Venture", "Moradesh", "Ivis"]:
             self._show_error("ADVISORY: You cannot deploy on a fractured planet")
             self.update_submit_button_image("Fail")
             return
-
         if self.planet.get() in ["Widow's Harbor", "New Haven", "Pilen V", "Mars"]:
             self._show_error("ADVISORY: You cannot deploy on a scoured planet")
             self.update_submit_button_image("Fail")
             return
 
         data = self._collect_mission_data()
+        # Attach the validated flair to mission data for Discord integration
+        data['flair_colour'] = flair_colour
 
         sent_success = False
         if self._save_to_excel(data):

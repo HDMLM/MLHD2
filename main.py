@@ -28,6 +28,15 @@ def _validate_dcord() -> None:
             messagebox.showerror("Error", "Please set a valid Discord ID in the settings.py file")
             # Run settings UI as a module so package imports resolve correctly
             try:
+                # Close any open Tkinter root window before launching settings
+                try:
+                    import tkinter as tk
+                    for widget in tk._default_root.children.values():
+                        widget.destroy()
+                    if tk._default_root:
+                        tk._default_root.destroy()
+                except Exception:
+                    pass
                 subprocess.run([sys.executable, '-m', 'core.settings'])
             except Exception:
                 # Fallback: execute file directly (older behavior)
@@ -43,6 +52,15 @@ def _validate_dcord() -> None:
             messagebox.showerror("Error", "Please set a valid Platform in settings.py")
             # Run settings UI as a module so package imports resolve correctly
             try:
+                # Close any open Tkinter root window before launching settings
+                try:
+                    import tkinter as tk
+                    for widget in tk._default_root.children.values():
+                        widget.destroy()
+                    if tk._default_root:
+                        tk._default_root.destroy()
+                except Exception:
+                    pass
                 subprocess.run([sys.executable, '-m', 'core.settings'])
             except Exception:
                 try:
