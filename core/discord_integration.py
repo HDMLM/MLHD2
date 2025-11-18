@@ -54,20 +54,24 @@ except Exception:
 from core.utils import get_effective_flair
 
 
+# Returns left/right flair icons based on validated flair; affects embed visuals
 def get_flair_icons():
     flair_colour = get_effective_flair()
     FlairLeftIco = iconconfig['MiscIcon'].get(f'Flair Left {flair_colour}', iconconfig['MiscIcon']['Flair Left'])
     FlairRightIco = iconconfig['MiscIcon'].get(f'Flair Right {flair_colour}', iconconfig['MiscIcon']['Flair Right'])
     return FlairLeftIco, FlairRightIco
 
+# Internal: returns enemy icon URL/key; affects embed visuals
 def _get_enemy_icon(enemy_type: str) -> str:
     return ENEMY_ICONS.get(enemy_type, "NaN")
 
 
+# Internal: returns difficulty icon URL/key; affects embed visuals
 def _get_difficulty_icon(difficulty: str) -> str:
     return DIFFICULTY_ICONS.get(difficulty, "NaN")
 
 
+# Internal: returns dynamic planet icon key; affects embed visuals
 def _get_planet_icon(planet: str) -> str:
     # Get fresh dynamic planet icons to ensure favourite planet icons are current
     from core.dynamic_icons import apply_dynamic_planet_icons
@@ -76,6 +80,7 @@ def _get_planet_icon(planet: str) -> str:
     return fresh_planet_icons.get(planet, "")
 
 
+# Internal: returns system color for enemy; affects embed color theme
 def _get_system_color(enemy_type: str) -> int:
     try:
         return int(SYSTEM_COLORS.get(enemy_type, "0"))
@@ -83,30 +88,37 @@ def _get_system_color(enemy_type: str) -> int:
         return 0
 
 
+# Internal: returns campaign icon key; affects embed visuals
 def _get_campaign_icon(mission_category: str) -> str:
     return CAMPAIGN_ICONS.get(mission_category, "")
 
 
+# Internal: returns mission icon key; affects embed visuals
 def _get_mission_icon(mission_type: str) -> str:
     return MISSION_ICONS.get(mission_type, "")
 
 
+# Internal: returns biome banner key; affects embed banner
 def _get_biome_banner(planet: str) -> str:
     return BIOME_BANNERS.get(planet, "")
 
 
+# Internal: returns DSS icon key; affects embed visuals
 def _get_dss_icon(dss_modifier: str) -> str:
     return DSS_ICONS.get(dss_modifier, "")
 
 
+# Internal: returns title icon key; affects embed visuals
 def _get_title_icon(title: str) -> str:
     return TITLE_ICONS.get(title, "")
 
 
+# Internal: returns profile picture key; affects embed thumbnail
 def _get_profile_picture(profile_picture: str) -> str:
     return PROFILE_PICTURES.get(profile_picture, "")
 
 
+# Initializes Discord Rich Presence in background; affects RPC status display
 def setup_discord_rpc(app, discord_client_id: str) -> None:
     """Initialize Discord Rich Presence in a background thread.
 
@@ -132,6 +144,7 @@ def setup_discord_rpc(app, discord_client_id: str) -> None:
     threading.Thread(target=init_rpc, daemon=True).start()
 
 
+# Updates Discord Rich Presence if throttle allows; affects live presence
 def update_discord_presence(app, rpc_update_interval: int) -> None:
     """Update Discord Rich Presence using the app.RPC object.
 
@@ -205,6 +218,7 @@ def update_discord_presence(app, rpc_update_interval: int) -> None:
         logging.error(f"Failed to update Discord Rich Presence: {e}")
 
 
+# Builds and posts the mission embed to configured webhooks; affects Discord export
 def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: str, version: str, dev_release: str) -> bool:
     """Send the nicely formatted embed to configured Discord webhooks.
 

@@ -9,6 +9,7 @@ from core.runtime_paths import app_path
 __all__ = ["generate_helldiver_banner"]
 
 
+# Generates a player placard image (PNG); affects settings preview/export
 def generate_helldiver_banner(
     name: str = "Helldiver",
     title: str = "",

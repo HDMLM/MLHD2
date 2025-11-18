@@ -1162,14 +1162,17 @@ PLANET_PROFILES = {
 }
 
 # Helper functions to retrieve banner URLs
+# Returns subfaction banner URL from config; affects banner rendering in exports
 def get_subfaction_banner(subfaction: str) -> str:
     """Return subfaction banner URL from config."""
     return SUBFACTION_BANNERS.get(subfaction, "")
 
+# Returns helldiver banner URL from config; affects player card visuals
 def get_helldiver_banner(helldiver_key: str) -> str:
     """Return helldiver banner URL from config."""
     return HELLDIVER_BANNERS.get(helldiver_key, "")
 
+# Resolves planet image URL via biome mapping; affects observation thumbnails
 def get_planet_image(planet_name: str) -> str:
     """Get the planet image URL based on the planet name.
     
@@ -1202,6 +1205,7 @@ def get_planet_image(planet_name: str) -> str:
         logging.error(f"Error getting planet image for '{planet_name}': {e}")
         return ""
 
+# Collects user badge/platform icons from settings/logs; affects embed decorations
 def get_badge_icons(debug: bool = False, app_data_path: str = None, date_format: str = "%d-%m-%Y %H:%M:%S"):
     """
     Centralized function to get Discord user badges and platform icons.

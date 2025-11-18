@@ -9,6 +9,7 @@ import logging
 from PIL import Image, ImageTk
 
 
+# Loads and scales a small icon with app background; affects small button icons
 def load_small_icon(path: str, scale_divisor: int = 6) -> Optional[ImageTk.PhotoImage]:
     try:
         pil_img = Image.open(path).convert('RGBA')
@@ -22,6 +23,7 @@ def load_small_icon(path: str, scale_divisor: int = 6) -> Optional[ImageTk.Photo
         return None
 
 
+# Binds hover enter/leave to swap widget image; affects interactive button visuals
 def bind_image_hover(widget, default_img, hover_img, on_enter: Optional[Callable]=None, on_leave: Optional[Callable]=None):
     """Bind a pair of enter/leave events to swap a widget's image.
 

@@ -44,6 +44,7 @@ iconconfig = configparser.ConfigParser()
 from core.runtime_paths import app_path
 iconconfig.read(app_path('orphan', 'icon.config'))
 
+# Validates discordrpc availability and shape; affects Discord RPC initialization
 def _verify_discordrpc():
     try:
         import logging
@@ -137,6 +138,7 @@ EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
 
 
 # Theme System
+# Builds a ttk theme configuration dictionary; affects global UI styling
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
     combobox_bg = "#D3D3D3"  # light gray for dropdowns
     return {
@@ -175,6 +177,7 @@ DEFAULT_THEME = make_theme(
     frame_bg="#252526"
 )
 
+# Applies the provided theme to ttk widgets (incl. combobox tweaks); affects app appearance
 def apply_theme(style, theme_dict, root=None):
     # Use clam theme for full control
     try:
@@ -203,45 +206,56 @@ def apply_theme(style, theme_dict, root=None):
         root.option_add('*TCombobox*Listbox.foreground', combobox_cfg.get("foreground", "#000000"))
 
 
+# Wrapper to fetch enemy icon path from utils; affects export/Discord visuals
 def get_enemy_icon(enemy_type: str) -> str:
     return util_get_enemy_icon(enemy_type)
 
 
+# Wrapper to fetch difficulty icon path from utils; affects export/Discord visuals
 def get_difficulty_icon(difficulty: str) -> str:
     return util_get_difficulty_icon(difficulty)
 
 
+# Wrapper to fetch planet icon path from utils; affects export/Discord visuals
 def get_planet_icon(planet: str) -> str:
     return util_get_planet_icon(planet)
 
 
+# Wrapper to fetch system color for enemy; affects dynamic icons and theming
 def get_system_color(enemy_type: str) -> int:
     return util_get_system_color(enemy_type)
 
 
+# Wrapper to fetch campaign icon path from utils; affects export/Discord visuals
 def get_campaign_icon(mission_category: str) -> str:
     return util_get_campaign_icon(mission_category)
 
 
+# Wrapper to fetch mission icon path from utils; affects export/Discord visuals
 def get_mission_icon(mission_type: str) -> str:
     return util_get_mission_icon(mission_type)
 
 
+# Wrapper to fetch biome banner path from utils; affects banner rendering
 def get_biome_banner(planet: str) -> str:
     return util_get_biome_banner(planet)
 
 
+# Wrapper to fetch DSS icon path from utils; affects export/Discord visuals
 def get_dss_icon(dss_modifier: str) -> str:
     return util_get_dss_icon(dss_modifier)
 
 
+# Wrapper to fetch title icon path from utils; affects profile preview/export
 def get_title_icon(title: str) -> str:
     return util_get_title_icon(title)
 
 
+# Wrapper to fetch profile picture path from utils; affects profile preview/export
 def get_profile_picture(profile_picture: str) -> str:
     return util_get_profile_picture(profile_picture)
 
+# Normalizes subfaction names to canonical keys; affects subfaction icon lookup
 def normalize_subfaction_name(subfaction: str) -> str:
     # Normalize subfaction name. - A: is this even used rn?
     normalized = " ".join(subfaction.split()).title()
@@ -260,6 +274,7 @@ def normalize_subfaction_name(subfaction: str) -> str:
     }
     return replacements.get(normalized, normalized)
 
+# Normalizes HVT names to canonical keys; affects HVT icon lookup
 def normalize_hvt_name(hvt: str) -> str:
     normalized = " ".join(hvt.split()).title()
     replacements = {
@@ -267,6 +282,7 @@ def normalize_hvt_name(hvt: str) -> str:
     }
     return replacements.get(normalized, normalized)
 
+# Returns subfaction icon path (or empty if missing); affects export visuals
 def get_subfaction_icon(subfaction_type: str) -> str:
     # Return subfaction icon (empty if missing).
     icon = SUBFACTION_ICONS.get(subfaction_type, "NaN")
@@ -275,6 +291,7 @@ def get_subfaction_icon(subfaction_type: str) -> str:
         icon = ""
     return icon
 
+# Returns HVT icon path (or empty if missing); affects export visuals
 def get_hvt_icon(hvt_type: str) -> str:
     # Return HVT icon (empty if missing).
     icon = HVT_ICONS.get(normalize_hvt_name(hvt_type), "NaN")
@@ -283,6 +300,7 @@ def get_hvt_icon(hvt_type: str) -> str:
         icon = ""
     return icon
 
+# Reads Excel to count total missions; affects stats display/logic
 def total_missions():
     excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD  # <-- FIXED
     try:
@@ -294,6 +312,7 @@ def total_missions():
         return 0  # Return 0 if file doesn't exist yet
 
 class MissionLogGUI:
+    # Core GUI application controller; orchestrates state, UI, and integrations
     def _install_click_sound(self) -> None:
         """Bind a global handler to play a click sound for primary button releases.
 
@@ -321,6 +340,7 @@ class MissionLogGUI:
             self._click_sound_installed = True
         except Exception as e:
             logging.debug(f"Failed installing click sound binding: {e}")
+    # Updates the submit button image based on status; affects submit button UI/feedback
     def update_submit_button_image(self, status: str) -> None:
         """
         Updates the submission button image depending on status.
@@ -344,6 +364,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to update submit button image: {e}")
 
+    # Resets submit/observe button image to default; affects submit button UI
     def _reset_submit_button_image(self):
         """Reset button image to appropriate default based on current faction."""
         if hasattr(self, 'submit_label'):
@@ -393,6 +414,7 @@ class MissionLogGUI:
                 pass
 
 
+    # Initializes app state, theme, RPC, and UI; affects entire application startup
     def __init__(self, *args, **kwargs):
         # Initialize the GUI application.
         try:
@@ -472,6 +494,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to bind WM_DELETE_WINDOW handler: {e}")
 
+    # Initializes dynamic icons cache on startup; affects icon selection
     def _initialize_dynamic_icons(self) -> None:
         """Initialize the dynamic icons cache on application startup"""
         try:
@@ -481,6 +504,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.warning(f"Failed to initialize dynamic icons cache: {e}")
 
+    # Periodically updates Discord Rich Presence; affects Discord integration
     def _periodic_rpc_update(self) -> None:
         try:
             self._update_discord_presence()
@@ -489,6 +513,7 @@ class MissionLogGUI:
         finally:
             self.root.after(RPC_UPDATE_INTERVAL * 1000, self._periodic_rpc_update)
 
+    # Creates and wires Tk variables and validators; affects form state
     def _setup_variables(self) -> None:
     # Initialize tkinter variables with validation.
         self.sector = tk.StringVar()
@@ -520,10 +545,12 @@ class MissionLogGUI:
         self.kills.trace_add("write", lambda *args: self._validate_field(self.kills))
         self.deaths.trace_add("write", lambda *args: self._validate_field(self.deaths))
 
+    # Validates numeric inputs within bounds; affects kills/deaths field validation
     def _validate_numeric_input(self, value: str) -> bool:
         # Delegate numeric validation to utils
         return is_valid_numeric_value(value, 0, 999999)
 
+    # Cleans and normalizes numeric fields; affects kills/deaths field display
     def _validate_field(self, var: tk.StringVar) -> None:
         # Clean value using utils; if invalid, reset
         val = var.get()
@@ -536,6 +563,7 @@ class MissionLogGUI:
             if cleaned != val:
                 var.set(cleaned)
 
+    # Creates the root frame and styles; affects top-level layout container
     def _create_main_frame(self) -> None:
         style = ttk.Style()
 
@@ -547,6 +575,7 @@ class MissionLogGUI:
         style.configure('TExportButton', font=('Arial', 7))
 
 
+    # Initializes Discord RPC via integration module; affects presence display
     def _setup_discord_rpc(self) -> None:
         # Delegate to discord_integration.setup_discord_rpc to keep main focused
         try:
@@ -555,6 +584,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to initialize Discord RPC via discord_integration: {e}")
 
+    # Delegates detailed UI construction to gui_components; affects window content
     def _setup_ui(self) -> None:
         # Delegate UI construction to gui_components to keep main file focused
         try:
@@ -564,6 +594,7 @@ class MissionLogGUI:
             logging.error(f"Failed to build UI from gui_components: {e}")
             raise
 
+    # Updates Discord presence fields from current state; affects RPC status
     def _update_discord_presence(self) -> None:
         try:
             from core.discord_integration import update_discord_presence
@@ -572,6 +603,7 @@ class MissionLogGUI:
             logging.error(f"Failed to update Discord presence via discord_integration: {e}")
 
 
+    # Loads persisted user selections and applies them; affects form defaults
     def load_settings(self) -> None:
     # Load user settings from file.
         def load():
@@ -583,6 +615,7 @@ class MissionLogGUI:
 
         threading.Thread(target=load, daemon=True).start()
 
+    # Persists frequently changed selections between sessions; affects persistence
     def save_settings(self) -> None:
         # Persist commonly edited selections between sessions
         settings = {
@@ -604,6 +637,7 @@ class MissionLogGUI:
         except Exception as e:
             self._show_error(f"Error saving persistent settings: {e}")
     
+    # Handles graceful shutdown and saves settings; affects app exit behavior
     def _on_close(self) -> None:
         # Save current selections before closing the app
         try:
@@ -616,6 +650,7 @@ class MissionLogGUI:
             except Exception:
                 os._exit(0)
 
+    # Validates and submits mission report to Excel/Discord; affects data/logging
     def submit_data(self) -> None:
         # Load Discord settings and flair
         with open(app_path('JSON', 'DCord.json'), 'r') as f:
@@ -736,6 +771,7 @@ class MissionLogGUI:
             except Exception as e:
                 logging.error(f"Failed to reset note state: {e}")
             
+    # Runs observation flow for 'Observing' faction; affects observation output
     def observe_data(self) -> None:
         """Handle observation data by running the observation.py script."""
         try:
@@ -750,6 +786,7 @@ class MissionLogGUI:
             self._show_error(f"Failed to run observation: {e}")
             self.update_submit_button_image("Fail")
     
+    # Switches submit button appearance based on enemy faction; affects submit visuals
     def _update_button_for_faction(self) -> None:
         """Update button appearance based on selected faction."""
         try:
@@ -769,6 +806,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to update button for faction: {e}")
             
+    # Validates inputs and enforces constraints before submission; affects UX flow
     def _validate_submission(self) -> bool:
     # Validate all required fields before submission.
         excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
@@ -868,9 +906,11 @@ class MissionLogGUI:
             self._show_error("Invalid numeric input")
             return False
 
+    # Shows an error dialog with the given message; affects user feedback
     def _show_error(self, message: str) -> None:
         messagebox.showerror("Error", message)
 
+    # Opens README or shows info dialog with help links; affects help UX
     def _open_info(self) -> None:
         try:
             readme_path = os.path.abspath("README.md")
@@ -895,6 +935,7 @@ class MissionLogGUI:
         except Exception as e:
             logging.error(f"Failed to show info dialog: {e}")
 
+    # Calculates current mission streak based on timing; affects report streak field
     def _calculate_current_streak(self) -> int:
         """Calculate the current streak based on the streak data and time difference."""
         try:
@@ -918,6 +959,7 @@ class MissionLogGUI:
             logging.error(f"Error calculating current streak: {e}")
             return 1  # Default to 1 on error
 
+    # Gathers current form values into a report dict; affects saved/exported data
     def _collect_mission_data(self) -> Dict:
     # Collect all mission data into a dictionary.
         # Read the current note text directly from the Text widget if available to avoid stale cached values
@@ -958,6 +1000,7 @@ class MissionLogGUI:
             'Note': note_value,
         }
 
+    # Appends mission data to Excel and updates dynamic icons; affects local log/cache
     def _save_to_excel(self, data: Dict) -> bool:
     # Save mission data to Excel file by appending new rows.
         excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
@@ -975,6 +1018,7 @@ class MissionLogGUI:
         
         return success
 
+    # Formats and sends mission data to Discord webhook; affects external posting
     def _send_to_discord(self, data: Dict) -> bool:
         try:
             from core.discord_integration import send_to_discord
@@ -988,6 +1032,7 @@ class MissionLogGUI:
             self._show_error("Error preparing Discord message")
             return False
 
+    # Iterates Excel and posts historical rows to Discord; affects webhook batch export
     def export_data(self) -> None:
     # Export Excel data to webhook.
         excel_file = "mission_log_test.xlsx" if DEBUG else "mission_log.xlsx"
@@ -1006,6 +1051,7 @@ class MissionLogGUI:
             self._show_error(f"Error exporting data: {e}")
             logging.error(f"Error during Excel export: {e}")
 
+    # Attempts to clean up RPC resources on deletion; affects shutdown hygiene
     def __del__(self) -> None:
     # Clean up resources on deletion.
         if hasattr(self, 'RPC') and self.RPC is not None:
@@ -1016,6 +1062,7 @@ class MissionLogGUI:
             except Exception:
                 pass
 
+    # Runs planet export script directly; affects webhook export
     def export_excel(self):
         try:
             try:
@@ -1029,6 +1076,7 @@ class MissionLogGUI:
         except subprocess.CalledProcessError as e:
             self._show_error(f"Export failed: {e}")
 
+    # Applies persisted settings to Tk variables and dependent widgets; affects initial state
     def _apply_settings(self, settings: dict) -> None:
         lvl = settings.get('level')
         if isinstance(lvl, int) and lvl > 0:

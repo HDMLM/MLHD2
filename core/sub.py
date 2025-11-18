@@ -269,6 +269,7 @@ except Exception:
 
 # Build a simple server-side HTML fallback for the 30-day chart so the export
 # displays the chart even if client-side JS is blocked or doesn't run.
+# Builds server-side 30-day deployments chart HTML; affects export fallback
 def _build_deployments_30d_chart_html(events):
     try:
         # Prepare date keys (last 30 days)
@@ -343,6 +344,7 @@ else:
 non_blank_notes = df['Note'].dropna()
 latest_note = non_blank_notes.iloc[-1] if not non_blank_notes.empty else "No Quote"
 
+# Returns most recent deployment date for enemy; used in embeds/export
 def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
         return 'No date available'
@@ -384,6 +386,7 @@ def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
 
     return closest_ts.strftime('%d-%m-%Y %H:%M:%S')
 
+# Returns earliest deployment date for enemy; used in embeds/export
 def get_first_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
         return 'No date available'
@@ -484,6 +487,7 @@ FlairGSSkullIco = iconconfig['MiscIcon']['Flair Gold Spinning Skull']
 from core.utils import get_effective_flair
 _dcord_effective_flair = get_effective_flair()
     
+# Composes the main embed description; affects top section of Discord export
 def _build_primary_embed_description() -> str:
     """Compose the primary embed description (kept modular so we can reuse in HTML)."""
     # Calculate Mega City deployments excluding "Planet Surface" and empty values
@@ -604,6 +608,7 @@ else:
             for w in webhook_urls
             if (isinstance(w, dict) and str(w.get('url','')).strip()) or (isinstance(w, str) and w.strip())
         ]
+# Heuristically checks Discord payload size; triggers HTML fallback decision
 def _embeds_exceed_limits(e_data: dict) -> bool:
     """Heuristically determine if embed payload is likely to hit Discord limits.
     Discord limits (simplified):
@@ -630,6 +635,7 @@ def _embeds_exceed_limits(e_data: dict) -> bool:
         pass
     return False
 
+# Builds the HTML export document (template or fallback); used for contingency
 def _generate_html_export(df: pd.DataFrame) -> str:
     """Generate an HTML export using optional user template or fallback."""
     template_path = "mission_export_template.html"
@@ -749,6 +755,7 @@ embed_data_contingency = {
     ]
 }
 
+# Sends contingency HTML export (embed + file) to Discord webhooks
 def _send_html_fallback(webhook_urls, df: pd.DataFrame):
     html_text = _generate_html_export(df)
     data_bytes = html_text.encode('utf-8')

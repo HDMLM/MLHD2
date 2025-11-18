@@ -4,6 +4,7 @@ from typing import Optional
 
 _configured = False
 
+# Configures root logging (console/file levels); affects app-wide logging output
 def setup_logging(debug: bool, log_file: str = "app.log") -> None:
     """Configure root logger.
 
@@ -55,5 +56,6 @@ def setup_logging(debug: bool, log_file: str = "app.log") -> None:
         for h in list(nlog.handlers):
             nlog.removeHandler(h)
 
+# Returns a named logger for modules; affects structured log routing
 def get_logger(name: Optional[str] = None) -> logging.Logger:
     return logging.getLogger(name)

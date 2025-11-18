@@ -16,6 +16,7 @@ from PIL import Image, ImageTk, ImageDraw
 from core.runtime_paths import app_path
 
 
+# Composites image onto app background to avoid halos; affects image appearance
 def _composite_bg(pil_img: Image.Image, bg_color=(37, 37, 38, 255)) -> Image.Image:
     """Composite the image onto a uniform background to avoid haloing."""
     try:
@@ -25,11 +26,13 @@ def _composite_bg(pil_img: Image.Image, bg_color=(37, 37, 38, 255)) -> Image.Ima
         return pil_img
 
 
+# Converts PIL image to PhotoImage after background composite; affects UI rendering
 def pil_to_photo(pil_img: Image.Image) -> ImageTk.PhotoImage:
     pil_img = _composite_bg(pil_img)
     return ImageTk.PhotoImage(pil_img)
 
 
+# Resolves media path via install-aware and package-local locations; affects asset lookup
 def _media_path(*parts: str) -> str:
     """Return a filename for media resources.
 
@@ -51,6 +54,7 @@ def _media_path(*parts: str) -> str:
     return os.path.join(os.getcwd(), *parts)
 
 
+# Loads Galactic War icon for header; affects top-right GW display
 def load_gw_icon() -> Optional[ImageTk.PhotoImage]:
     try:
         path = _media_path('media', 'SyInt', 'gw_icon.png')
@@ -62,6 +66,7 @@ def load_gw_icon() -> Optional[ImageTk.PhotoImage]:
         return None
 
 
+# Loads profile picture preview; affects profile preview frame
 def load_profile_preview(profile_name: str, size: Tuple[int, int] = (120, 120)) -> Optional[ImageTk.PhotoImage]:
     try:
         img_path = _media_path('media', 'profile_pictures', f"{profile_name}.png")
@@ -73,6 +78,7 @@ def load_profile_preview(profile_name: str, size: Tuple[int, int] = (120, 120)) 
         return None
 
 
+# Loads sector placeholder image; affects sector preview fallback
 def load_sector_placeholder(size: Optional[Tuple[int, int]] = None) -> Optional[ImageTk.PhotoImage]:
     try:
         # Try orphan folder first (user moved placeholder there), then regular media resolution
@@ -88,6 +94,7 @@ def load_sector_placeholder(size: Optional[Tuple[int, int]] = None) -> Optional[
         return None
 
 
+# Loads planet biome preview image; affects planet preview frame
 def load_planet_preview(biome_name: str) -> Optional[ImageTk.PhotoImage]:
     try:
         img_path = _media_path('media', 'planets', f"{biome_name}.png")
@@ -98,6 +105,7 @@ def load_planet_preview(biome_name: str) -> Optional[ImageTk.PhotoImage]:
         return None
 
 
+# Loads sector image and chroma-tints whites by enemy; affects sector preview frame
 def load_sector_preview(sector_name: str, enemy_type: str) -> Optional[ImageTk.PhotoImage]:
     try:
         img_path = _media_path('media', 'sectors', f"{sector_name}.png")
@@ -128,6 +136,7 @@ def load_sector_preview(sector_name: str, enemy_type: str) -> Optional[ImageTk.P
         return None
 
 
+# Loads and resizes a summary row icon; affects icons row under details
 def load_row_image(img_path: str, size: Tuple[int, int] = (60, 60)) -> Optional[ImageTk.PhotoImage]:
     try:
         if not img_path:
@@ -146,6 +155,7 @@ def load_row_image(img_path: str, size: Tuple[int, int] = (60, 60)) -> Optional[
         return None
 
 
+# Loads settings gear button default/hover images; affects settings control
 def load_settings_button_images() -> Tuple[Optional[ImageTk.PhotoImage], Optional[ImageTk.PhotoImage]]:
     try:
         def _load(path):
@@ -162,6 +172,7 @@ def load_settings_button_images() -> Tuple[Optional[ImageTk.PhotoImage], Optiona
         return None, None
 
 
+# Produces banner image (biome/subfaction/helldiver) with optional HVT overlay; affects banner panel
 def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optional[ImageTk.PhotoImage]:
     """Load and produce a biome/subfaction/helldiver banner for a planet.
 

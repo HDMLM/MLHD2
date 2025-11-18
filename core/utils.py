@@ -4,6 +4,8 @@ import logging
 from typing import Tuple, Dict, Optional
 
 
+# Aggregates mission stats from Excel/streak files; affects flair validation
+# Aggregates mission stats from local Excel/streak JSON; affects flair validation
 def _read_mission_log_stats() -> Dict[str, int]:
     """Return mission log derived stats used for flair validation.
 
@@ -65,6 +67,8 @@ def _read_mission_log_stats() -> Dict[str, int]:
     return stats
 
 
+# Validates whether a flair meets requirements; affects flair enforcement
+# Validates flair eligibility using local stats; affects flair enforcement
 def validate_flair(flair_name: str) -> Tuple[bool, Optional[str], Dict[str, int]]:
     """Return (allowed, message_if_not_allowed, stats).
 
@@ -88,6 +92,8 @@ def validate_flair(flair_name: str) -> Tuple[bool, Optional[str], Dict[str, int]
     return True, None, stats
 
 
+# Returns saved flair if valid, else 'Default'; affects UI theming/overlays
+# Reads saved flair and returns it only if valid; affects UI theming/overlays
 def get_effective_flair(dcord_path: Optional[str] = None) -> str:
     """Read `DCord.json` and return saved flair if it meets requirements; otherwise 'Default'."""
     try:
@@ -109,6 +115,8 @@ def get_effective_flair(dcord_path: Optional[str] = None) -> str:
 from typing import Optional as _Optional
 
 
+# Validates numeric string against bounds; affects field validation
+# Validates numeric string within provided bounds; affects live entry validation
 def is_valid_numeric_value(value: str, min_value: int = 0, max_value: int = 999999) -> bool:
     if value is None or value == "":
         return True
@@ -119,6 +127,7 @@ def is_valid_numeric_value(value: str, min_value: int = 0, max_value: int = 9999
         return False
 
 
+# Strips leading zeros from numeric strings; affects display normalization
 def clean_numeric_string(s: _Optional[str]) -> str:
     if not s:
         return ""
@@ -126,6 +135,7 @@ def clean_numeric_string(s: _Optional[str]) -> str:
     return cleaned if cleaned != '' else '0'
 
 
+# Normalizes subfaction names to canonical keys; affects icon lookup
 def normalize_subfaction_name(subfaction: str) -> str:
     normalized = " ".join(subfaction.split()).title()
     replacements = {
@@ -144,12 +154,14 @@ def normalize_subfaction_name(subfaction: str) -> str:
     return replacements.get(normalized, normalized)
 
 
+# Normalizes HVT names to canonical keys; affects icon lookup
 def normalize_hvt_name(hvt: str) -> str:
     normalized = " ".join(hvt.split()).title()
     replacements = {"Hive Lords": "HiveLords"}
     return replacements.get(normalized, normalized)
 
 
+# Returns a planet image URL via icon module; affects external references
 def get_planet_image_url(planet_name: str) -> str:
     try:
         from core.icon import get_planet_image
@@ -276,6 +288,7 @@ def is_valid_numeric_value(value: str, min_value: int = 0, max_value: int = 9999
         return False
 
 
+# Normalizes numeric strings by removing leading zeros; affects display values
 def clean_numeric_string(s: Optional[str]) -> str:
     """Normalize numeric entry strings by removing leading zeros.
 
@@ -288,6 +301,7 @@ def clean_numeric_string(s: Optional[str]) -> str:
     return cleaned if cleaned != '' else '0'
 
 
+# Normalizes subfaction to a canonical key; affects mapping lookups
 def normalize_subfaction_name(subfaction: str) -> str:
     normalized = " ".join(subfaction.split()).title()
     replacements = {
@@ -306,6 +320,7 @@ def normalize_subfaction_name(subfaction: str) -> str:
     return replacements.get(normalized, normalized)
 
 
+# Normalizes HVT to a canonical key; affects mapping lookups
 def normalize_hvt_name(hvt: str) -> str:
     normalized = " ".join(hvt.split()).title()
     replacements = {
@@ -314,18 +329,22 @@ def normalize_hvt_name(hvt: str) -> str:
     return replacements.get(normalized, normalized)
 
 
+# Returns enemy icon key from constants; affects visual asset selection
 def get_enemy_icon(enemy_type: str) -> str:
     return ENEMY_ICONS.get(enemy_type, "NaN")
 
 
+# Returns difficulty icon key from constants; affects visual asset selection
 def get_difficulty_icon(difficulty: str) -> str:
     return DIFFICULTY_ICONS.get(difficulty, "NaN")
 
 
+# Returns planet icon key from constants; affects visual asset selection
 def get_planet_icon(planet: str) -> str:
     return PLANET_ICONS.get(planet, "")
 
 
+# Returns system color code for enemy; affects theming/icon tinting
 def get_system_color(enemy_type: str) -> int:
     try:
         return int(SYSTEM_COLORS.get(enemy_type, "0"))
@@ -333,42 +352,51 @@ def get_system_color(enemy_type: str) -> int:
         return 0
 
 
+# Returns campaign icon key from constants; affects visual asset selection
 def get_campaign_icon(mission_category: str) -> str:
     return CAMPAIGN_ICONS.get(mission_category, "")
 
 
+# Returns mission icon key from constants; affects visual asset selection
 def get_mission_icon(mission_type: str) -> str:
     return MISSION_ICONS.get(mission_type, "")
 
 
+# Returns biome banner key from constants; affects banner selection
 def get_biome_banner(planet: str) -> str:
     return BIOME_BANNERS.get(planet, "")
 
 
+# Returns DSS icon key from constants; affects visual asset selection
 def get_dss_icon(dss_modifier: str) -> str:
     return DSS_ICONS.get(dss_modifier, "")
 
 
+# Returns title icon key from constants; affects visual asset selection
 def get_title_icon(title: str) -> str:
     return TITLE_ICONS.get(title, "")
 
 
+# Returns profile picture key from constants; affects profile visuals
 def get_profile_picture(profile_picture: str) -> str:
     return PROFILE_PICTURES.get(profile_picture, "")
 
 
+# Returns subfaction icon (empty if 'NaN'); affects visual asset selection
 def get_subfaction_icon(subfaction_type: str) -> str:
     icon = SUBFACTION_ICONS.get(subfaction_type, "NaN")
     logging.info(f"Getting subfaction icon for '{subfaction_type}', found: {icon}")
     return "" if icon == "NaN" else icon
 
 
+# Returns HVT icon (empty if 'NaN'); affects visual asset selection
 def get_hvt_icon(hvt_type: str) -> str:
     icon = HVT_ICONS.get(normalize_hvt_name(hvt_type), "NaN")
     logging.info(f"Getting HVT icon for '{hvt_type}', found: {icon}")
     return "" if icon == "NaN" else icon
 
 
+# Gets a planet image URL from constants module; affects external image links
 def get_planet_image_url(planet_name: str) -> str:
     """Get the planet image URL based on the planet name."""
     return get_planet_image(planet_name)

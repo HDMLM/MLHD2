@@ -12,6 +12,7 @@ from tkinter import messagebox
 import tkinter as tk
 
 
+# Validates Discord ID/platform and opens Settings if missing; affects startup
 def _validate_dcord() -> None:
     """Validate DCord.json has a reasonable Discord UID and a selected platform.
 

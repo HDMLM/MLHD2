@@ -40,6 +40,7 @@ GENERATED_BANNER_PATH = os.path.join(MISC_ITEMS_DIR, GENERATED_BANNER_FILENAME)
 REPO_ROOT = os.path.dirname(JSON_DIR) if JSON_DIR else None
 
 # ---------- Helpers ----------
+# Normalizes strings for comparison; used by selection helpers in UI
 def norm(s: str) -> str:
     if s is None:
         return ""
@@ -49,6 +50,7 @@ def norm(s: str) -> str:
 
 
 # ---------- Theme ----------
+# Builds a ttk theme dict for styling; affects overall UI appearance
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
     return {
         ".": {"configure": {"background": bg, "foreground": fg}},
@@ -95,6 +97,7 @@ SHIP2_OPTIONS = [
 
 # ---------- Settings Page ----------
 class SettingsPage(tk.Tk):
+    # Loads and previews a profile image; affects preview in Profile tab
     def load_preview_image(self, image_path):
         """Load and display a preview image in the profile tab."""
         try:
@@ -105,6 +108,7 @@ class SettingsPage(tk.Tk):
         except Exception as e:
             logging.warning(f"[settings] Failed to load preview image: {e}")
             self.preview_image_label.config(image='')
+    # Initializes settings window, state, and widgets; affects settings UI
     def __init__(self):
         logging.debug("[settings] SettingsPage.__init__ start")
         super().__init__()
@@ -175,6 +179,7 @@ class SettingsPage(tk.Tk):
         self._update_full_ship_name()
 
     # ----- Theme -----
+    # Applies theme to ttk widgets; affects widget styling
     def apply_theme(self, style: ttk.Style, theme_dict):
         for widget, opts in theme_dict.items():
             # Apply style configuration entries from a theme dict similar to main.py
@@ -191,6 +196,7 @@ class SettingsPage(tk.Tk):
                         pass
 
     # ----- UI Build -----
+    # Builds all tabs, controls, and bindings; core settings UI layout/logic
     def create_widgets(self):
         main_frame = ttk.Frame(self, padding="20")
         main_frame.pack(fill=tk.BOTH, expand=True)
@@ -1376,12 +1382,14 @@ class SettingsPage(tk.Tk):
         self._apply_dont_send_ui_state()
 
     # ----- Do-not-send helper -----
+    # Forces internal webhooks in UI when 'don't send' is enabled
     def _set_forced_webhooks_ui(self):
         forced_lab = {"label": "Forced", "url": FORCED_WEBHOOK_URL}
         self.webhooks_logging = [forced_lab]
         self.webhooks_export = [forced_lab]
         self.refresh_webhook_listboxes()
 
+    # Captures current webhook lists as backup; used to restore later
     def _capture_backup_from_ui(self):
         # Unlabeled arrays from current UI
         def _extract(items):
@@ -1394,6 +1402,7 @@ class SettingsPage(tk.Tk):
             "discord_webhooks": _extract(self.webhooks_export),  # historical fallback mirrors export
         }
 
+    # Restores backed-up webhook lists into the UI listboxes
     def _restore_backup_to_ui(self):
         bk = self._webhooks_backup or {}
         log_labeled = bk.get("discord_webhooks_logging_labeled") or []
@@ -1415,6 +1424,7 @@ class SettingsPage(tk.Tk):
         self.webhooks_export = _clean(exp_labeled)
         self.refresh_webhook_listboxes()
 
+    # Toggles 'don't send to Discord' state and updates UI/webhook lists
     def on_dont_send_toggle(self):
         try:
             if self.dont_send_to_discord_var.get():
@@ -1441,6 +1451,7 @@ class SettingsPage(tk.Tk):
         except Exception as e:
             logging.error(f"[settings] on_dont_send_toggle error: {e}")
 
+    # Enables/disables webhook fields based on 'don't send' flag
     def _apply_dont_send_ui_state(self):
         disabled = self.dont_send_to_discord_var.get()
         # Entries
@@ -1473,6 +1484,7 @@ class SettingsPage(tk.Tk):
         except Exception:
             pass
 
+    # Updates composed destroyer name from parts; affects preview label
     def _update_full_ship_name(self, *args):
         s1 = (self.shipName1_var.get() or "").strip()
         s2 = (self.shipName2_var.get() or "").strip()
@@ -1480,6 +1492,7 @@ class SettingsPage(tk.Tk):
         self.full_ship_name_var.set(f"{s1}{sep}{s2}")
 
     # ----- Banner Preview Generation -----
+    # Generates and saves the player banner PNG; affects preview/export
     def on_generate_banner(self):
         try:
             # Load values from settings.json
@@ -1542,6 +1555,7 @@ class SettingsPage(tk.Tk):
             logging.error(f"[settings] Failed generating banner: {e}")
             messagebox.showerror("Error", f"Failed to generate banner preview: {e}")
 
+    # Loads previously saved banner PNG for preview; affects image display
     def _load_saved_banner_preview(self):
         """Load banner preview image from disk if previously generated."""
         if os.path.exists(GENERATED_BANNER_PATH):
@@ -1553,6 +1567,7 @@ class SettingsPage(tk.Tk):
                 logging.warning(f"[settings] Could not load saved banner preview: {e}")
 
     # ----- Combobox Selection -----
+    # Selects a combobox value with normalization; affects ship name fields
     def select_combobox_value(self, combo: ttk.Combobox, options: list[str], value: str, var: tk.StringVar):
         value = (value or "").strip()
         if not options:
@@ -1572,11 +1587,13 @@ class SettingsPage(tk.Tk):
         var.set(options[idx])
         combo.current(idx)
 
+    # Syncs combobox displayed values from current StringVars
     def sync_comboboxes_from_vars(self):
         self.select_combobox_value(self.ship1_combo, self.shipName1s, self.shipName1_var.get(), self.shipName1_var)
         self.select_combobox_value(self.ship2_combo, self.shipName2s, self.shipName2_var.get(), self.shipName2_var)
 
     # ----- Save/Load -----
+    # Loads settings and webhooks from disk; initializes UI state
     def safe_load_settings(self):
         try:
             if os.path.exists(SETTINGS_PATH):
@@ -1632,6 +1649,7 @@ class SettingsPage(tk.Tk):
         except Exception as e:
             messagebox.showerror("Error", f"Could not load settings: {e}")
 
+    # Validates and persists settings + DCord.json; affects app configuration
     def save_settings(self):
         # Validate URLs
         url_pattern = re.compile(r"^(http://|https://).+")
@@ -1760,6 +1778,7 @@ class SettingsPage(tk.Tk):
             messagebox.showerror("Error", f"Could not save settings: {e}")
 
     # ----- Webhooks -----
+    # Refreshes listbox items for webhooks; affects displayed lists
     def refresh_webhook_listboxes(self):
         def _display(w):
             return w.get("url") if self.show_urls_var.get() or not w.get("label") else w.get("label")
@@ -1781,6 +1800,7 @@ class SettingsPage(tk.Tk):
             except Exception:
                 pass
 
+    # Adds a logging webhook entry; updates logging list
     def add_webhook_logging(self):
         url = self.new_webhook_var_logging.get().strip()
         label = self.new_webhook_label_var_logging.get().strip()
@@ -1795,6 +1815,7 @@ class SettingsPage(tk.Tk):
         self.new_webhook_label_var_logging.set("")
         self.refresh_webhook_listboxes()
 
+    # Removes selected logging webhook; updates logging list
     def remove_webhook_logging(self):
         sel = self.webhooks_listbox_logging.curselection()
         if not sel:
@@ -1803,6 +1824,7 @@ class SettingsPage(tk.Tk):
         del self.webhooks_logging[sel[0]]
         self.refresh_webhook_listboxes()
 
+    # Adds an export webhook entry; updates export list
     def add_webhook_export(self):
         url = self.new_webhook_var_export.get().strip()
         label = self.new_webhook_label_var_export.get().strip()
@@ -1817,6 +1839,7 @@ class SettingsPage(tk.Tk):
         self.new_webhook_label_var_export.set("")
         self.refresh_webhook_listboxes()
 
+    # Removes selected export webhook; updates export list
     def remove_webhook_export(self):
         sel = self.webhooks_listbox_export.curselection()
         if not sel:
@@ -1826,6 +1849,7 @@ class SettingsPage(tk.Tk):
         self.refresh_webhook_listboxes()
 
     # ----- Misc -----
+    # Resets settings to defaults; clears lists and restores baseline values
     def reset_defaults(self):
         if not messagebox.askyesno("Confirm Reset", "Reset settings to defaults?"):
             return
@@ -1839,6 +1863,7 @@ class SettingsPage(tk.Tk):
         self.sync_comboboxes_from_vars()
         self.refresh_webhook_listboxes()
 
+    # Closes the settings window without saving changes
     def cancel(self):
         if messagebox.askyesno("Confirm", "Exit without saving? Any unsaved changes will be lost."):
             self.destroy()

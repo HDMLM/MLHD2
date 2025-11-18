@@ -8,6 +8,7 @@ _CONFIG_DIR_NAME = "MLHD2"
 _CONFIG_FILENAME = "launcher_config.ini"
 
 
+# Computes per-user launcher config file path; affects install dir persistence
 def _get_user_config_file() -> str:
     if os.name == "nt":
         base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or os.path.expanduser("~")
@@ -27,6 +28,7 @@ def _get_user_config_file() -> str:
             return os.path.join(str(Path(__file__).parent.resolve()), _CONFIG_FILENAME)
 
 
+# Reads saved install directory from env/config; affects path resolution
 def read_saved_install_dir() -> Optional[str]:
     # Try cache via env first
     env = os.environ.get("MLHD2_INSTALL_DIR")
@@ -43,6 +45,7 @@ def read_saved_install_dir() -> Optional[str]:
     return None
 
 
+# Resolves effective install directory (handles frozen builds); affects resource lookup
 def get_install_dir() -> str:
     d = read_saved_install_dir()
     if d:
@@ -53,6 +56,7 @@ def get_install_dir() -> str:
     return str(Path(__file__).parent.resolve())
 
 
+# Resolves resource path via install dir with sensible fallbacks; affects file access
 def app_path(*parts: str) -> str:
     """Return an absolute path for a resource relative to the install directory.
 
@@ -76,6 +80,7 @@ def app_path(*parts: str) -> str:
     return str(install_dir.joinpath(*parts))
 
 
+# Resolves bundled resource path (PyInstaller aware); affects packaged assets
 def resource_path(*parts: str) -> str:
     # For bundled resources (PyInstaller _MEIPASS) or package-local resources
     meipass = getattr(sys, "_MEIPASS", None)

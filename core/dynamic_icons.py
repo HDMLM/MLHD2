@@ -36,6 +36,7 @@ DYNAMIC_ICONS_JSON = app_path('JSON', 'dynamic_icons.json')
 
 
 def load_dynamic_icons_cache() -> Dict[str, str]:
+    # Load cached dynamic planet data; affects planet icon overlays in UI/exports
     """
     Load dynamic icon data from JSON cache file
     
@@ -74,6 +75,7 @@ def load_dynamic_icons_cache() -> Dict[str, str]:
 
 
 def save_dynamic_icons_cache(data: Dict[str, str]) -> bool:
+    # Persist dynamic planet data cache; keeps UI overlays up-to-date
     """
     Save dynamic icon data to JSON cache file
     
@@ -96,6 +98,7 @@ def save_dynamic_icons_cache(data: Dict[str, str]) -> bool:
 
 
 def get_first_ingress_from_excel() -> str:
+    # Read first mission planet from Excel; feeds dynamic planet overlay
     """Get player's first planet from mission log (reads Excel directly)"""
     try:
         # Set up application data paths 
@@ -135,6 +138,7 @@ def get_first_ingress_from_excel() -> str:
 
 
 def get_ingress_100_from_excel() -> str:
+    # Read 100th mission planet from Excel; updates dynamic overlay badges
     """Get the planet where the player's 100th mission took place (reads Excel directly)"""
     try:
         # Set up application data paths 
@@ -174,6 +178,7 @@ def get_ingress_100_from_excel() -> str:
 
 
 def get_ingress_1k_from_excel() -> str:
+    # Read 1000th mission planet from Excel; updates dynamic overlay badges
     """Get the planet where the player's 1000th mission took place (reads Excel directly)"""
     try:
         # Set up application data paths 
@@ -213,6 +218,7 @@ def get_ingress_1k_from_excel() -> str:
 
 
 def get_most_played_planet_from_excel() -> str:
+    # Compute most played planet (favourite) from Excel; used in overlays
     """Get player's most played planet from mission log (favourite planet) (reads Excel directly)"""
     try:
         # Set up application data paths 
@@ -250,6 +256,7 @@ def get_most_played_planet_from_excel() -> str:
 
 
 def load_player_homeworld_from_settings() -> str:
+    # Load player homeworld from settings JSON; applies homeworld icon overlay
     """Load player's homeworld from settings (reads settings.json directly)"""
     try:
         with open(app_path('JSON', 'settings.json'), 'r') as f:
@@ -261,6 +268,7 @@ def load_player_homeworld_from_settings() -> str:
 
 
 def get_highest_kills_planet_from_excel() -> str:
+    # Compute planet with highest total kills; adds kills badge overlay
     """Get planet with highest kill count from mission log (reads Excel directly)"""
     try:
         # Set up application data paths 
@@ -298,6 +306,7 @@ def get_highest_kills_planet_from_excel() -> str:
 
 
 def get_highest_deaths_planet_from_excel() -> str:
+    # Compute planet with highest total deaths; adds deaths badge overlay
     """Get planet with highest death count from mission log (reads Excel directly)"""
     try:
         # Set up application data paths 
@@ -335,6 +344,7 @@ def get_highest_deaths_planet_from_excel() -> str:
 
 
 def apply_dynamic_planet_icons(base_planet_icons: Dict[str, str]) -> Dict[str, str]:
+    # Merge dynamic badges into base planet icons; updates UI iconography
     """
     Apply all dynamic planet icons to the base planet icons dictionary
     Uses cached JSON data for performance
@@ -424,6 +434,7 @@ def apply_dynamic_planet_icons(base_planet_icons: Dict[str, str]) -> Dict[str, s
 
 
 def get_dynamic_planet_data() -> Dict[str, str]:
+    # Expose cached dynamic planet metadata; used by UI and exports
     """
     Get all dynamic planet data from JSON cache
     
@@ -434,6 +445,7 @@ def get_dynamic_planet_data() -> Dict[str, str]:
 
 
 def update_dynamic_icons_from_excel() -> bool:
+    # Refresh dynamic icon data from Excel/settings; called on mission submit
     """
     Update dynamic icon data by reading from Excel and settings, then save to JSON cache
     This should be called when missions are submitted to refresh the data
@@ -465,6 +477,7 @@ def update_dynamic_icons_from_excel() -> bool:
 
 
 def initialize_dynamic_icons_cache() -> bool:
+    # Ensure dynamic icons cache exists and is valid; runs at app startup
     """
     Initialize the dynamic icons cache if it doesn't exist or is invalid
     This should be called on application startup
@@ -496,6 +509,7 @@ def initialize_dynamic_icons_cache() -> bool:
 
 
 def get_cache_last_updated() -> str:
+    # Return cache last-updated timestamp; useful for diagnostics/UI tooltips
     """
     Get the timestamp when the cache was last updated
     
@@ -510,6 +524,7 @@ def get_cache_last_updated() -> str:
 
 
 def force_refresh_cache() -> bool:
+    # Force rebuild of dynamic icons cache from Excel; troubleshooting UI badges
     """
     Force refresh the dynamic icons cache from Excel data
     Useful for manual refresh or troubleshooting

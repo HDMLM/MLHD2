@@ -104,6 +104,7 @@ elif Rating_Percentage >= 10:
 else:
     Rating = "Disgraceful Conduct"
 
+# Returns last deployment timestamp for an enemy; affects faction embed stats
 def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
         return 'No date available'
@@ -145,6 +146,7 @@ def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
 
     return closest_ts.strftime('%d-%m-%Y %H:%M:%S')
 
+# Returns first deployment timestamp for an enemy; affects faction embed stats
 def get_first_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
         return 'No date available'

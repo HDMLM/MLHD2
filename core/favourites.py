@@ -106,6 +106,7 @@ else:
     Rating = "Disgraceful Conduct"
 
 def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
+    # Get most recent deployment time for an enemy; drives favourites embed
     if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
         return 'No date available'
 
@@ -147,6 +148,7 @@ def get_last_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     return closest_ts.strftime('%d-%m-%Y %H:%M:%S')
 
 def get_first_deployment(df: pd.DataFrame, enemy_type: str) -> str:
+    # Get earliest deployment time for an enemy; used in favourites export
     if 'Time' not in df.columns or 'Enemy Type' not in df.columns:
         return 'No date available'
 

@@ -32,6 +32,7 @@ _lock = threading.Lock()
 _preload_started = False
 
 
+# Resolves path to sound asset using install-aware lookup; affects sound loading
 def _asset_path(filename: str) -> Optional[str]:
     # Resolve via app_path so development checkout (repo-root media/) is used
     try:
@@ -43,6 +44,7 @@ def _asset_path(filename: str) -> Optional[str]:
     return path if os.path.isfile(path) else None
 
 
+# Lazily initializes a sound player for 'click' or 'hover'; affects audio backend
 def _init_player(kind: str) -> None:
     global _button_player, _button_init_attempted, _hover_player, _hover_init_attempted
     if kind == "click":
@@ -126,6 +128,7 @@ def _init_player(kind: str) -> None:
                 logging.debug(f"UI sound: failed to init hover sound: {e}")
 
 
+# Preloads sound players in a thread to avoid first-play lag; affects UX latency
 def _preload():
     # Preload both players in background to avoid initial latency
     try:
@@ -135,6 +138,7 @@ def _preload():
         pass
 
 
+# Entry point to initialize UI sounds, optionally preloading; affects audio readiness
 def init_ui_sounds(preload: bool = True) -> None:
     # Optionally kick off background preload of both sounds.
     global _preload_started
@@ -145,11 +149,13 @@ def init_ui_sounds(preload: bool = True) -> None:
     t.start()
 
 
+# Globally enables or disables UI sounds; affects audio output
 def set_ui_sounds_enabled(enabled: bool) -> None:
     global _enabled
     _enabled = bool(enabled)
 
 
+# Plays the button click sound with throttling; affects click feedback
 def play_button_click() -> None:
     global _btn_last_play
     if not _enabled:
@@ -171,6 +177,7 @@ def play_button_click() -> None:
         pass
 
 
+# Plays the button hover sound with throttling; affects hover feedback
 def play_button_hover() -> None:
     global _hover_last_play
     if not _enabled:
@@ -191,7 +198,7 @@ def play_button_hover() -> None:
 
 
 def register_global_click_binding(root, filter_text_widgets: bool = True) -> None:
-    #Bind a global click-release handler that plays the click sound.
+    # Bind a global click-release handler that plays the click sound; affects whole app
     try:
         import tkinter as tk  # local import to avoid circulars
     except Exception:

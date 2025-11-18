@@ -26,6 +26,7 @@ from core.ui_effects import bind_image_hover, load_small_icon
 from core.ui_sound import play_button_click, play_button_hover
 
 
+# Build and wire the main GUI; affects overall UI layout and interactions
 def build_ui(app):
     """Construct the UI using the existing variables and methods on `app`.
     `app` is expected to be an instance of MissionLogGUI from main.py.
@@ -84,6 +85,7 @@ def build_ui(app):
     mission_time_var = tk.StringVar(value=SETime)
     gw_date_var = tk.StringVar(value=app.GWDate if hasattr(app, 'GWDate') else "")
 
+    # Toggles display between GW date and GW day; affects top-right GW header
     def toggle_gw_date(event=None):
         # Toggle between GWDate and GWDay
         if gw_date_var.get() == getattr(app, 'GWDate', ''):
@@ -126,6 +128,7 @@ def build_ui(app):
 
     mission_frame = ttk.LabelFrame(content, padding=10, labelwidget=header_frame, style="Flair.TLabelframe")
 
+    # Updates the mission time string every tick; affects mission header
     def update_time():
         mission_time_var.set((datetime.now(timezone.utc) + timedelta(hours=2)).strftime("%H:%M:%S"))
 
@@ -201,6 +204,7 @@ def build_ui(app):
     app.preview_label = tk.Label(profile_preview_frame, width=120, height=120, borderwidth=0)  # Fixed size for square preview
     app.preview_label.pack(padx=0, pady=0)  # Reduced vertical padding
 
+    # Loads and shows selected profile picture preview; affects profile preview frame
     def update_profile_preview(*args):
         try:
             # Get selected profile name
@@ -293,6 +297,7 @@ def build_ui(app):
     app.planet_biome_label = tk.Label(biome_frame, borderwidth=0)  # no width/height -> uses image natural size
     app.planet_biome_label.pack(padx=0, pady=0)
 
+    # Updates banner image based on selected type/planet; affects banner display
     def update_biome_banner(*args, f=None):
         try:
             # Get banner type from the combobox
@@ -330,6 +335,7 @@ def build_ui(app):
                 app.planet_biome_label.configure(image='')
 
     # Function to save banner selection to settings file
+    # Persists current banner selection to settings.json; affects saved UI preferences
     def save_banner_setting(*args):
         try:
             # Read current settings
@@ -355,6 +361,7 @@ def build_ui(app):
             except Exception:
                 pass
 
+    # Loads planet preview image and syncs banner biome; affects planet and banner previews
     def update_planet_preview(*args):
         try:
             # Get selected planet name
@@ -389,6 +396,7 @@ def build_ui(app):
             logging.error(f"Failed to load planet preview: {e}")
             app.planet_preview_label.configure(image='')
 
+    # Loads sector preview image based on sector/enemy; affects sector preview frame
     def update_sector_preview(*args):
         try:
             # Get selected sector name and enemy type
@@ -454,6 +462,7 @@ def build_ui(app):
     app.mega_cities_combo = mega_cities_combo
 
     # Dynamic planet / mega city lists
+    # Populates mega city options for the selected planet; affects mega city combobox
     def update_mega_cities(*args):
         # Populate mega cities based on currently selected planet.
         selected_planet = app.planet.get()
@@ -470,6 +479,7 @@ def build_ui(app):
             mega_cities_combo['values'] = mega_cities_list if mega_cities_list else ["Planet Surface"]
             mega_cities_combo.set(mega_cities_list[0] if mega_cities_list else "Planet Surface")
 
+    # Populates planets for the selected sector and refreshes mega cities; affects planet combobox
     def update_planets(*args):
         # Populate planets based on selected sector and immediately refresh mega cities.
         selected_sector = app.sector.get()
@@ -502,6 +512,7 @@ def build_ui(app):
         lbl.pack(side=tk.LEFT, padx=8, pady=0)  # Tighter packing
         app.row_image_labels.append(lbl)
 
+    # Refreshes the row of seven summary icons from current selections; affects icons row
     def update_row_images(*args):
         # Image 1: Enemy Type
         enemy_type = app.enemy_type.get()
@@ -642,6 +653,7 @@ def build_ui(app):
                         on_enter=lambda e: (play_button_hover(), None),
                         on_leave=lambda e: None)
 
+        # Launches the settings UI in a separate process; affects settings window
         def _open_settings(event=None):
             """Open settings.py in a detached child process using the current Python
             interpreter and a cleaned environment so debugpy/pydevd plugins from the
@@ -709,6 +721,7 @@ def build_ui(app):
         import time
         app.help_btn_clicks = []
         
+        # Shows Tips window or easter egg image after rapid clicks; affects help popup
         def show_sector_placeholder_window():
             # Track clicks for easter egg
             current_time = time.time()
@@ -756,6 +769,7 @@ def build_ui(app):
 
     # Invite button with hover effect
     try:
+        # Helper to load invite button images with background; used by invite control
         def load_invite_btn_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 4, pil_img.height // 4), Image.LANCZOS)
@@ -776,12 +790,14 @@ def build_ui(app):
         )
         app.invite_btn_label.pack(side=tk.TOP, pady=(0,8), padx=0)
 
+        # Hover handler to swap invite button image; affects invite button UI
         def on_invite_btn_enter(e):
                 app.invite_btn_label.configure(image=app.invite_btn_img_hover)
                 try:
                     play_button_hover()
                 except Exception:
                     pass
+        # Leave handler to restore invite button image; affects invite button UI
         def on_invite_btn_leave(e):
             app.invite_btn_label.configure(image=app.invite_btn_img_default)
 
@@ -833,6 +849,7 @@ def build_ui(app):
 
     app.dss_frame.grid_remove()
 
+    # Shows or hides DSS modifier controls based on DSS state; affects DSS frame
     def toggle_dss_mod(*args):
         if app.DSS.get():
             app.dss_frame.grid()
@@ -893,6 +910,7 @@ def build_ui(app):
     mission_type_combo = ttk.Combobox(details_frame, textvariable=app.mission_type, state='readonly', width=27)
     mission_type_combo.grid(row=3, column=1, padx=5, pady=5)
 
+    # Populates subfactions for the selected enemy; affects subfaction combobox
     def update_subfactions(*args):
         enemy = app.enemy_type.get()
         subfactions = []
@@ -906,6 +924,7 @@ def build_ui(app):
             subfaction_combo.set(subfactions[0])
             update_mission_categories()
 
+    # Populates HVT options for selected enemy/subfaction; affects HVT combobox
     def update_hvts(*args):
         enemy = app.enemy_type.get()
         subfaction = app.subfaction_type.get()
@@ -949,6 +968,7 @@ def build_ui(app):
     update_hvts() # Initial population
 
     # Clear HVT when enemy type changes
+    # Resets HVT selection when enemy type changes; affects HVT state
     def reset_hvt(*args):
         app.hvt_type.set("No HVTs")
     try:
@@ -959,6 +979,7 @@ def build_ui(app):
         except Exception:
             pass
 
+    # Populates mission categories for enemy/subfaction; affects campaign combobox
     def update_mission_categories(*args):
         enemy = app.enemy_type.get()
         subfaction = app.subfaction_type.get()
@@ -972,6 +993,7 @@ def build_ui(app):
             mission_cat_combo.set(categories[0])
             update_mission_types()
 
+    # Populates difficulties and mission names for selected category; affects difficulty/mission comboboxes
     def update_mission_types(*args):
         enemy = app.enemy_type.get()
         subfaction = app.subfaction_type.get()
@@ -998,6 +1020,7 @@ def build_ui(app):
                 difficulty_combo['values'] = ["No difficulties available"]
                 difficulty_combo.set("No difficulties available")
 
+    # Updates mission names when difficulty changes; affects mission combobox
     def update_available_missions(*args):
         enemy = app.enemy_type.get()
         subfaction = app.subfaction_type.get()
@@ -1062,6 +1085,7 @@ def build_ui(app):
     counter_label = ttk.Label(note_frame, text=f"0/{MAX_NOTE_CHARS}")
     counter_label.grid(row=1, column=0, padx=5, pady=(2,5), sticky=tk.E)
 
+    # Enforces note length limit and updates counter; affects Notes panel
     def update_note_limit(event=None):
         text = note_entry.get("1.0", "end-1c")
         if len(text) > MAX_NOTE_CHARS:
@@ -1071,6 +1095,7 @@ def build_ui(app):
         counter_label.config(text=f"{len(text)}/{MAX_NOTE_CHARS}")
         app.note.set(text)
 
+    # Blocks extra typing when note is at max length; affects note input behavior
     def block_excess(event):
         # Prevent further typing when at limit (allow navigation & deletion)
         text = note_entry.get("1.0", "end-1c")
@@ -1103,6 +1128,7 @@ def build_ui(app):
 
     # Submit (Image Button with Hover)
     try:
+        # Helper to load submit/observe button images with app background; used by submit area
         def load_btn_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width, pil_img.height), Image.LANCZOS)
@@ -1128,6 +1154,7 @@ def build_ui(app):
         app.submit_label = tk.Label(content, image=app.submit_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.submit_label.grid(row=3, column=0, pady=15)
 
+        # Hover handler to swap submit/observe image; affects submit button UI
         def on_enter(e):
             if app.enemy_type.get() == "Observing":
                 app.submit_label.configure(image=app.observe_img_hover)
@@ -1139,10 +1166,12 @@ def build_ui(app):
                 play_button_hover()
             except Exception:
                 pass
+        # Leave handler restoring submit/observe image; affects submit button UI
         def on_leave(e):
             app.submit_label.configure(image=app._submit_img_state)
             app.submit_label.image = app._submit_img_state  # Prevent garbage collection
 
+        # Click handler to submit report or observe data; triggers submit/observe flow
         def on_click(e):
             play_button_click()
             if app.enemy_type.get() == "Observing":
@@ -1206,6 +1235,7 @@ def build_ui(app):
 
     # Export GUI launcher with image and hover effect, with sound effect on click
     try:
+        # Helper to load Export GUI button images with background; used by export GUI
         def load_export_gui_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
@@ -1221,6 +1251,7 @@ def build_ui(app):
         app.export_gui_label = tk.Label(export_frame, image=app.export_gui_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_gui_label.grid(row=4, column=0, pady=15, padx=(20,0))  # <-- Increased left padding here
 
+        # Hover handler for Export GUI button; affects export GUI button UI
         def on_export_gui_enter(e):
             app.export_gui_label.configure(image=app.export_gui_img_hover)
             try:
@@ -1228,9 +1259,11 @@ def build_ui(app):
             except Exception:
                 pass
 
+        # Leave handler for Export GUI button; affects export GUI button UI
         def on_export_gui_leave(e):
             app.export_gui_label.configure(image=app.export_gui_img_default)
 
+        # Launches the Export GUI module; affects export workflow
         def on_export_gui_click(e):
             play_button_click()
             try:
@@ -1248,6 +1281,7 @@ def build_ui(app):
         app.export_gui_label.bind("<Button-1>", on_export_gui_click)
     except Exception as e:
         logging.error(f"Failed to load Export GUI button image: {e}")
+        # Fallback launcher for Export GUI when module run fails; affects export workflow
         def _launch_export_gui():
             try:
                 exportgui_path = app_path('core', 'exportGUI.py')
@@ -1260,6 +1294,7 @@ def build_ui(app):
 
     # Planet aggregation export (with image and hover effect)
     try:
+        # Helper to load Export Planet button images; used by planet export
         def load_export_planet_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
@@ -1274,6 +1309,7 @@ def build_ui(app):
         app.export_planet_label = tk.Label(export_frame, image=app.export_planet_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_planet_label.grid(row=4, column=1, padx=(20,0), pady=15)
 
+        # Hover handler for Export Planet button; affects planet export button UI
         def on_export_planet_enter(e):
             app.export_planet_label.configure(image=app.export_planet_img_hover)
             try:
@@ -1281,9 +1317,11 @@ def build_ui(app):
             except Exception:
                 pass
 
+        # Leave handler for Export Planet button; affects planet export button UI
         def on_export_planet_leave(e):
             app.export_planet_label.configure(image=app.export_planet_img_default)
 
+        # Launches planet aggregation export; affects webhook export
         def on_export_planet_click(e):
             play_button_click()
             try:
@@ -1300,6 +1338,7 @@ def build_ui(app):
         app.export_planet_label.bind("<Button-1>", on_export_planet_click)
     except Exception as e:
         logging.error(f"Failed to load Export Planet button image: {e}")
+        # Fallback launcher for planet export; affects webhook export
         def _launch_sub():
             try:
                 sub_path = app_path('core', 'sub.py')
@@ -1312,6 +1351,7 @@ def build_ui(app):
 
     # Faction aggregation export (with image and hover effect)
     try:
+        # Helper to load Export Faction button images; used by faction export
         def load_export_faction_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
@@ -1326,6 +1366,7 @@ def build_ui(app):
         app.export_faction_label = tk.Label(export_frame, image=app.export_faction_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_faction_label.grid(row=4, column=2, padx=(20,0), pady=15)
 
+        # Hover handler for Export Faction button; affects faction export button UI
         def on_export_faction_enter(e):
             app.export_faction_label.configure(image=app.export_faction_img_hover)
             try:
@@ -1333,9 +1374,11 @@ def build_ui(app):
             except Exception:
                 pass
 
+        # Leave handler for Export Faction button; affects faction export button UI
         def on_export_faction_leave(e):
             app.export_faction_label.configure(image=app.export_faction_img_default)
 
+        # Launches faction aggregation export; affects webhook export
         def on_export_faction_click(e):
             play_button_click()
             try:
@@ -1352,6 +1395,7 @@ def build_ui(app):
         app.export_faction_label.bind("<Button-1>", on_export_faction_click)
     except Exception as e:
         logging.error(f"Failed to load Export Faction button image: {e}")
+        # Fallback launcher for faction export; affects webhook export
         def _launch_faction():
             try:
                 faction_path = app_path('core', 'faction.py')
@@ -1364,6 +1408,7 @@ def build_ui(app):
 
     # Prior 7 days aggregation export (with image and hover effect)
     try:
+        # Helper to load Export 7 Days button images; used by 7-day export
         def load_export_7days_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
@@ -1378,6 +1423,7 @@ def build_ui(app):
         app.export_7days_label = tk.Label(export_frame, image=app.export_7days_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_7days_label.grid(row=4, column=3, padx=(20,0), pady=15)
 
+        # Hover handler for Export 7 Days button; affects 7-days export button UI
         def on_export_7days_enter(e):
             app.export_7days_label.configure(image=app.export_7days_img_hover)
             try:
@@ -1385,9 +1431,11 @@ def build_ui(app):
             except Exception:
                 pass
 
+        # Leave handler for Export 7 Days button; affects 7-days export button UI
         def on_export_7days_leave(e):
             app.export_7days_label.configure(image=app.export_7days_img_default)
 
+        # Launches last 7 days aggregation export; affects webhook export
         def on_export_7days_click(e):
             play_button_click()
             try:
@@ -1405,6 +1453,7 @@ def build_ui(app):
 
     except Exception as e:
         logging.error(f"Failed to load Export 7 Days button image: {e}")
+        # Fallback launcher for 7-days export; affects webhook export
         def _launch_expweek():
             try:
                 expweek_path = app_path('core', 'expWeek.py')
@@ -1417,6 +1466,7 @@ def build_ui(app):
 
     # Favourite aggregation export (with image and hover effect)
     try:
+        # Helper to load Export Favourites button images; used by favourites export
         def load_export_favourites_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
@@ -1431,6 +1481,7 @@ def build_ui(app):
         app.export_favourites_label = tk.Label(export_frame, image=app.export_favourites_img_default, borderwidth=0, highlightthickness=0, cursor="hand2")
         app.export_favourites_label.grid(row=4, column=4, padx=(20,0), pady=15)
 
+        # Hover handler for Export Favourites button; affects favourites export button UI
         def on_export_favourites_enter(e):
             app.export_favourites_label.configure(image=app.export_favourites_img_hover)
             try:
@@ -1438,9 +1489,11 @@ def build_ui(app):
             except Exception:
                 pass
 
+        # Leave handler for Export Favourites button; affects favourites export button UI
         def on_export_favourites_leave(e):
             app.export_favourites_label.configure(image=app.export_favourites_img_default)
 
+        # Launches favourites aggregation export; affects webhook export
         def on_export_favourites_click(e):
             play_button_click()
             try:
@@ -1457,6 +1510,7 @@ def build_ui(app):
         app.export_favourites_label.bind("<Button-1>", on_export_favourites_click)
     except Exception as e:
         logging.error(f"Failed to load Export Favourites button image: {e}")
+        # Fallback launcher for favourites export; affects webhook export
         def _launch_favourites():
             try:
                 fav_path = app_path('core', 'favourites.py')
@@ -1472,6 +1526,7 @@ def build_ui(app):
 
     # Achievements export button (with image and hover effect)
     try:
+        # Helper to load Export Achievements button images; used by achievements export
         def load_export_achievements_img(path):
             pil_img = Image.open(path).convert('RGBA')
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
@@ -1488,6 +1543,7 @@ def build_ui(app):
 
         app.export_achievements_label.grid(row=4, column=5, padx=(20,0), pady=15)
 
+        # Hover handler for Export Achievements button; affects achievements export button UI
         def on_export_achievements_enter(e):
             app.export_achievements_label.configure(image=app.export_achievements_img_hover)
             try:
@@ -1495,9 +1551,11 @@ def build_ui(app):
             except Exception:
                 pass
 
+        # Leave handler for Export Achievements button; affects achievements export button UI
         def on_export_achievements_leave(e):
             app.export_achievements_label.configure(image=app.export_achievements_img_default)
 
+        # Launches achievements aggregation export; affects webhook export
         def on_export_achievements_click(e):
             play_button_click()
             try:
@@ -1514,6 +1572,7 @@ def build_ui(app):
         app.export_achievements_label.bind("<Button-1>", on_export_achievements_click)
     except Exception as e:
         logging.error(f"Failed to load Export Achievements button image: {e}")
+        # Fallback launcher for achievements export; affects webhook export
         def _launch_achievements():
             try:
                 achievements_path = app_path('core', 'Achievements.py')
@@ -1524,8 +1583,10 @@ def build_ui(app):
         export_button = ttk.Button(export_frame, text="Export Achievements\n        Data to\n     Webhook", command=_launch_achievements, padding=(6,5), width=16)
         export_button.grid(row=4, column=5, padx=(20,0), pady=15)
 
+    # Enforces 'No Faction' when enemy is Observing; affects subfaction state and submit button appearance
     def _force_no_faction_for_observing(*_):
         # Run after other handlers (populate -> then enforce)
+        # Applies enforcement after idle to avoid race conditions; affects subfaction combobox and submit button state
         def _apply():
             if app.enemy_type.get() == "Observing":
                 vals = list(subfaction_combo['values']) or []

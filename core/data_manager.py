@@ -20,6 +20,7 @@ from typing import Dict
 import pandas as pd
 
 
+# Loads persisted UI selections/settings from JSON file; affects app defaults
 def load_persistent_settings(path: str) -> Dict:
     """Load persistent settings from `path` returning a dict. If file is missing,
     returns an empty dict.
@@ -33,6 +34,7 @@ def load_persistent_settings(path: str) -> Dict:
     return {}
 
 
+# Saves current selections/settings to JSON file; affects persistence across sessions
 def save_persistent_settings(path: str, settings: Dict) -> None:
     """Write `settings` (dict) to `path` as JSON. Raises on error after logging.
     """
@@ -44,6 +46,7 @@ def save_persistent_settings(path: str, settings: Dict) -> None:
         raise
 
 
+# Appends a mission record to the Excel log (creating file if missing); affects local log
 def append_mission_to_excel(excel_path: str, data: Dict) -> bool:
     """Append a single mission record (dict) to an Excel file.
     If the file doesn't exist, create it with the single row. Returns True on success.
@@ -66,6 +69,7 @@ def append_mission_to_excel(excel_path: str, data: Dict) -> bool:
         return False
 
 
+# Reads streak data from JSON; affects streak calculation
 def read_streaks(path: str) -> Dict:
     """Read streak data (JSON) from path; returns dict or empty dict on error.
     """
@@ -78,6 +82,7 @@ def read_streaks(path: str) -> Dict:
     return {}
 
 
+# Writes streak data to JSON; affects persisted streak history
 def write_streaks(path: str, streaks: Dict) -> None:
     """Write streaks dict to path as JSON.
     """

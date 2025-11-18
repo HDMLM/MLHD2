@@ -39,6 +39,7 @@ SETTINGS_FILE = app_path('JSON', 'persistence.json')
 
 # Theme system (copied from main.py/settings.py)
 def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
+    # Build ttk theme palette; affects export viewer styling
     return {
         ".": {"configure": {"background": bg, "foreground": fg}},
         "TLabel": {"configure": {"background": bg, "foreground": fg}},
@@ -74,11 +75,13 @@ DEFAULT_THEME = make_theme(
 )
 
 def apply_theme(style, theme_dict):
+    # Apply theme settings to ttk styles; skins export viewer UI
     for widget, opts in theme_dict.items():
         for method, cfg in opts.items():
             getattr(style, method)(widget, **cfg)
 
 def main():
+    # Launch Export Viewer window; manages table, filters, and Discord export
     root = tk.Tk()
     root.title("Mission Log Export Viewer")
     # Autosize window based on current screen resolution, center it, allow resize with min size
@@ -117,6 +120,7 @@ def main():
         pass
     # Configure tag colors for alternating rows (Stack Overflow pattern)
     def configure_row_tags():
+        # Define alternating row tag colors; improves table readability
         table.tag_configure('oddrow', background='#2d2d2d', foreground='#FFFFFF')
         table.tag_configure('evenrow', background='#232323', foreground='#FFFFFF')
     apply_theme(style, DEFAULT_THEME)
@@ -140,6 +144,7 @@ def main():
     export_frame = ttk.Frame(notebook, padding="10")
 
     def load_tab_image(path):
+        # Load and scale tab image; styles the notebook tab
         img = Image.open(path)
         w, h = img.size
         img = img.resize((w // 3, h // 3), Image.LANCZOS)
@@ -177,6 +182,7 @@ def main():
     style.map("TNotebook.Tab", background=[("selected", DEFAULT_THEME["."]["configure"]["background"]), ("!selected", DEFAULT_THEME["."]["configure"]["background"])])
 
     def update_tab_image(event=None):
+        # Keep tab image consistent on selection; cosmetic behavior
         # Only one tab, always selected
         notebook.tab(0, image=notebook._export_tab_img)
 
@@ -207,6 +213,7 @@ def main():
 
     # Reset filters button
     def reset_filters():
+        # Reset all dropdown filters to 'All'; refreshes table view
         enemy_var.set("All")
         subfaction_var.set("All")
         sector_var.set("All")
@@ -215,6 +222,7 @@ def main():
     # Load button images
 
     def load_button_image(path, box=(160, 48), preserve_aspect=True, pad_to_box=True):
+        # Load button image with padding; used for hover/static states
         # Keeps image aspect ratio; pads to a consistent box so hover/static sizes match
         from PIL import Image, ImageTk
         img = Image.open(path)
@@ -250,6 +258,7 @@ def main():
     reset_btn.pack(side=tk.LEFT, padx=5)
 
     def on_enter(event):
+        # Hover handler for Clear Filters button; updates image and plays sound
         reset_btn.configure(image=clear_btn_img_hover)
         reset_btn.image = clear_btn_img_hover
         try:
@@ -258,6 +267,7 @@ def main():
             pass
 
     def on_leave(event):
+        # Mouse leave handler for Clear Filters button; restores default image
         reset_btn.configure(image=clear_btn_img)
         reset_btn.image = clear_btn_img
 
@@ -274,6 +284,7 @@ def main():
 
     # Refresh button
     def refresh_table():
+        # Reload Excel into table and reapply current filters
         nonlocal full_df
         full_df = load_table()
         filter_table()
@@ -296,6 +307,7 @@ def main():
     refresh_btn.pack(side=tk.LEFT, padx=5)
 
     def on_refresh_enter(event):
+        # Hover handler for Refresh button; updates image and plays sound
         refresh_btn.configure(image=refresh_btn_img_hover)
         refresh_btn.image = refresh_btn_img_hover
         try:
@@ -304,10 +316,12 @@ def main():
             pass
 
     def on_refresh_leave(event):
+        # Mouse leave handler for Refresh button; restores default image
         refresh_btn.configure(image=refresh_btn_img)
         refresh_btn.image = refresh_btn_img
 
     def on_refresh_click(event):
+        # Click handler for Refresh button; reloads table data
         play_button_click()
         refresh_table()
 
@@ -319,6 +333,7 @@ def main():
 
     # Export to Discord (selected or visible rows)
     def load_export_webhooks():
+        # Read export webhook URLs from JSON/DCord.json; used for Discord export
         try:
             dcord_path = app_path('JSON', 'DCord.json')
             with open(dcord_path, 'r', encoding='utf-8') as f:
@@ -339,6 +354,7 @@ def main():
             return []
 
     def load_discord_json():
+        # Load DCord.json config; provides UID and webhook settings
         try:
             dcord_path = app_path('JSON', 'DCord.json')
             with open(dcord_path, 'r', encoding='utf-8') as f:
@@ -347,10 +363,12 @@ def main():
             return {}
 
     def load_discord_uid():
+        # Get Discord UID from DCord.json; used in embed footer
         data = load_discord_json()
         return str(data.get('discord_uid', ''))
 
     def post_discord(webhook_url: str, payload: dict, timeout: int = 10):
+        # POST JSON payload to Discord webhook; handles HTTP/Discord errors
         try:
             data = json.dumps(payload).encode('utf-8')
             headers = {
@@ -394,6 +412,7 @@ def main():
             return None
 
     def _guess_first_value(rows, columns, key):
+        # Helper: find first non-empty value for a column in rows
         try:
             if key in columns and rows:
                 idx = columns.index(key)
@@ -406,6 +425,7 @@ def main():
         return ""
 
     def _compose_header_embed(rows: list[tuple], columns: list[str]) -> dict:
+        # Build leading summary embed (banner/stats) for Discord export
         # Build a header/summary embed similar in spirit to sub.py
         djson = load_discord_json()
         uid = str(djson.get('discord_uid', ''))
@@ -460,6 +480,7 @@ def main():
         return header
 
     def _format_entry_block(i: int, columns: list[str], vals: tuple) -> str:
+        # Format a row's details into a readable block for embed descriptions
         # Decorate with icons when known columns are present
         parts = [f"Deployment {i}"]
         lookup = {c: v for c, v in zip(columns, vals)}
@@ -512,6 +533,7 @@ def main():
         return "\n".join(parts) + "\n\n"
 
     def format_embeds_for_rows(rows: list[tuple], columns: list[str]) -> list[dict]:
+        # Convert rows into Discord embeds (header + chunked detail embeds)
         # Construct a leading header embed and then chunked detail embeds
         all_embeds = []
         header = _compose_header_embed(rows, columns)
@@ -540,6 +562,7 @@ def main():
         return all_embeds
 
     def export_to_discord():
+        # Prepare selected/visible rows and send as embeds to Discord webhooks
         selected_ids = list(table.selection())
         use_rows = []
         columns = list(table["columns"]) if table["columns"] else []
@@ -575,6 +598,7 @@ def main():
         embeds_list = format_embeds_for_rows(use_rows, columns)
 
         def worker():
+            # Background worker: posts embeds to each webhook URL
             ok = 0
             fail = 0
             for w in webhooks:
@@ -607,6 +631,7 @@ def main():
     export_btn.pack(side=tk.LEFT, padx=5)
 
     def on_export_enter(event):
+        # Hover handler for Export button; updates image and plays sound
         export_btn.configure(image=extract_btn_img_hover)
         export_btn.image = extract_btn_img_hover
         try:
@@ -615,10 +640,12 @@ def main():
             pass
 
     def on_export_leave(event):
+        # Mouse leave handler for Export button; restores default image
         export_btn.configure(image=extract_btn_img)
         export_btn.image = extract_btn_img
 
     def on_export_click(event):
+        # Click handler for Export button; sends selected/visible rows to Discord
         play_button_click()
         export_to_discord()
 
@@ -644,6 +671,7 @@ def main():
     exit_btn.pack(side=tk.RIGHT, padx=5)
 
     def on_exit_enter(event):
+        # Hover handler for Exit button; updates image and plays sound
         exit_btn.configure(image=exit_btn_img_hover)
         exit_btn.image = exit_btn_img_hover
         try:
@@ -652,10 +680,12 @@ def main():
             pass
 
     def on_exit_leave(event):
+        # Mouse leave handler for Exit button; restores default image
         exit_btn.configure(image=exit_btn_img)
         exit_btn.image = exit_btn_img
 
     def on_exit_click(event):
+        # Click handler for Exit button; closes the Export Viewer
         play_button_click()
         root.quit()
 
@@ -665,6 +695,7 @@ def main():
 
     # Alternating row colors for Treeview
     def set_alternating_row_colors():
+        # Apply alternating row tags to current Treeview items
         for i, item in enumerate(table.get_children()):
             if i % 2 == 0:
                 table.item(item, tags=("even",))
@@ -720,6 +751,7 @@ def main():
     sort_reverse = False
 
     def update_heading_labels():
+        # Update column header labels with sort arrows based on state
         # Show ▲ for ascending, ▼ for descending on the active sort column
         current_cols = list(table["columns"]) if table["columns"] else []
         for col in current_cols:
@@ -732,6 +764,7 @@ def main():
                 pass
 
     def on_heading_click(col_name):
+        # Toggle sort order for a column and refresh table
         # Toggle sort: if clicking same column, reverse; else ascending by default
         nonlocal sort_column, sort_reverse
         if sort_column == col_name:
@@ -744,6 +777,7 @@ def main():
         update_heading_labels()
 
     def load_table():
+        # Read Excel into DataFrame and configure Treeview columns/headings
         try:
             df = pd.read_excel(excel_file)
             columns = list(df.columns)
@@ -766,6 +800,7 @@ def main():
     exclude_filters = {'Enemy': set(), 'Subfaction': set(), 'Sector': set(), 'Planet': set()}
 
     def filter_table(*args):
+        # Filter/sort DataFrame based on controls, then reload Treeview items
         nonlocal last_filtered_df
         df = full_df.copy()
         if enemy_var.get() != "All":
@@ -806,6 +841,7 @@ def main():
     # Utilities
     # Full-scan autosize with dynamic max width (per screen size)
     def compute_column_width(col_name):
+        # Measure content to compute ideal pixel width for a column
         # Ensure UI is laid out for accurate font metrics
         root.update_idletasks()
 
@@ -842,14 +878,17 @@ def main():
         return width_px
 
     def autosize_columns_full():
+        # Autosize all columns based on full content scan
         for col in table["columns"]:
             table.column(col, width=compute_column_width(col))
 
     def autosize_column_full(col_name):
+        # Autosize a single column to fit its content
         if col_name:
             table.column(col_name, width=compute_column_width(col_name))
 
     def reset_column_widths():
+        # Reset all column widths to default fixed size
         for col in table["columns"]:
             table.column(col, width=120)
 
@@ -871,6 +910,7 @@ def main():
     }
 
     def copy_to_clipboard(text: str):
+        # Copy provided text to OS clipboard; safe-guarded against errors
         if text is None:
             return
         try:
@@ -881,6 +921,7 @@ def main():
             logging.warning(f"Clipboard copy failed: {e}")
 
     def copy_selection_as_markdown(row_ids, with_headers=True):
+        # Copy first selected row as structured Markdown (sections/fields)
         cols = list(table["columns"])
         # Only use the first selected row for this format
         if not row_ids:
@@ -947,6 +988,7 @@ def main():
         copy_to_clipboard(markdown)
 
     def copy_row_as_json(row_id):
+        # Copy a row's data as formatted JSON to clipboard
         cols = list(table["columns"])
         vals = list(table.item(row_id, 'values'))
         obj = {c: v for c, v in zip(cols, vals)}
@@ -957,51 +999,59 @@ def main():
         copy_to_clipboard(s)
 
     def get_selected_or_row(default_row):
+        # Return current selection or fallback to provided default row id
         sel = list(table.selection())
         if sel:
             return sel
         return [default_row] if default_row else []
 
     def show_row_details(row_id):
+        # Popup dialog showing all column values for the row
         cols = list(table["columns"])
         vals = list(table.item(row_id, 'values'))
         details = "\n".join(f"{c}: {v}" for c, v in zip(cols, vals))
         messagebox.showinfo("Row details", details)
 
     def set_sort(c, reverse):
+        # Set sort parameters and refresh table contents
         nonlocal sort_column, sort_reverse
         sort_column, sort_reverse = c, reverse
         filter_table()
         update_heading_labels()
 
     def add_exclude_value(col, val):
+        # Add a value to exclude filters for a column and refresh
         if col in exclude_filters and val not in (None, ""):
             exclude_filters[col].add(val)
             filter_table()
 
     def clear_exclude(col):
+        # Clear all excluded values for a given column
         if col in exclude_filters:
             exclude_filters[col].clear()
             filter_table()
 
     def clear_all_excludes():
+        # Clear all exclude filters across all columns
         for k in exclude_filters:
             exclude_filters[k].clear()
         filter_table()
 
     # Combine includes (comboboxes) and excludes into one clear action
     def clear_all_filters():
-        reset_filters()      # clears comboboxes (triggers filter_table via traces)
-        clear_all_excludes() # clears exclude sets
-        filter_table()       # ensure refresh after both
+        # Clear include (combobox) and exclude filters, then refresh
+        reset_filters()
+        clear_all_excludes()
+        filter_table()
 
     def double_click(event):
+        # Open details dialog for double-clicked row
         row_id = table.identify_row(event.y)
         if row_id:
             show_row_details(row_id)
 
-
     def on_right_click(event):
+        # Show context menu for copy/select/sort/filter/column sizing actions
         # Identify the row and column under the cursor
         row_id = table.identify_row(event.y)
         col_id = table.identify_column(event.x)  # like '#1', '#2', ...

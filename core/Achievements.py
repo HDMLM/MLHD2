@@ -204,6 +204,7 @@ one_sector_100 = any(count >= 100 for count in sector_counts)
 #assign bool values to variables
 # Function to get date of nth occurrence
 def get_nth_date(df, condition, n):
+    # Return date of the nth row matching condition; powers achievement dates
     try:
         # Filter dataframe by condition and get the nth row's date
         filtered_df = df[condition]
@@ -243,6 +244,7 @@ DSSDiver3_date = get_nth_date(df, df['DSS Active'] == 1, 500) if DSSDiver3 else 
 
 # For counts of unique planets/sectors, we need cumulative counts
 def get_unique_nth_date(df, column, n):
+    # Date when cumulative unique values in column reaches n; milestone timing
     unique_counts = df[column].groupby(df.index).transform(lambda x: x.nunique())
     if (unique_counts >= n).any():
         return df.loc[unique_counts[unique_counts >= n].index[0], 'Time']
@@ -250,6 +252,7 @@ def get_unique_nth_date(df, column, n):
 
 # For unique planet visits, need to track cumulative unique counts
 def get_unique_planet_milestone_date(df, n):
+    # Date when the nth unique planet is visited; used for PlanetDiver milestones
     # Create a running count of unique planets
     unique_planets = []
     dates = []
@@ -263,6 +266,7 @@ def get_unique_planet_milestone_date(df, n):
     return "Not Obtained"
 
 def get_unique_sector_milestone_date(df, n):
+    # Date when the nth unique sector is visited; used for SectorDiver milestones
     # Create a running count of unique sectors
     unique_sectors = []
     dates = []
@@ -323,6 +327,7 @@ IlluminatePerfected3_date = get_nth_date(df, df['Enemy Type'] == 'Illuminate', 5
 
 # For kill counts, need to track cumulative sums
 def get_kill_milestone_date(df, enemy_type, threshold):
+    # Date when cumulative kills vs given enemy reach threshold; challenge badges
     enemy_df = df[df['Enemy Type'] == enemy_type].copy()
     enemy_df['cumsum'] = enemy_df['Kills'].cumsum()
     if (enemy_df['cumsum'] >= threshold).any():
@@ -407,6 +412,7 @@ IlluminateHunter4_date = get_kill_milestone_date(df, 'Illuminate', 100000) if Il
 
 # For total kills milestone
 def get_total_kills_date(df, threshold):
+    # Date when total cumulative kills reach threshold; SuperHunter/Milestones
     df_copy = df.copy()
     df_copy['cumsum'] = df_copy['Kills'].cumsum()
     if (df_copy['cumsum'] >= threshold).any():
@@ -514,6 +520,7 @@ valid_triumph_dates = [d for d in triumph_dates if d and d != "Not Obtained"]
 EveryTriumph_date = max(valid_triumph_dates) if EveryTriumph and valid_triumph_dates else "Not Obtained"
 # Get date when first mission type reached 100 completions
 def get_first_mission_100_date(df):
+    # First date any mission type hits 100 completions; milestone tracking
     mission_counts = df.groupby(['Mission Type', 'Time']).size().reset_index(name='count')
     mission_counts['cumsum'] = mission_counts.groupby('Mission Type')['count'].cumsum()
     missions_100 = mission_counts[mission_counts['cumsum'] >= 100]
@@ -525,6 +532,7 @@ OneMission = one_mission_100
 OneMission_date = get_first_mission_100_date(df) if OneMission else "Not Obtained"
 # Function to get date when first planet reached 100 missions
 def get_first_planet_100_date(df):
+    # First date any planet reaches 100 missions; milestone tracking
     planet_counts = df.groupby(['Planet', 'Time']).size().reset_index(name='count')
     planet_counts['cumsum'] = planet_counts.groupby('Planet')['count'].cumsum()
     planets_100 = planet_counts[planet_counts['cumsum'] >= 100]
@@ -536,6 +544,7 @@ OnePlanet = one_planet_100
 OnePlanet_date = get_first_planet_100_date(df) if OnePlanet else "Not Obtained"
 # Get date when first sector reached 100 missions
 def get_first_sector_100_date(df):
+    # First date any sector reaches 100 missions; milestone tracking
     sector_counts = df.groupby(['Sector', 'Time']).size().reset_index(name='count')
     sector_counts['cumsum'] = sector_counts.groupby('Sector')['count'].cumsum()
     sectors_100 = sector_counts[sector_counts['cumsum'] >= 100]
