@@ -1012,9 +1012,20 @@ class MissionLogGUI:
         # Update dynamic icons cache after successful mission submission
         if success:
             try:
-                from core.dynamic_icons import update_dynamic_icons_from_excel
-                update_dynamic_icons_from_excel()
-                logging.info("Dynamic icons cache updated after mission submission")
+                from core.dynamic_icons import update_dynamic_icons_from_excel, initialize_dynamic_icons_cache
+                updated = update_dynamic_icons_from_excel()
+                if not updated:
+                    logging.warning("update_dynamic_icons_from_excel() returned False, attempting initialize_dynamic_icons_cache()")
+                    try:
+                        initialized = initialize_dynamic_icons_cache()
+                        if initialized:
+                            logging.info("Dynamic icons cache initialized after submission")
+                        else:
+                            logging.warning("initialize_dynamic_icons_cache() failed to create cache after submission")
+                    except Exception as ie:
+                        logging.warning(f"initialize_dynamic_icons_cache() raised: {ie}")
+                else:
+                    logging.info("Dynamic icons cache updated after mission submission")
             except Exception as e:
                 logging.warning(f"Failed to update dynamic icons cache: {e}")
                 # Don't fail the mission submission if cache update fails

@@ -23,6 +23,7 @@ import logging
 import pandas as pd
 import configparser
 from datetime import datetime
+from pathlib import Path
 from core.runtime_paths import app_path
 from core.logging_config import setup_logging
 from typing import Dict, Optional
@@ -88,8 +89,34 @@ def save_dynamic_icons_cache(data: Dict[str, str]) -> bool:
     try:
         # Add timestamp
         data['last_updated'] = datetime.now().isoformat()
-        
-        with open(DYNAMIC_ICONS_JSON, 'w') as f:
+
+        # Prefer a repo-root JSON/ directory when present so developers' JSON
+        # folder is used during development. Otherwise fall back to the
+        # app_path-derived location. Ensure the parent directory exists.
+        try:
+            repo_root_json = Path(__file__).parent.parent.joinpath('JSON', 'dynamic_icons.json')
+        except Exception:
+            repo_root_json = None
+
+        candidate = None
+        if repo_root_json and repo_root_json.exists():
+            candidate = repo_root_json
+        else:
+            # Current working directory JSON folder is also a valid developer location
+            cwd_json = Path.cwd().joinpath('JSON', 'dynamic_icons.json')
+            if cwd_json.exists():
+                candidate = cwd_json
+            else:
+                candidate = Path(DYNAMIC_ICONS_JSON)
+
+        parent_dir = candidate.parent
+        try:
+            os.makedirs(str(parent_dir), exist_ok=True)
+        except Exception:
+            # If directory creation fails, proceed and let open() raise
+            pass
+
+        with open(str(candidate), 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2)
         return True
     except Exception as e:
