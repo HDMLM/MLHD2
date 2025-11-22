@@ -744,10 +744,26 @@ def generate_helldiver_banner(
     def _get_homeworld_from_settings() -> Optional[str]:
         """Get the Player Homeworld from settings.json file."""
         try:
-            base = base_dir or os.path.dirname(os.path.abspath(__file__))
-            settings_path = os.path.join(base, "JSON", "settings.json")
-            if os.path.isfile(settings_path):
+            # Prefer the application's JSON settings (app_path) so user-configured
+            # Homeworld in the repo/app data is honored. Fallback to package-local
+            # JSON (next to this module) for bundled defaults.
+            try:
+                settings_path = app_path('JSON', 'settings.json')
+            except Exception:
+                settings_path = None
+
+            if settings_path and os.path.isfile(settings_path):
                 with open(settings_path, "r", encoding="utf-8") as f:
+                    settings_data = json.load(f)
+                    homeworld = settings_data.get("Player Homeworld")
+                    if homeworld and isinstance(homeworld, str) and homeworld.strip():
+                        return homeworld.strip()
+
+            # Fallback to package-local settings.json (use base_dir if provided)
+            base = base_dir or os.path.dirname(os.path.abspath(__file__))
+            settings_path_local = os.path.join(base, "JSON", "settings.json")
+            if os.path.isfile(settings_path_local):
+                with open(settings_path_local, "r", encoding="utf-8") as f:
                     settings_data = json.load(f)
                     homeworld = settings_data.get("Player Homeworld")
                     if homeworld and isinstance(homeworld, str) and homeworld.strip():
