@@ -742,12 +742,15 @@ class MissionLogGUI:
             return
 
         data = self._collect_mission_data()
-        # Attach the validated flair to mission data for Discord integration
-        data['flair_colour'] = flair_colour
+
+        # Prepare a separate payload for Discord that includes the validated flair.
+        # Do NOT store `flair_colour` in the Excel log — keep it only for Discord posts.
+        discord_payload = dict(data)
+        discord_payload['flair_colour'] = flair_colour
 
         sent_success = False
         if self._save_to_excel(data):
-            if self._send_to_discord(data):
+            if self._send_to_discord(discord_payload):
                 logging.info("Sent To Discord")
                 self.update_submit_button_image("Passed")
                 sent_success = True
@@ -1044,6 +1047,13 @@ class MissionLogGUI:
             df = pd.read_excel(excel_file)
             for _, row in df.iterrows():
                 data = row.to_dict()
+                try:
+                    from core.utils import get_effective_flair
+                    # Ensure exported rows include the current effective flair for Discord posts,
+                    # but do NOT write flair back into the Excel file.
+                    data['flair_colour'] = get_effective_flair()
+                except Exception:
+                    data['flair_colour'] = data.get('flair_colour', 'Default')
                 self._send_to_discord(data)
 
             self._show_success("Excel data exported successfully!")
