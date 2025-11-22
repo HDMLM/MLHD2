@@ -181,10 +181,18 @@ def build_ui(app):
     app.title_combo.set(app.titles[0])
 
     ttk.Label(mission_frame, text="Profile:", foreground=flair_fg).grid(row=2, column=2, sticky=tk.W, pady=5)
-    # Load profile pictures from json
-    with open(app_path('JSON', 'ProfilePictures.json'), 'r') as f:
-        profile_data = json.load(f)
-        app.profile_pictures = profile_data["Profile Pictures"]
+    # Load profile pictures centrally (includes optional hidden profile)
+    try:
+        from core.utils import get_profile_pictures_list
+        app.profile_pictures = get_profile_pictures_list()
+    except Exception:
+        # Fallback: read directly from JSON
+        try:
+            with open(app_path('JSON', 'ProfilePictures.json'), 'r') as f:
+                profile_data = json.load(f)
+                app.profile_pictures = profile_data.get("Profile Pictures", [])
+        except Exception:
+            app.profile_pictures = []
     app.profile_picture_combo = ttk.Combobox(mission_frame, textvariable=app.profile_picture, state='readonly', width=32)
     app.profile_picture_combo['values'] = app.profile_pictures
     app.profile_picture_combo.grid(row=2, column=2, sticky=tk.W, padx=(45,0), pady=5)

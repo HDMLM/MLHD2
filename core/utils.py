@@ -400,3 +400,58 @@ def get_hvt_icon(hvt_type: str) -> str:
 def get_planet_image_url(planet_name: str) -> str:
     """Get the planet image URL based on the planet name."""
     return get_planet_image(planet_name)
+
+
+def get_profile_pictures_list() -> list:
+    """Return the list of profile picture names from JSON.
+
+    If a file named `secret` exists in the app path, append
+    the hidden profile name `ML-13 Red Eagle` to the list.
+    This centralizes the secret check so multiple UI consumers
+    can use the same behavior.
+    """
+    try:
+        from core.runtime_paths import app_path
+        json_path = app_path('JSON', 'ProfilePictures.json')
+        if os.path.exists(json_path):
+            with open(json_path, 'r', encoding='utf-8') as f:
+                j = json.load(f)
+            pics = j.get('Profile Pictures', []) or []
+        else:
+            pics = []
+
+        # Ensure uniqueness
+        pics = list(dict.fromkeys(pics))
+
+        # Append hidden profiles if a secret file exists
+        try:
+            secret_path = app_path('secret')
+            if os.path.exists(secret_path):
+                if 'ML-13 Red Eagle' not in pics:
+                    pics.append('ML-13 Red Eagle')
+                if 'ML-3326 Supreme Guard' not in pics:
+                    pics.append('ML-3326 Supreme Guard')
+        except Exception:
+            pass
+
+        # Return alphabetically sorted list (case-insensitive) so hidden profiles integrate
+        return sorted(pics, key=lambda s: s.lower())
+    except Exception:
+        # Fallback: try to use PROFILE_PICTURES mapping keys if available
+        try:
+            from core.icon import PROFILE_PICTURES
+            pics = list(PROFILE_PICTURES.keys())
+            # Ensure uniqueness
+            pics = list(dict.fromkeys(pics))
+            # Append hidden profiles if a repo-root secret exists
+            try:
+                if os.path.exists(os.path.join(os.getcwd(), 'secret')):
+                    if 'ML-13 Red Eagle' not in pics:
+                        pics.append('ML-13 Red Eagle')
+                    if 'ML-3326 Supreme Guard' not in pics:
+                        pics.append('ML-3326 Supreme Guard')
+            except Exception:
+                pass
+            return sorted(pics, key=lambda s: s.lower())
+        except Exception:
+            return []
