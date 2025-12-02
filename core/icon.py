@@ -535,6 +535,7 @@ TITLE_ICONS = {
     "EXEMPLARY SUBJECT": iconconfig['TitleIcons']['EXEMPLARY SUBJECT'],
     "ROOKIE": iconconfig['TitleIcons']['ROOKIE'],
     "BURIER OF HEADS": iconconfig['TitleIcons']['BURIER OF HEADS']
+	, "PYTHON COMMANDO": iconconfig['TitleIcons'].get('PYTHON COMMANDO', iconconfig['TitleIcons'].get('PYTHON COMMANDO', ''))
 }
 
 PROFILE_PICTURES = {
@@ -629,6 +630,9 @@ PROFILE_PICTURES = {
     "DS-191 Scorpion": iconconfig['ProfilePictures']['DS-191 Scorpion'],
     "DS-42 Federation's Blade": iconconfig['ProfilePictures']['DS-42 Federation\'s Blade'],
     "DS-10 Big Game Hunter": iconconfig['ProfilePictures']['DS-10 Big Game Hunter']
+	, "RS-20 Constrictor": iconconfig['ProfilePictures'].get('RS-20 Constrictor', iconconfig['ProfilePictures'].get('RS-20', ''))
+	, "RS-40 Beast of Prey": iconconfig['ProfilePictures'].get('RS-40 Beast of Prey', iconconfig['ProfilePictures'].get('RS-40', ''))
+	, "RS-6 Fiend Destroyer": iconconfig['ProfilePictures'].get('RS-6 Fiend Destroyer', iconconfig['ProfilePictures'].get('RS-6', ''))
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)

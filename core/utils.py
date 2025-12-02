@@ -420,8 +420,24 @@ def get_profile_pictures_list() -> list:
         else:
             pics = []
 
-        # Ensure uniqueness
-        pics = list(dict.fromkeys(pics))
+        # Merge in any profile picture keys from the bundled `PROFILE_PICTURES` mapping
+        # so newly added assets in `core.icon` appear even if the JSON file is stale.
+        try:
+            from core.icon import PROFILE_PICTURES
+            mapped_keys = list(PROFILE_PICTURES.keys())
+        except Exception:
+            mapped_keys = []
+
+        # Combine JSON list with mapping keys, preserving JSON order first,
+        # then adding any missing mapping keys. Use an ordered dedupe.
+        combined = []
+        for p in pics:
+            if p not in combined:
+                combined.append(p)
+        for p in mapped_keys:
+            if p not in combined:
+                combined.append(p)
+        pics = combined
 
         # Append hidden profiles if a secret file exists
         try:

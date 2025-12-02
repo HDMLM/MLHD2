@@ -18,12 +18,12 @@ VSVersionInfo(
       StringTable('040904B0', [  # US English + Unicode
         StringStruct('CompanyName', 'MLHD2 Team'),
         StringStruct('FileDescription', 'MLHD2 Launcher / Installer'),
-        StringStruct('FileVersion', '1.7.011'),
+        StringStruct('FileVersion', '1.7.013'),
         StringStruct('InternalName', 'MLHD2-Launcher'),
         StringStruct('LegalCopyright', '© 2025 MLHD2 Team. All rights reserved.'),
         StringStruct('OriginalFilename', 'MLHD2-Launcher.exe'),
         StringStruct('ProductName', 'MLHD2 Launcher'),
-        StringStruct('ProductVersion', '1.7.011'),
+        StringStruct('ProductVersion', '1.7.013'),
         StringStruct('Comments', 'HELLDIVERS 2 Mission Logger'),
         StringStruct('Website', 'https://github.com/HDMLM/MLHD2'),
       ])
