@@ -9,7 +9,7 @@
     "planets": ["Pathfinder V", "Klen Dahth II", "Widow's Harbor", "New Haven", "Pilen V"]
   },
   "Andromeda Sector": {
-    "planets": ["Charbal-VII", "Charon Prime", "Martale", "Marfark", "Matar Bay"]
+    "planets": ["Charbal-VII", "Charon Prime", "Martale", "Marfark", "Matar Bay", "Karon Bay"]
   },
   "Arturion Sector": {
     "planets": ["Mortax Prime", "Kirrik", "Wilford Station", "Arkturus", "Pioneer II", "Electra Bay", "Deneb Secundus"]
@@ -60,7 +60,7 @@
     "planets": ["Mordia 9", "Euphoria III", "Skitter", "Kuma"]
   },
   "Hydra Sector": {
-    "planets": ["Aesir Pass", "Vernen Wells", "Menkent"]
+    "planets": ["Aesir Pass", "Vernen Wells", "Menkent", "Cursa", "Oroth"]
   },
   "Idun Sector": {
     "planets": ["Wraith", "Atrama", "Myradesh", "Maw"]
@@ -141,7 +141,7 @@
     "planets": ["The Weir", "Kuper", "Caph", "Castor", "Tien Kwan", "Lastofe"]
   },
   "Trigon Sector": {
-    "planets": ["Varylia 5", "Choepessa IV", "Ustotu", "Troost", "Vandalon IV"]
+    "planets": ["Varylia 5", "Choepessa IV", "Ustotu", "Troost", "Vandalon IV", "K", "Mox"]
   },
   "Umlaut Sector": {
     "planets": ["Erata Prime", "Fenrir III", "Turing"]
@@ -156,7 +156,7 @@
     "planets": ["Skat Bay", "Sirius", "Siemnot", "Shete"]
   },
   "Xzar Sector": {
-    "planets": ["Mort", "P\u00F6pli IX", "Ingmar", "Mantes", "Draupnir"]
+    "planets": ["Mort", "P\u00F6pli IX", "Ingmar", "Mantes", "Draupnir", "Fury"]
   },
   "Ymir Sector": {
     "planets": ["Meissa", "Wasat", "X-45", "Vega Bay", "Wezen"]

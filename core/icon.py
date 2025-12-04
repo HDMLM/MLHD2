@@ -176,6 +176,9 @@ MISSION_ICONS = {
     "Extract Mysterious Substance": iconconfig['MissionIcons']['Extract Mysterious Substance'],
     "Restore Oil Pumps": iconconfig['MissionIcons']['Restore Oil Pumps'],
     "Secure E-711 Extraction": iconconfig['MissionIcons']['Secure E-711 Extraction'],
+    "Blitz: Destroy Bio-Processors": iconconfig['MissionIcons']['Blitz Destroy Bio-Processors'],
+    "Annex Untapped Mineral Sites": iconconfig['MissionIcons']['Annex Untapped Mineral Sites'],
+    "Rapid Acquisition": iconconfig['MissionIcons']['Rapid Acquisition']
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)
@@ -441,7 +444,13 @@ BIOME_BANNERS = {
     "Moradesh": iconconfig['BiomeBanners']['Fractured Planet'],
     "Meridia": iconconfig['BiomeBanners']['Black Hole'],
     "Super Earth": iconconfig['BiomeBanners']['Super Earth'],
-    "Mars": iconconfig['BiomeBanners']['Mars']
+    "Mars": iconconfig['BiomeBanners']['Mars'],
+    "Fury": iconconfig['BiomeBanners']['Magma'],
+    "K": iconconfig['BiomeBanners']['Magma'],
+    "Mox": iconconfig['BiomeBanners']['Magma'],
+    "Cursa": iconconfig['BiomeBanners']['Magma'],
+    "Oroth": iconconfig['BiomeBanners']['Magma'],
+    "Karon Bay": iconconfig['BiomeBanners']['Magma']
 }
 
 SUBFACTION_BANNERS = {
@@ -898,7 +907,13 @@ PLANET_PROFILES = {
     "Moradesh": iconconfig['PlanetProfile']['Fractured Planet'],
     "Meridia": iconconfig['PlanetProfile']['Black Hole'],
     "Super Earth": iconconfig['PlanetProfile']['Super Earth'],
-    "Mars": iconconfig['PlanetProfile']['Scoured - Mars']
+    "Mars": iconconfig['PlanetProfile']['Scoured - Mars'],
+    "Fury": iconconfig['PlanetProfile']['Magma'],
+    "K": iconconfig['PlanetProfile']['Magma'],
+    "Mox": iconconfig['PlanetProfile']['Magma'],
+    "Cursa": iconconfig['PlanetProfile']['Magma'],
+    "Oroth": iconconfig['PlanetProfile']['Magma'],
+    "Karon Bay": iconconfig['PlanetProfile']['Magma']
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)
@@ -1164,7 +1179,13 @@ PLANET_PROFILES = {
     "Moradesh": iconconfig['BiomePlanets']['Fractured Planet'],
     "Meridia": iconconfig['BiomePlanets']['Black Hole'],
     "Super Earth": iconconfig['BiomePlanets']['Super Earth'],
-    "Mars": iconconfig['BiomePlanets']['Scoured - Mars']
+    "Mars": iconconfig['BiomePlanets']['Scoured - Mars'],
+    "Fury": iconconfig['BiomePlanets']['Magma'],
+    "K": iconconfig['BiomePlanets']['Magma'],
+    "Mox": iconconfig['BiomePlanets']['Magma'],
+    "Cursa": iconconfig['BiomePlanets']['Magma'],
+    "Oroth": iconconfig['BiomePlanets']['Magma'],
+    "Karon Bay": iconconfig['BiomePlanets']['Magma']
 }
 
 # Helper functions to retrieve banner URLs

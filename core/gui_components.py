@@ -571,6 +571,8 @@ def build_ui(app):
             mission_icon_filename = "Blitz Secure Research Site.png"
         elif mission_type == "Blitz: Destroy Illuminate Warp Ships":
             mission_icon_filename = "Blitz Destroy Illuminate Warp Ships.png"
+        elif mission_type == "Blitz: Destroy Bio-Processors":
+            mission_icon_filename = "Blitz Destroy Bio-Processors.png"
         else:
             mission_icon_filename = f"{mission_type}.png" if mission_type else None
         mission_icon_path = app_path('media', 'missions', mission_icon_filename) if mission_icon_filename else None

@@ -739,7 +739,7 @@ def main():
         'Veld', 'Termadon', 'Stor Tha Prime', 'Spherion', 'Stout', 'Leng Secundus', 'Valmox', 'Iro', 'Grafmere', 'Kerth Secundus', 'Parsh', 'Oasis', 'Genesis Prime', 'Rogue 5', 'RD-4', 'Hesoe Prime', 'Hort', 'Rirga Bay', 'Oslo Station', 'Gunvald', 'Borea', 'Calypso', 'Outpost 32', 'Reaf', 'Irulta', 'Maia', 'Malevelon Creek', 'Durgen',
         'Ubanea', 'Tibit', 'Super Earth', 'Mars', 'Trandor', 'Peacock', 'Partion', 'Overgoe Prime', 'Azur Secundus', 'Shallus', 'Shelt', 'Gaellivare', 'Imber', 'Claorell', 'Vog-Sojoth', 'Clasa', 'Yed Prior', 'Zefia', 'Demiurg', 'East Iridium Trading Bay', 'Brink-2', 'Osupsam', 'Canopus', 'Bunda Secundus', 'The Weir', 'Kuper', 'Caph', 'Castor',
         'Tien Kwan', 'Lastofe', 'Varylia 5', 'Choepessa IV', 'Ustotu', 'Troost', 'Vandalon IV', 'Erata Prime', 'Fenrir III', 'Turing', 'Skaash', 'Acrab XI', 'Acrux IX', 'Gemma', 'Merga IV', 'Merak', 'Cyberstan', 'Aurora Bay', 'Mekbuda', 'Videmitarix Prime', 'Skat Bay', 'Sirius', 'Siemnot', 'Shete', 'Mort', 'P\u00F6pli IX', 'Ingmar', 'Mantes',
-        'Draupnir', 'Meissa', 'Wasat', 'X-45', 'Vega Bay', 'Wezen'
+        'Draupnir', 'Meissa', 'Wasat', 'X-45', 'Vega Bay', 'Wezen', 'Fury', 'K', 'Mox', 'Cursa', 'Oroth', 'Karon Bay'
     ]
 
     # Load Excel data
