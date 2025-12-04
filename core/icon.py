@@ -178,7 +178,8 @@ MISSION_ICONS = {
     "Secure E-711 Extraction": iconconfig['MissionIcons']['Secure E-711 Extraction'],
     "Blitz: Destroy Bio-Processors": iconconfig['MissionIcons']['Blitz Destroy Bio-Processors'],
     "Annex Untapped Mineral Sites": iconconfig['MissionIcons']['Annex Untapped Mineral Sites'],
-    "Rapid Acquisition": iconconfig['MissionIcons']['Rapid Acquisition']
+    "Rapid Acquisition": iconconfig['MissionIcons']['Rapid Acquisition'],
+    "Sabotage Orgo-Plasma Synthesis": iconconfig['MissionIcons']['Sabotage Orgo-Plasma Synthesis'],
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)
