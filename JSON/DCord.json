@@ -1,38 +1,27 @@
 {
-    "discord_uid": "695767541393653791",
+    "discord_uid": "0",
     "discord_webhooks_logging": [
-        "https://discord.com/api/webhooks/1384270979366125579/j4FEeZYDSV3X_-CfEV9e2Ki_u7GyKtf3gcGwxt-vKKdx6tEZ919MVAVT_byxBbQrXnqk",
-        "https://discord.com/api/webhooks/1439230014439686268/LXDborjk_kgRLjby3AdkGBptF8c2jR9fTBzypwsbhsu1jZyDZ3KpomFoN6tAX4Cn-wYl"
+        ""
     ],
     "discord_webhooks_export": [
-        "https://discord.com/api/webhooks/1384271789005340795/TSs4zRu7UWPt30b9OrJJQnY8FWpXHchQcaZwTJr7nPfYjAV7sonfBb8QOTwMfY--fufz",
-        "https://discord.com/api/webhooks/1439230014439686268/LXDborjk_kgRLjby3AdkGBptF8c2jR9fTBzypwsbhsu1jZyDZ3KpomFoN6tAX4Cn-wYl"
+        ""
     ],
     "discord_webhooks": [
-        "https://discord.com/api/webhooks/1384271789005340795/TSs4zRu7UWPt30b9OrJJQnY8FWpXHchQcaZwTJr7nPfYjAV7sonfBb8QOTwMfY--fufz",
-        "https://discord.com/api/webhooks/1439230014439686268/LXDborjk_kgRLjby3AdkGBptF8c2jR9fTBzypwsbhsu1jZyDZ3KpomFoN6tAX4Cn-wYl"
+        ""
     ],
     "discord_webhooks_logging_labeled": [
         {
-            "label": "# log-1",
-            "url": "https://discord.com/api/webhooks/1384270979366125579/j4FEeZYDSV3X_-CfEV9e2Ki_u7GyKtf3gcGwxt-vKKdx6tEZ919MVAVT_byxBbQrXnqk"
-        },
-        {
-            "label": "# ses-herald-of-wrath",
-            "url": "https://discord.com/api/webhooks/1439230014439686268/LXDborjk_kgRLjby3AdkGBptF8c2jR9fTBzypwsbhsu1jZyDZ3KpomFoN6tAX4Cn-wYl"
+            "label": "",
+            "url": ""
         }
     ],
     "discord_webhooks_export_labeled": [
         {
-            "label": "# seaf-battle-record",
-            "url": "https://discord.com/api/webhooks/1384271789005340795/TSs4zRu7UWPt30b9OrJJQnY8FWpXHchQcaZwTJr7nPfYjAV7sonfBb8QOTwMfY--fufz"
-        },
-        {
-            "label": "# ses-herald-of-wrath",
-            "url": "https://discord.com/api/webhooks/1439230014439686268/LXDborjk_kgRLjby3AdkGBptF8c2jR9fTBzypwsbhsu1jZyDZ3KpomFoN6tAX4Cn-wYl"
+            "label": "",
+            "url": ""
         }
     ],
-    "platform": "Steam",
+    "platform": "Not Selected",
     "dont_send_to_discord": false,
     "flair_colour": "Default"
 }
