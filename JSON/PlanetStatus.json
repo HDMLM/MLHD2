@@ -1,0 +1,64 @@
+{
+  "Contested/Controlled Environment": {
+    "planets": [
+      "Acamar IV", "Acubens Prime", "Achird III", "Achernar Secundus", "Adhara",
+      "Aesir Pass", "Afoyay Bay", "Ain-5", "Alairt III", "Alamak VII",
+      "Alaraph", "Alathfar XI", "Alderidge Cove", "Alta V", "Andar",
+      "Asperoth Prime", "Aurora Bay", "Azterra", "Baldrick Prime", "Barabos", "Bashyr",
+      "Bekvam III", "Bellatrix", "Blistica", "Borea", "Bore Rock",
+      "Botein", "Brink-2", "Bunda Secundus", "Calypso", "Canopus",
+      "Caph", "Caramoor", "Charbal-VII", "Charon Prime", "Choepessa IV",
+      "Choohe", "Chort Bay", "Cirrus", "Claorell", "Clasa",
+      "Crimsica", "Crucible", "Curia", "Darius II", "Demiurg",
+      "Dolph", "Draupnir", "Duma Tyr", "Durgen", "East Iridium Trading Bay", "Effluvia",
+      "Elysian Meadows", "Emeria", "Emorath", "Erata Prime", "Erson Sands",
+      "Esker", "Estanu", "Eukoria", "Fenrir III", "Fenmire",
+      "Fori Prime", "Fort Union", "Fury", "Gacrux", "Gaellivare", "Gar Haren",
+      "Gatria", "Gemma", "Genesis Prime", "Grafmere", "Grand Errant",
+      "Gunvald", "Hadar", "Haldus", "Heeth", "Hellmire",
+      "Herthon Secundus", "Hesoe Prime", "Heze Bay", "Hort", "Hydrobius",
+      "Ilduna Prime", "Imber", "Inari", "Ingmar", "Iro",
+      "Irulta", "Julheim", "K", "Karlia", "Keid", "Kerth Secundus",
+      "Khandark", "Kharst", "Klaka 5", "Krakatwo", "Kraz",
+      "Leng Secundus", "Lesath", "Liberty Ridge", "Maia", "Malevelon Creek",
+      "Mantes", "Marfark", "Martale", "Mastia", "Matar Bay", "Meissa",
+      "Menkent", "Merak", "Mintoria", "Mog", "Mort",
+      "Mox", "Myrium", "New Haven", "New Stockholm", "Nivel 43", "Nublaria I",
+      "Oasis", "Omicron", "Oslo Station", "Oshaune", "Osupsam",
+      "Pandion-XXIV", "Parsh", "Penta", "Phact Bay", "Pherkad Secundus",
+      "Pilen V", "Polaris Prime", "Pöpli IX", "Propus", "Ras Algethi",
+      "Rasp", "RD-4", "Reaf", "Regnus", "Rirga Bay",
+      "Rogue 5", "Seasse", "Senge 23", "Setia", "Seyshel Beach",
+      "Shallus", "Shelt", "Shete", "Siemnot", "Sirius",
+      "Skaash", "Skat Bay", "Slif", "Socorro III", "Spherion",
+      "Stor Tha Prime", "Stout", "Sulfura", "Super Earth", "Tarsh",
+      "Termadon", "Terrek", "Tibit", "Tien Kwan", "Troost",
+      "Turing", "Ubanea", "Ursica XI", "Ustotu", "Valmox",
+      "Vandalon IV", "Varylia 5", "Vega Bay", "Veld", "Vernen Wells",
+      "Videmitarix Prime", "Vog-Sojoth", "Volterra", "Wasat", "Wezen",
+      "Widow's Harbor", "X-45", "Yed Prior", "Zagon Prime", "Zea Rugosia",
+      "Zefia", "Zzaniah Prime", "Zosma"
+    ]
+  },
+  "Uncharted Territory": {
+    "planets": [
+      "Acrab XI", "Acrux IX", "Arkturus", "Atrama", "Castor",
+      "Cerberus IIIc", "Cursa", "Cyberstan", "Darrowsport", "Deneb Secundus", "Diaspora X",
+      "Diluvia", "Electra Bay", "Enuliale", "Epsilon Phoencis VI",
+      "Euphoria III", "Fornskogur II", "Fort Justice", "Fort Sanctuary", "Freedom Peak",
+      "Gemstone Bluffs", "Haka", "Halies Port", "Hydrofall Prime", "Igla",
+      "Iridica", "Karon Bay", "Kelvinor", "Kirrik", "Klen Dahth II", "Kneth Port",
+      "Krakabos", "Kuma", "Kuper", "Lastofe", "Marre IV",
+      "Mars", "Martyr's Bay", "Maw", "Mekbuda", "Merga IV",
+      "Midasburg", "Minchir", "Mordia 9", "Mortax Prime", "Myradesh",
+      "Nabatea Secundus", "Navi VII", "New Kiruna", "Obari", "Okul VI", "Oroth", 
+      "Outpost 32", "Overgoe Prime", "Pathfinder V", "Pioneer II", "Pollux 31",
+      "Prasa", "Primordia", "Prosperity Falls", "Providence", "Ratch",
+      "Skitter", "Solghast", "The Weir", "Valgaard", "Veil",
+      "Vindemitarix Prime", "Viridia Prime", "Wilford Station", "Wraith", "Zegema Paradise"
+    ]
+  },
+  "Lost Connection": {
+    "planets": ["Meridia", "Angel's Venture", "Moradesh", "Ivis"]
+  }
+}

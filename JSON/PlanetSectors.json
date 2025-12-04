@@ -1,0 +1,164 @@
+{
+  "Akira Sector": {
+    "planets": ["Alaraph", "Alathfar XI", "Andar", "Asperoth Prime", "Keid"]
+  },
+  "Alstrad Sector": {
+    "planets": ["Kneth Port", "Klaka 5", "Kraz"]
+  },
+  "Altus Sector": {
+    "planets": ["Pathfinder V", "Klen Dahth II", "Widow's Harbor", "New Haven", "Pilen V"]
+  },
+  "Andromeda Sector": {
+    "planets": ["Charbal-VII", "Charon Prime", "Martale", "Marfark", "Matar Bay", "Karon Bay"]
+  },
+  "Arturion Sector": {
+    "planets": ["Mortax Prime", "Kirrik", "Wilford Station", "Arkturus", "Pioneer II", "Electra Bay", "Deneb Secundus"]
+  },
+  "Barnard Sector": {
+    "planets": ["Fornskogur II", "Veil", "Marre IV", "Midasburg", "Darrowsport", "Hydrofall Prime"]
+  },
+  "Borgus Sector": {
+    "planets": ["Ursica XI", "Achird III", "Achernar Secundus", "Darius II"]
+  },
+  "Cancri Sector": {
+    "planets": ["Prosperity Falls", "Cerberus IIIc", "Effluvia", "Seyshel Beach", "Fort Sanctuary"]
+  },
+  "Cantolus Sector": {
+    "planets": ["Kelvinor", "Martyr's Bay", "Freedom Peak", "Viridia Prime", "Obari"]
+  },
+  "Celeste Sector": {
+    "planets": ["Sulfura", "Nublaria I", "Krakatwo", "Ivis", "Slif", "Moradesh", "Meridia"]
+  },
+  "Draco Sector": {
+    "planets": ["Crimsica", "Estanu", "Fori Prime"]
+  },
+  "Falstaff Sector": {
+    "planets": ["Bore Rock", "Esker", "Socorro III", "Erson Sands"]
+  },
+  "Farsight Sector": {
+    "planets": ["Prasa", "Pollux 31", "Polaris Prime", "Pherkad Secundus", "Grand Errant"]
+  },
+  "Ferris Sector": {
+    "planets": ["Hadar", "Haldus", "Zea Rugosia", "Herthon Secundus"]
+  },
+  "Gallux Sector": {
+    "planets": ["Kharst", "Bashyr", "Rasp", "Acubens Prime", "Adhara", "Afoyay Bay"]
+  },
+  "Gellert Sector": {
+    "planets": ["Minchir", "Mintoria", "Blistica", "Zzaniah Prime", "Zosma"]
+  },
+  "Gothmar Sector": {
+    "planets": ["Okul VI", "Solghast", "Diluvia"]
+  },
+  "Guang Sector": {
+    "planets": ["Elysian Meadows", "Alderidge Cove", "Bellatrix", "Botein", "Khandark"]
+  },
+  "Hanzo Sector": {
+    "planets": ["Heze Bay", "Alairt III", "Alamak VII", "New Stockholm", "Ain-5"]
+  },
+  "Hawking Sector": {
+    "planets": ["Mordia 9", "Euphoria III", "Skitter", "Kuma"]
+  },
+  "Hydra Sector": {
+    "planets": ["Aesir Pass", "Vernen Wells", "Menkent", "Cursa", "Oroth"]
+  },
+  "Idun Sector": {
+    "planets": ["Wraith", "Atrama", "Myradesh", "Maw"]
+  },
+  "Iptus Sector": {
+    "planets": ["Providence", "Primordia", "Krakabos", "Iridica", "Valgaard", "Ratch"]
+  },
+  "Jin Xi Sector": {
+    "planets": ["Acamar IV", "Pandion-XXIV", "Gacrux", "Phact Bay", "Gar Haren", "Gatria"]
+  },
+  "Kelvin Sector": {
+    "planets": ["Zegema Paradise", "Fort Justice", "New Kiruna", "Igla", "Emeria"]
+  },
+  "Korpus Sector": {
+    "planets": ["Crucible", "Volterra", "Caramoor", "Alta V", "Inari"]
+  },
+  "L'estrade Sector": {
+    "planets": ["Navi VII", "Omicron", "Nabatea Secundus", "Gemstone Bluffs", "Epsilon Phoencis VI", "Enuliale", "Diaspora X"]
+  },
+  "Lacaille Sector": {
+    "planets": ["Lesath", "Penta", "Chort Bay", "Choohe"]
+  },
+  "Leo Sector": {
+    "planets": ["Ras Algethi", "Propus", "Halies Port", "Haka"]
+  },
+  "Marspira Sector": {
+    "planets": ["Curia", "Barabos", "Fenmire", "Tarsh", "Mastia"]
+  },
+  "Meridian Sector": {
+    "planets": ["Emorath", "Ilduna Prime", "Baldrick Prime", "Liberty Ridge"]
+  },
+  "Mirin Sector": {
+    "planets": ["Hellmire", "Nivel 43", "Zagon Prime", "Oshaune"]
+  },
+  "Morgon Sector": {
+    "planets": ["Myrium", "Eukoria", "Regnus", "Mog"]
+  },
+  "Nanos Sector": {
+    "planets": ["Dolph", "Julheim", "Bekvam III", "Duma Tyr"]
+  },
+  "Omega Sector": {
+    "planets": ["Setia", "Senge 23", "Seasse", "Hydrobius", "Karlia"]
+  },
+  "Orion Sector": {
+    "planets": ["Terrek", "Azterra", "Fort Union", "Cirrus", "Heeth", "Angel's Venture", "Veld"]
+  },
+  "Quintus Sector": {
+    "planets": ["Termadon", "Stor Tha Prime", "Spherion", "Stout", "Leng Secundus"]
+  },
+  "Rictus Sector": {
+    "planets": ["Valmox", "Iro", "Grafmere", "Kerth Secundus", "Parsh", "Oasis", "Genesis Prime"]
+  },
+  "Rigel Sector": {
+    "planets": ["Rogue 5", "RD-4", "Hesoe Prime", "Hort", "Rirga Bay"]
+  },
+  "Sagan Sector": {
+    "planets": ["Oslo Station", "Gunvald", "Borea"]
+  },
+  "Saleria Sector": {
+    "planets": ["Calypso", "Outpost 32", "Reaf", "Irulta"]
+  },
+  "Severin Sector": {
+    "planets": ["Maia", "Malevelon Creek", "Durgen", "Ubanea", "Tibit"]
+  },
+  "Sol System": {
+    "planets": ["Super Earth", "Mars"]
+  },
+  "Talus Sector": {
+    "planets": ["Shallus", "Shelt", "Gaellivare", "Imber"]
+  },
+  "Tanis Sector": {
+    "planets": ["Claorell", "Vog-Sojoth", "Clasa", "Yed Prior", "Zefia", "Demiurg"]
+  },
+  "Tarragon Sector": {
+    "planets": ["East Iridium Trading Bay", "Brink-2", "Osupsam", "Canopus", "Bunda Secundus"]
+  },
+  "Theseus Sector": {
+    "planets": ["The Weir", "Kuper", "Caph", "Castor", "Tien Kwan", "Lastofe"]
+  },
+  "Trigon Sector": {
+    "planets": ["Varylia 5", "Choepessa IV", "Ustotu", "Troost", "Vandalon IV", "K", "Mox"]
+  },
+  "Umlaut Sector": {
+    "planets": ["Erata Prime", "Fenrir III", "Turing"]
+  },
+  "Ursa Sector": {
+    "planets": ["Skaash", "Acrab XI", "Acrux IX", "Gemma"]
+  },
+  "Valdis Sector": {
+    "planets": ["Merga IV", "Merak", "Cyberstan", "Aurora Bay", "Mekbuda", "Videmitarix Prime"]
+  },
+  "Xi Tauri Sector": {
+    "planets": ["Skat Bay", "Sirius", "Siemnot", "Shete"]
+  },
+  "Xzar Sector": {
+    "planets": ["Mort", "P\u00F6pli IX", "Ingmar", "Mantes", "Draupnir", "Fury"]
+  },
+  "Ymir Sector": {
+    "planets": ["Meissa", "Wasat", "X-45", "Vega Bay", "Wezen"]
+  }
+}

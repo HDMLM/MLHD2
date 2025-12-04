@@ -1,0 +1,1768 @@
+{
+  "name": "MLHD2-dev",
+  "type": "dir",
+  "children": [
+    {
+      "name": "JSON",
+      "type": "dir",
+      "children": [
+        {
+          "name": "Achievements.json",
+          "type": "config"
+        },
+        {
+          "name": "BiomePlanets.json",
+          "type": "config"
+        },
+        {
+          "name": "DCord.json",
+          "type": "config"
+        },
+        {
+          "name": "Enemies.json",
+          "type": "config"
+        },
+        {
+          "name": "MegaCityPlanets.json",
+          "type": "config"
+        },
+        {
+          "name": "Missions.json",
+          "type": "config"
+        },
+        {
+          "name": "persistent.json",
+          "type": "config"
+        },
+        {
+          "name": "PlanetSectors.json",
+          "type": "config"
+        },
+        {
+          "name": "ProfilePictures.json",
+          "type": "config"
+        },
+        {
+          "name": "settings.json",
+          "type": "config"
+        },
+        {
+          "name": "streak_data.json",
+          "type": "config"
+        },
+        {
+          "name": "Titles.json",
+          "type": "config"
+        }
+      ]
+    },
+    {
+      "name": "LaunchMedia",
+      "type": "dir",
+      "children": [
+        {
+          "name": "app.ico",
+          "type": "file"
+        },
+        {
+          "name": "DiscordButton.png",
+          "type": "image"
+        },
+        {
+          "name": "DiscordButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "GitHubButton.png",
+          "type": "image"
+        },
+        {
+          "name": "GitHubButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "HelpButton.png",
+          "type": "image"
+        },
+        {
+          "name": "HelpButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "Insignia.ttf",
+          "type": "file"
+        },
+        {
+          "name": "SettingsButton.png",
+          "type": "image"
+        },
+        {
+          "name": "SettingsButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "SpacePlaceholder.png",
+          "type": "image"
+        },
+        {
+          "name": "splash.png",
+          "type": "image"
+        },
+        {
+          "name": "StartLoggerButton.png",
+          "type": "image"
+        },
+        {
+          "name": "StartLoggerButtonActive.png",
+          "type": "image"
+        },
+        {
+          "name": "StartLoggerButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "UpdateToLatestButton.png",
+          "type": "image"
+        },
+        {
+          "name": "UpdateToLatestButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "VerifyIntegrityButton.png",
+          "type": "image"
+        },
+        {
+          "name": "VerifyIntegrityButtonHover.png",
+          "type": "image"
+        },
+        {
+          "name": "VerifyIntegrityButtonSuccessful.png",
+          "type": "image"
+        }
+      ]
+    },
+    {
+      "name": "media",
+      "type": "dir",
+      "children": [
+        {
+          "name": "biome_banners",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Acidic Badlands.png",
+              "type": "image"
+            },
+            {
+              "name": "Basic Swamp.png",
+              "type": "image"
+            },
+            {
+              "name": "Black Hole.png",
+              "type": "image"
+            },
+            {
+              "name": "Boneyard.png",
+              "type": "image"
+            },
+            {
+              "name": "Cyberstan.png",
+              "type": "image"
+            },
+            {
+              "name": "Deadlands.png",
+              "type": "image"
+            },
+            {
+              "name": "Desert Cliffs.png",
+              "type": "image"
+            },
+            {
+              "name": "Desert Dunes.png",
+              "type": "image"
+            },
+            {
+              "name": "Ethereal Jungle.png",
+              "type": "image"
+            },
+            {
+              "name": "Fractured Planet.png",
+              "type": "image"
+            },
+            {
+              "name": "Haunted Swamp.png",
+              "type": "image"
+            },
+            {
+              "name": "Hive World.png",
+              "type": "image"
+            },
+            {
+              "name": "Icy Glaciers.png",
+              "type": "image"
+            },
+            {
+              "name": "Ionic Crimson.png",
+              "type": "image"
+            },
+            {
+              "name": "Ionic Jungle.png",
+              "type": "image"
+            },
+            {
+              "name": "Mars.png",
+              "type": "image"
+            },
+            {
+              "name": "Moon.png",
+              "type": "image"
+            },
+            {
+              "name": "Plains.png",
+              "type": "image"
+            },
+            {
+              "name": "Rocky Canyons.png",
+              "type": "image"
+            },
+            {
+              "name": "Scorched Moor.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - Mars.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - New Haven.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - Pilen V.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - Widow's Harbor.png",
+              "type": "image"
+            },
+            {
+              "name": "Super Earth.png",
+              "type": "image"
+            },
+            {
+              "name": "Tundra.png",
+              "type": "image"
+            },
+            {
+              "name": "Volcanic Jungle.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "campaigns",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Attrition.png",
+              "type": "image"
+            },
+            {
+              "name": "Battle_for_Super_Earth.png",
+              "type": "image"
+            },
+            {
+              "name": "Defense.png",
+              "type": "image"
+            },
+            {
+              "name": "High-Priority.png",
+              "type": "image"
+            },
+            {
+              "name": "Invasion.png",
+              "type": "image"
+            },
+            {
+              "name": "Liberation.png",
+              "type": "image"
+            },
+            {
+              "name": "Observation.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "difficulties",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Challenging.png",
+              "type": "image"
+            },
+            {
+              "name": "Easy.png",
+              "type": "image"
+            },
+            {
+              "name": "Extreme.png",
+              "type": "image"
+            },
+            {
+              "name": "Hard.png",
+              "type": "image"
+            },
+            {
+              "name": "Helldive.png",
+              "type": "image"
+            },
+            {
+              "name": "Impossible.png",
+              "type": "image"
+            },
+            {
+              "name": "Medium.png",
+              "type": "image"
+            },
+            {
+              "name": "Suicide Mission.png",
+              "type": "image"
+            },
+            {
+              "name": "Super Helldive.png",
+              "type": "image"
+            },
+            {
+              "name": "Trivial.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "dssmod",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Eagle_Blockade.png",
+              "type": "image"
+            },
+            {
+              "name": "Eagle_Storm.png",
+              "type": "image"
+            },
+            {
+              "name": "Heavy_Ordnance_Distribution.png",
+              "type": "image"
+            },
+            {
+              "name": "Inactive.png",
+              "type": "image"
+            },
+            {
+              "name": "Orbital_Blockade.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "Exportsys",
+          "type": "dir",
+          "children": [
+            {
+              "name": "ClearFiltersButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ClearFiltersButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExitButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExitButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportViewerTabButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExtractToDiscordButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExtractToDiscordButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "RefreshButton.png",
+              "type": "image"
+            },
+            {
+              "name": "RefreshButtonHover.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "factions",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Automatons.png",
+              "type": "image"
+            },
+            {
+              "name": "Illuminate.png",
+              "type": "image"
+            },
+            {
+              "name": "Observing.png",
+              "type": "image"
+            },
+            {
+              "name": "Terminids.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "major_order",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Major_Order_False.png",
+              "type": "image"
+            },
+            {
+              "name": "Major_Order_True.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "missions",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Activate E-710 Pumps.png",
+              "type": "image"
+            },
+            {
+              "name": "Activate Terminid Control System.png",
+              "type": "image"
+            },
+            {
+              "name": "Blitz Destroy Illuminate Warp Ships.png",
+              "type": "image"
+            },
+            {
+              "name": "Blitz Search and Destroy_Automatons.png",
+              "type": "image"
+            },
+            {
+              "name": "Blitz Search and Destroy_Terminids.png",
+              "type": "image"
+            },
+            {
+              "name": "Blitz Secure Research Site.png",
+              "type": "image"
+            },
+            {
+              "name": "Chart Terminid Tunnels.png",
+              "type": "image"
+            },
+            {
+              "name": "Cleanse Infested District.png",
+              "type": "image"
+            },
+            {
+              "name": "Collect Gloom Spore Readings.png",
+              "type": "image"
+            },
+            {
+              "name": "Collect Gloom-Infused Oil.png",
+              "type": "image"
+            },
+            {
+              "name": "Collect Meteorological Data.png",
+              "type": "image"
+            },
+            {
+              "name": "Conduct Geological Survey.png",
+              "type": "image"
+            },
+            {
+              "name": "Conduct Mobile E-711 Extraction.png",
+              "type": "image"
+            },
+            {
+              "name": "Deactivate Terminid Control System.png",
+              "type": "image"
+            },
+            {
+              "name": "Defend Evacuation Site.png",
+              "type": "image"
+            },
+            {
+              "name": "Deploy Dark Fluid.png",
+              "type": "image"
+            },
+            {
+              "name": "Destroy Command Bunkers.png",
+              "type": "image"
+            },
+            {
+              "name": "Destroy Harvesters.png",
+              "type": "image"
+            },
+            {
+              "name": "Destroy Spore Lung.png",
+              "type": "image"
+            },
+            {
+              "name": "Destroy Transmission Network.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Automaton Factory Strider.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Automaton Hulks.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Bile Titans.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Brood Commanders.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Chargers.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Devastators.png",
+              "type": "image"
+            },
+            {
+              "name": "Eliminate Impaler.png",
+              "type": "image"
+            },
+            {
+              "name": "Emergency Evacuation.png",
+              "type": "image"
+            },
+            {
+              "name": "Enable E-710 Extraction.png",
+              "type": "image"
+            },
+            {
+              "name": "Eradicate Automaton Forces.png",
+              "type": "image"
+            },
+            {
+              "name": "Eradicate Terminid Swarm.png",
+              "type": "image"
+            },
+            {
+              "name": "Evacuate Citizens.png",
+              "type": "image"
+            },
+            {
+              "name": "Evacuate Colonists.png",
+              "type": "image"
+            },
+            {
+              "name": "Evacuate High-Value Assets.png",
+              "type": "image"
+            },
+            {
+              "name": "Extract Mysterious Substance.png",
+              "type": "image"
+            },
+            {
+              "name": "Extract Research Probe Data.png",
+              "type": "image"
+            },
+            {
+              "name": "Free Colony.png",
+              "type": "image"
+            },
+            {
+              "name": "Free The City.png",
+              "type": "image"
+            },
+            {
+              "name": "Launch ICBM.png",
+              "type": "image"
+            },
+            {
+              "name": "Neutralize Orbital Defenses.png",
+              "type": "image"
+            },
+            {
+              "name": "Nuke Nursery.png",
+              "type": "image"
+            },
+            {
+              "name": "Observing Galactic War.png",
+              "type": "image"
+            },
+            {
+              "name": "Pump Fuel To ICBM.png",
+              "type": "image"
+            },
+            {
+              "name": "Purge Hatcheries.png",
+              "type": "image"
+            },
+            {
+              "name": "Repel Invasion Fleet.png",
+              "type": "image"
+            },
+            {
+              "name": "Restore Air Quality.png",
+              "type": "image"
+            },
+            {
+              "name": "Restore Oil Pumps.png",
+              "type": "image"
+            },
+            {
+              "name": "Retrieve Essential Personnel.png",
+              "type": "image"
+            },
+            {
+              "name": "Retrieve Recon Craft Intel.png",
+              "type": "image"
+            },
+            {
+              "name": "Retrieve Valuable Data.png",
+              "type": "image"
+            },
+            {
+              "name": "Sabotage Air Base.png",
+              "type": "image"
+            },
+            {
+              "name": "Sabotage Supply Bases.png",
+              "type": "image"
+            },
+            {
+              "name": "Secure E-711 Extraction.png",
+              "type": "image"
+            },
+            {
+              "name": "Spread Democracy.png",
+              "type": "image"
+            },
+            {
+              "name": "Take Down Overship.png",
+              "type": "image"
+            },
+            {
+              "name": "Terminate Illegal Broadcast.png",
+              "type": "image"
+            },
+            {
+              "name": "Unlisted Mission.png",
+              "type": "image"
+            },
+            {
+              "name": "Upload Escape Pod Data.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "planets",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Acidic Badlands.png",
+              "type": "image"
+            },
+            {
+              "name": "Basic Swamp.png",
+              "type": "image"
+            },
+            {
+              "name": "Black Hole.png",
+              "type": "image"
+            },
+            {
+              "name": "Boneyard.png",
+              "type": "image"
+            },
+            {
+              "name": "Deadlands.png",
+              "type": "image"
+            },
+            {
+              "name": "Desert Cliffs.png",
+              "type": "image"
+            },
+            {
+              "name": "Desert Dunes.png",
+              "type": "image"
+            },
+            {
+              "name": "Ethereal Jungle.png",
+              "type": "image"
+            },
+            {
+              "name": "Fractured Planet.png",
+              "type": "image"
+            },
+            {
+              "name": "Haunted Swamp.png",
+              "type": "image"
+            },
+            {
+              "name": "Hive World.png",
+              "type": "image"
+            },
+            {
+              "name": "Icy Glaciers.png",
+              "type": "image"
+            },
+            {
+              "name": "Ionic Crimson.png",
+              "type": "image"
+            },
+            {
+              "name": "Ionic Jungle.png",
+              "type": "image"
+            },
+            {
+              "name": "Moon.png",
+              "type": "image"
+            },
+            {
+              "name": "Plains.png",
+              "type": "image"
+            },
+            {
+              "name": "Rocky Canyons.png",
+              "type": "image"
+            },
+            {
+              "name": "Scorched Moor.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - Mars.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - New Haven.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - Pilen V.png",
+              "type": "image"
+            },
+            {
+              "name": "Scoured - Widow's Harbor.png",
+              "type": "image"
+            },
+            {
+              "name": "Super Earth.png",
+              "type": "image"
+            },
+            {
+              "name": "Tundra.png",
+              "type": "image"
+            },
+            {
+              "name": "Volcanic Jungle.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "profile_pictures",
+          "type": "dir",
+          "children": [
+            {
+              "name": "A-35 Recon.png",
+              "type": "image"
+            },
+            {
+              "name": "A-9 Helljumper.png",
+              "type": "image"
+            },
+            {
+              "name": "AC-1 Dutiful.png",
+              "type": "image"
+            },
+            {
+              "name": "AC-2 Obedient.png",
+              "type": "image"
+            },
+            {
+              "name": "AD-11 Livewire.png",
+              "type": "image"
+            },
+            {
+              "name": "AD-26 Bleeding Edge.png",
+              "type": "image"
+            },
+            {
+              "name": "AD-49 Apollonian.png",
+              "type": "image"
+            },
+            {
+              "name": "AF-02 Haz-Master.png",
+              "type": "image"
+            },
+            {
+              "name": "AF-50 Noxious Ranger.png",
+              "type": "image"
+            },
+            {
+              "name": "AF-52 Lockdown.png",
+              "type": "image"
+            },
+            {
+              "name": "AF-91 Field Chemist.png",
+              "type": "image"
+            },
+            {
+              "name": "B-01 Tactical.png",
+              "type": "image"
+            },
+            {
+              "name": "B-08 Light Gunner.png",
+              "type": "image"
+            },
+            {
+              "name": "B-22 Model Citizen.png",
+              "type": "image"
+            },
+            {
+              "name": "B-24 Enforcer.png",
+              "type": "image"
+            },
+            {
+              "name": "B-27 Fortified Commando.png",
+              "type": "image"
+            },
+            {
+              "name": "BP-20 Corrections Officer.png",
+              "type": "image"
+            },
+            {
+              "name": "BP-32 Jackboot.png",
+              "type": "image"
+            },
+            {
+              "name": "BP-77 Grand Juror.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-07 Demolition Specialist.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-101 Guerilla Gorilla.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-27 Ground Breaker.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-35 Trench Engineer.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-64 Grenadier.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-67 Titan.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-74 Breaker.png",
+              "type": "image"
+            },
+            {
+              "name": "CE-81 Juggernaut.png",
+              "type": "image"
+            },
+            {
+              "name": "CM-09 Bonesnapper.png",
+              "type": "image"
+            },
+            {
+              "name": "CM-10 Clinician.png",
+              "type": "image"
+            },
+            {
+              "name": "CM-14 Physician.png",
+              "type": "image"
+            },
+            {
+              "name": "CM-17 Butcher.png",
+              "type": "image"
+            },
+            {
+              "name": "CM-21 Trench Paramedic.png",
+              "type": "image"
+            },
+            {
+              "name": "CW-22 Kodiak.png",
+              "type": "image"
+            },
+            {
+              "name": "CW-36 Winter Warrior.png",
+              "type": "image"
+            },
+            {
+              "name": "CW-4 Arctic Ranger.png",
+              "type": "image"
+            },
+            {
+              "name": "CW-9 White Wolf.png",
+              "type": "image"
+            },
+            {
+              "name": "DP-00 Tactical.png",
+              "type": "image"
+            },
+            {
+              "name": "DP-11 Champion of the People.png",
+              "type": "image"
+            },
+            {
+              "name": "DP-40 Hero of the Federation.png",
+              "type": "image"
+            },
+            {
+              "name": "DP-53 Savior of the Free.png",
+              "type": "image"
+            },
+            {
+              "name": "DS-10 Big Game Hunter.png",
+              "type": "image"
+            },
+            {
+              "name": "DS-191 Scorpion.png",
+              "type": "image"
+            },
+            {
+              "name": "DS-42 Federation's Blade.png",
+              "type": "image"
+            },
+            {
+              "name": "EX-00 Prototype X.png",
+              "type": "image"
+            },
+            {
+              "name": "EX-03 Prototype 3.png",
+              "type": "image"
+            },
+            {
+              "name": "EX-16 Prototype 16.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-05 Marksman.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-11 Executioner.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-23 Battle Master.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-34 Exterminator.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-37 Ravager.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-38 Eradicator.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-55 Devastator.png",
+              "type": "image"
+            },
+            {
+              "name": "FS-61 Dreadnought.png",
+              "type": "image"
+            },
+            {
+              "name": "GS-11 Democracy's Deputy.png",
+              "type": "image"
+            },
+            {
+              "name": "GS-17 Frontier Marshal.png",
+              "type": "image"
+            },
+            {
+              "name": "GS-66 Lawmaker.png",
+              "type": "image"
+            },
+            {
+              "name": "I-09 Heatseeker.png",
+              "type": "image"
+            },
+            {
+              "name": "I-102 Draconaught.png",
+              "type": "image"
+            },
+            {
+              "name": "I-44 Salamander.png",
+              "type": "image"
+            },
+            {
+              "name": "I-92 Fire Fighter.png",
+              "type": "image"
+            },
+            {
+              "name": "IE-12 Righteous.png",
+              "type": "image"
+            },
+            {
+              "name": "IE-3 Martyr.png",
+              "type": "image"
+            },
+            {
+              "name": "IE-57 Hell-Bent.png",
+              "type": "image"
+            },
+            {
+              "name": "PH-202 Twigsnapper.png",
+              "type": "image"
+            },
+            {
+              "name": "PH-56 Jaguar.png",
+              "type": "image"
+            },
+            {
+              "name": "PH-9 Predator.png",
+              "type": "image"
+            },
+            {
+              "name": "RE-1861 Parade Commander.png",
+              "type": "image"
+            },
+            {
+              "name": "RE-2310 Honorary Guard.png",
+              "type": "image"
+            },
+            {
+              "name": "RE-824 Bearer of the Standard.png",
+              "type": "image"
+            },
+            {
+              "name": "SA-04 Combat Technician.png",
+              "type": "image"
+            },
+            {
+              "name": "SA-12 Servo Assisted.png",
+              "type": "image"
+            },
+            {
+              "name": "SA-25 Steel Trooper.png",
+              "type": "image"
+            },
+            {
+              "name": "SA-32 Dynamo.png",
+              "type": "image"
+            },
+            {
+              "name": "SC-15 Drone Master.png",
+              "type": "image"
+            },
+            {
+              "name": "SC-30 Trailblazer Scout.png",
+              "type": "image"
+            },
+            {
+              "name": "SC-34 Infiltrator.png",
+              "type": "image"
+            },
+            {
+              "name": "SC-37 Legionnaire.png",
+              "type": "image"
+            },
+            {
+              "name": "SR-18 Roadblock.png",
+              "type": "image"
+            },
+            {
+              "name": "SR-24 Street Scout.png",
+              "type": "image"
+            },
+            {
+              "name": "SR-64 Cinderblock.png",
+              "type": "image"
+            },
+            {
+              "name": "TR-117 Alpha Commander.png",
+              "type": "image"
+            },
+            {
+              "name": "TR-40 Gold Eagle.png",
+              "type": "image"
+            },
+            {
+              "name": "TR-62 Knight.png",
+              "type": "image"
+            },
+            {
+              "name": "TR-7 Ambassador of the Brand.png",
+              "type": "image"
+            },
+            {
+              "name": "TR-9 Cavalier of Democracy.png",
+              "type": "image"
+            },
+            {
+              "name": "UF-16 Inspector.png",
+              "type": "image"
+            },
+            {
+              "name": "UF-50 Bloodhound.png",
+              "type": "image"
+            },
+            {
+              "name": "UF-84 Doubt Killer.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "sectors",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Akira Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Alstrad Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Altus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Andromeda Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Arturion Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Barnard Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Borgus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Cancri Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Cantolus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Celeste Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Draco Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Falstaff Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Farsight Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Ferris Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Gallux Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Gellert Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Gothmar Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Guang Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Hanzo Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Hawking Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Hydra Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Idun Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Iptus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Jin Xi Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Kelvin Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Korpus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "L'estrade Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Lacaille Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Leo Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Marspira Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Meridian Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Mirin Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Morgon Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Nanos Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Omega Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Orion Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Quintus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Rictus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Rigel Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Sagan Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Saleria Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Severin Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Sol System.png",
+              "type": "image"
+            },
+            {
+              "name": "Sten Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Talus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Tanis Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Tarragon Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Theseus Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Trigon Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Umlaut Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Ursa Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Valdis Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Xi Tauri Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Xzar Sector.png",
+              "type": "image"
+            },
+            {
+              "name": "Ymir Sector.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "SettingsInt",
+          "type": "dir",
+          "children": [
+            {
+              "name": "AddButton.png",
+              "type": "image"
+            },
+            {
+              "name": "AddButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "CancelButton.png",
+              "type": "image"
+            },
+            {
+              "name": "CancelButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "DiscordTabButton.png",
+              "type": "image"
+            },
+            {
+              "name": "DiscordTabButtonDeactive.png",
+              "type": "image"
+            },
+            {
+              "name": "DiscordTabButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "PlayStationBadge.png",
+              "type": "image"
+            },
+            {
+              "name": "PlayStationBadgeDeactive.png",
+              "type": "image"
+            },
+            {
+              "name": "ProfileTabButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ProfileTabButtonDeactive.png",
+              "type": "image"
+            },
+            {
+              "name": "ProfileTabButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "RemoveSelectedButton.png",
+              "type": "image"
+            },
+            {
+              "name": "RemoveSelectedButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ResetToDefaultButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ResetToDefaultButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "SaveSettingsButton.png",
+              "type": "image"
+            },
+            {
+              "name": "SaveSettingsButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "SteamBadge.png",
+              "type": "image"
+            },
+            {
+              "name": "SteamBadgeDeactive.png",
+              "type": "image"
+            },
+            {
+              "name": "SuperDestroyerWF.png",
+              "type": "image"
+            },
+            {
+              "name": "XboxBadge.png",
+              "type": "image"
+            },
+            {
+              "name": "XboxBadgeDeactive.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "subfactions",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Automaton_Legion.png",
+              "type": "image"
+            },
+            {
+              "name": "Dragonroach.png",
+              "type": "image"
+            },
+            {
+              "name": "Illuminate_Cult.png",
+              "type": "image"
+            },
+            {
+              "name": "Incineration_Corps.png",
+              "type": "image"
+            },
+            {
+              "name": "Jet_Brigade.png",
+              "type": "image"
+            },
+            {
+              "name": "Jet_Brigade_&_Incineration_Corps.png",
+              "type": "image"
+            },
+            {
+              "name": "No_Faction.png",
+              "type": "image"
+            },
+            {
+              "name": "Predator_Strain.png",
+              "type": "image"
+            },
+            {
+              "name": "Rupture_Strain.png",
+              "type": "image"
+            },
+            {
+              "name": "Rupture_Strain_&_Dragonroach.png",
+              "type": "image"
+            },
+            {
+              "name": "Spore_Burst_Strain.png",
+              "type": "image"
+            },
+            {
+              "name": "Terminid_Horde.png",
+              "type": "image"
+            },
+            {
+              "name": "The_Great_Host.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "SyInt",
+          "type": "dir",
+          "children": [
+            {
+              "name": "achievement.png",
+              "type": "image"
+            },
+            {
+              "name": "Export7DaysButton.png",
+              "type": "image"
+            },
+            {
+              "name": "Export7DaysButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportAchievementsButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportAchievementsButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportFactionButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportFactionButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportFavouritesButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportFavouritesButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportGUIButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportGUIButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportPlanetButton.png",
+              "type": "image"
+            },
+            {
+              "name": "ExportPlanetButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "gw_icon.png",
+              "type": "image"
+            },
+            {
+              "name": "InviteButton.png",
+              "type": "image"
+            },
+            {
+              "name": "InviteButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "SettingsButton.png",
+              "type": "image"
+            },
+            {
+              "name": "SettingsButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "SubmissionOverlay.png",
+              "type": "image"
+            },
+            {
+              "name": "SubmitButtonHover.png",
+              "type": "image"
+            },
+            {
+              "name": "SubmitButtonNH.png",
+              "type": "image"
+            },
+            {
+              "name": "SubmitButtonNo.png",
+              "type": "image"
+            },
+            {
+              "name": "SubmitButtonYes.png",
+              "type": "image"
+            }
+          ]
+        },
+        {
+          "name": "UnusedAssets",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Hazard_Overlay.png",
+              "type": "image"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "MiscItems",
+      "type": "dir",
+      "children": [
+        {
+          "name": "Fonts",
+          "type": "dir",
+          "children": [
+            {
+              "name": "Insignia.ttf",
+              "type": "file"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "tools",
+      "type": "dir",
+      "children": [
+        {
+          "name": "generate_fstruct.py",
+          "type": "script"
+        }
+      ]
+    },
+    {
+      "name": ".first_launch_done",
+      "type": "file"
+    },
+    {
+      "name": "Achievements.py",
+      "type": "script"
+    },
+    {
+      "name": "config.config",
+      "type": "file"
+    },
+    {
+      "name": "export.py",
+      "type": "script"
+    },
+    {
+      "name": "exportGUI.py",
+      "type": "script"
+    },
+    {
+      "name": "expWeek.py",
+      "type": "script"
+    },
+    {
+      "name": "faction.py",
+      "type": "script"
+    },
+    {
+      "name": "favourites.py",
+      "type": "script"
+    },
+    {
+      "name": "icon.config",
+      "type": "file"
+    },
+    {
+      "name": "icon.py",
+      "type": "script"
+    },
+    {
+      "name": "installer.py",
+      "type": "script"
+    },
+    {
+      "name": "logging_config.py",
+      "type": "script"
+    },
+    {
+      "name": "main.py",
+      "type": "script"
+    },
+    {
+      "name": "mission_export_template.html",
+      "type": "file"
+    },
+    {
+      "name": "mission_log.xlsx",
+      "type": "data"
+    },
+    {
+      "name": "MLHD2-Launcher.spec",
+      "type": "file"
+    },
+    {
+      "name": "PrivacyPol.txt",
+      "type": "text"
+    },
+    {
+      "name": "README.md",
+      "type": "text"
+    },
+    {
+      "name": "requirements.txt",
+      "type": "text"
+    },
+    {
+      "name": "sector-placeholder.png",
+      "type": "image"
+    },
+    {
+      "name": "settings.py",
+      "type": "script"
+    },
+    {
+      "name": "sub.py",
+      "type": "script"
+    },
+    {
+      "name": "SuperEarth.png",
+      "type": "image"
+    },
+    {
+      "name": "ToS.txt",
+      "type": "text"
+    }
+  ]
+}
