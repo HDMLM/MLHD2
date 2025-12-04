@@ -346,6 +346,10 @@ def build_ui(app):
     # Persists current banner selection to settings.json; affects saved UI preferences
     def save_banner_setting(*args):
         try:
+            # Ensure directory exists
+            settings_dir = os.path.dirname(app.settings_file)
+            os.makedirs(settings_dir, exist_ok=True)
+            
             # Read current settings
             settings_data = {}
             if os.path.exists(app.settings_file):

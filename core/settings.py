@@ -589,6 +589,10 @@ class SettingsPage(tk.Tk):
             
             # Save to settings.json
             try:
+                # Ensure directory exists
+                settings_dir = os.path.dirname(SETTINGS_PATH)
+                os.makedirs(settings_dir, exist_ok=True)
+                
                 settings_data = {}
                 if os.path.exists(SETTINGS_PATH):
                     with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
@@ -1668,8 +1672,14 @@ class SettingsPage(tk.Tk):
         if not _validate(self.webhooks_logging) or not _validate(self.webhooks_export):
             return
 
-        # Ensure directory
-        os.makedirs(JSON_DIR, exist_ok=True)
+        # Ensure directory exists
+        try:
+            settings_dir = os.path.dirname(SETTINGS_PATH)
+            os.makedirs(settings_dir, exist_ok=True)
+        except Exception as e:
+            logging.error(f"Failed to create settings directory: {e}")
+            messagebox.showerror("Error", f"Could not create settings directory: {e}")
+            return
 
         # Write settings.json
         # Load existing settings to preserve Player Homeworld if it exists
