@@ -149,12 +149,13 @@ total_defense = df[df['Mission Category'] == 'Defense'].shape[0] > 0
 total_invasion = df[df['Mission Category'] == 'Invasion'].shape[0] > 0
 total_high_priority = df[df['Mission Category'] == 'High-Priority'].shape[0] > 0
 total_attrition = df[df['Mission Category'] == 'Attrition'].shape[0] > 0
-total_bfse = df[df['Mission Category'] == 'Battle for Super Earth'].shape[0] 
+total_bfse = df[df['Mission Category'] == 'Battle for Super Earth'].shape[0] > 0
+total_recon = df[df['Mission Category'] == 'Recon'].shape[0] > 0
 
 # Check if all campaign types have been completed
 all_campaigns = (total_liberation and total_defense and 
                 total_invasion and total_high_priority and 
-                total_attrition and total_bfse)
+                total_attrition and total_bfse and total_recon)
 
 # Load biome mapping from json file
 with open(app_path('JSON', 'BiomePlanets.json'), 'r') as f:
@@ -475,7 +476,7 @@ AllCampaigns = all_campaigns
 # Get the latest date when all campaign types were completed
 campaign_completion_dates = []
 if AllCampaigns:
-    for campaign in ['Liberation', 'Defense', 'Invasion', 'High-Priority', 'Attrition', 'Battle for Super Earth']:
+    for campaign in ['Liberation', 'Defense', 'Invasion', 'High-Priority', 'Attrition', 'Battle for Super Earth', 'Recon']:
         if not df[df['Mission Category'] == campaign].empty:
             campaign_completion_dates.append(df[df['Mission Category'] == campaign].iloc[0]['Time'])
     AllCampaigns_date = max(campaign_completion_dates) if campaign_completion_dates else "Not Obtained"

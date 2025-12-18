@@ -351,6 +351,7 @@ DefenceIco = iconconfig['CampaignIcons']['Defense']
 InvasionIco = iconconfig['CampaignIcons']['Invasion']
 HighPriorityIco = iconconfig['CampaignIcons']['High-Priority']
 AttritionIco = iconconfig['CampaignIcons']['Attrition']
+ReconIco = iconconfig['CampaignIcons']['Recon']
 
 # Create embed data
 embed_data = {
@@ -411,7 +412,8 @@ embed_data = {
                          f"> {InvasionIco} Invasion - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Invasion']['Mission Category'].count().sum()}\n" +
                          f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n" +
                          f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n" +
-                         f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n\n",
+                         f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n" +
+                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n\n",
       
       "color": 16761088,
       "image": {
@@ -440,7 +442,8 @@ embed_data = {
                          f"> {InvasionIco} Invasion - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Invasion']['Mission Category'].count().sum()}\n" +
                          f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n" +
                          f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n" +
-                         f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n\n",
+                         f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n" +
+                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n\n",
 
       "color": 16739693,
       "image": {
@@ -469,7 +472,8 @@ embed_data = {
                          f"> {InvasionIco} Invasion - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Invasion']['Mission Category'].count().sum()}\n" +
                          f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n" +
                          f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n" +
-                         f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n\n",
+                         f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n" +
+                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n\n",
 
       "color": 9003210,
       "image": {

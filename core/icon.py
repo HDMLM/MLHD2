@@ -116,6 +116,7 @@ CAMPAIGN_ICONS = {
     "High-Priority": iconconfig['CampaignIcons']['High-Priority'],
     "Attrition": iconconfig['CampaignIcons']['Attrition'],
     "Battle for Super Earth": iconconfig['CampaignIcons']['Battle for Super Earth'],
+    "Recon": iconconfig['CampaignIcons']['Recon']
 }
 
 

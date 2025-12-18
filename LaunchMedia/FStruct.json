@@ -291,6 +291,10 @@
             {
               "name": "Observation.png",
               "type": "image"
+            },
+            {
+              "name": "Recon.png",
+              "type": "image"
             }
           ]
         },
