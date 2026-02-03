@@ -91,9 +91,9 @@ from core.utils import (
 import random
 
 # Manual Configuration
-GWDay = "Day: 680"
-GWDate = "Date: 18/12/2025"
-VERSION = "1.7.015"
+GWDay = "Day: 726"
+GWDate = "Date: 03/02/2026"
+VERSION = "1.7.016"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -730,6 +730,10 @@ class MissionLogGUI:
             return
         if self.planet.get() == "Meridia":
             self._show_error("ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Meridian Black Hole.")
+            self.update_submit_button_image("Fail")
+            return
+        if self.planet.get() == "Penta":
+            self._show_error("ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Conventional Black Hole.")
             self.update_submit_button_image("Fail")
             return
         if self.planet.get() in ["Angel's Venture", "Moradesh", "Ivis"]:

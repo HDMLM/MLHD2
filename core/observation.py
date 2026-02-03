@@ -525,6 +525,15 @@ elif current_planet == "Ivis":
                       f"> Detail from **Operation Martyr's Calling** was\n" + \
                       f"> not saved during the fracture from the Meridian Singularity {PLANET_ICONS.get('Meridia', '')}.\n" + \
                       f"> Please await further orders from Super Earth High Command, Helldiver.\n\n"
+elif current_planet == "Penta":
+    embed_description = f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n{FlairLeftIco} {SEIco} **Reconnaissance Report** {SEIco} {FlairRightIco}\n" + \
+                      f"> Planet - {current_planet} {PLANET_ICONS.get(current_planet, '')}\n" + \
+                      f"> Status - **{planet_status}**\n\n" + \
+                      f"**INCOMING MESSAGES FROM SUPER EARTH**\n" + \
+                      f"> Contact with the **Conventional Black Hole** {PLANET_ICONS.get(current_planet, '')} is not available.\n" + \
+                      f"> Detail from **Operation Free Space** was\n" + \
+                      f"> not saved from the planetary implosion.\n" + \
+                      f"> Please await further orders from Super Earth High Command, Helldiver.\n\n"
 else:
     # Normal planet statistics for deployed planets
     embed_description = f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {SEIco} {FlairRightIco}\n" + \

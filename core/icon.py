@@ -181,6 +181,10 @@ MISSION_ICONS = {
     "Annex Untapped Mineral Sites": iconconfig['MissionIcons']['Annex Untapped Mineral Sites'],
     "Rapid Acquisition": iconconfig['MissionIcons']['Rapid Acquisition'],
     "Sabotage Orgo-Plasma Synthesis": iconconfig['MissionIcons']['Sabotage Orgo-Plasma Synthesis'],
+    "Seize Industiral Complex": iconconfig['MissionIcons']['Seize Industrial Complex'],
+    "Commando: Acquire Evidence": iconconfig['MissionIcons']['Commando Acquire Evidence'],
+    "Commando: Extract Intel": iconconfig['MissionIcons']['Commando Extract Intel'],
+    "Commando: Secure Black Box": iconconfig['MissionIcons']['Commando Secure Black Box']
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)
@@ -272,7 +276,7 @@ BIOME_BANNERS = {
 	"Pollux 31": iconconfig['BiomeBanners']['Volcanic Jungle'],
 	"Aesir Pass": iconconfig['BiomeBanners']['Deadlands'],
 	"Alderidge Cove": iconconfig['BiomeBanners']['Deadlands'],
-	"Penta": iconconfig['BiomeBanners']['Deadlands'],
+	"Penta": iconconfig['BiomeBanners']['Black Hole Conventional'],
 	"Ain-5": iconconfig['BiomeBanners']['Deadlands'],
 	"Skat Bay": iconconfig['BiomeBanners']['Deadlands'],
 	"Alaraph": iconconfig['BiomeBanners']['Deadlands'],
@@ -545,8 +549,10 @@ TITLE_ICONS = {
     "EXTRA JUDICIAL": iconconfig['TitleIcons']['EXTRA JUDICIAL'],
     "EXEMPLARY SUBJECT": iconconfig['TitleIcons']['EXEMPLARY SUBJECT'],
     "ROOKIE": iconconfig['TitleIcons']['ROOKIE'],
-    "BURIER OF HEADS": iconconfig['TitleIcons']['BURIER OF HEADS']
-	, "PYTHON COMMANDO": iconconfig['TitleIcons'].get('PYTHON COMMANDO', iconconfig['TitleIcons'].get('PYTHON COMMANDO', ''))
+    "BURIER OF HEADS": iconconfig['TitleIcons']['BURIER OF HEADS'],
+	"PYTHON COMMANDO": iconconfig['TitleIcons']['PYTHON COMMANDO'],
+    "REDACTED": iconconfig['TitleIcons']['REDACTED'],
+    "BUNKER BUSTER": iconconfig['TitleIcons']['BUNKER BUSTER']
 }
 
 PROFILE_PICTURES = {
@@ -735,7 +741,7 @@ PLANET_PROFILES = {
 	"Pollux 31": iconconfig['PlanetProfile']['Volcanic Jungle'],
 	"Aesir Pass": iconconfig['PlanetProfile']['Deadlands'],
 	"Alderidge Cove": iconconfig['PlanetProfile']['Deadlands'],
-	"Penta": iconconfig['PlanetProfile']['Deadlands'],
+	"Penta": iconconfig['PlanetProfile']['Black Hole Conventional'],
 	"Ain-5": iconconfig['PlanetProfile']['Deadlands'],
 	"Skat Bay": iconconfig['PlanetProfile']['Deadlands'],
 	"Alaraph": iconconfig['PlanetProfile']['Deadlands'],
@@ -1007,7 +1013,7 @@ PLANET_PROFILES = {
 	"Pollux 31": iconconfig['BiomePlanets']['Volcanic Jungle'],
 	"Aesir Pass": iconconfig['BiomePlanets']['Deadlands'],
 	"Alderidge Cove": iconconfig['BiomePlanets']['Deadlands'],
-	"Penta": iconconfig['BiomePlanets']['Deadlands'],
+	"Penta": iconconfig['BiomePlanets']['Black Hole Conventional'],
 	"Ain-5": iconconfig['BiomePlanets']['Deadlands'],
 	"Skat Bay": iconconfig['BiomePlanets']['Deadlands'],
 	"Alaraph": iconconfig['BiomePlanets']['Deadlands'],

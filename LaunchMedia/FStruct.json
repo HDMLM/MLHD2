@@ -163,6 +163,10 @@
               "type": "image"
             },
             {
+              "name": "Black Hole Conventional.png",
+              "type": "image"
+            },
+            {
               "name": "Boneyard.png",
               "type": "image"
             },
@@ -683,6 +687,22 @@
             {
               "name": "Upload Escape Pod Data.png",
               "type": "image"
+            },
+            {
+              "name": "Seize Industrial Complex.png",
+              "type": "image"
+            },
+            {
+              "name": "Commando Acquire Evidence.png",
+              "type": "image"
+            },
+            {
+              "name": "Commando Extract Intel.png",
+              "type": "image"
+            },
+            {
+              "name": "Commando Secure Black Box.png",
+              "type": "image"
             }
           ]
         },
@@ -700,6 +720,10 @@
             },
             {
               "name": "Black Hole.png",
+              "type": "image"
+            },
+            {
+              "name": "Black Hole Conventional.png",
               "type": "image"
             },
             {
