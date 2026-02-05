@@ -646,10 +646,15 @@ PROFILE_PICTURES = {
     "A-35 Recon": iconconfig['ProfilePictures']['A-35 Recon'],
     "DS-191 Scorpion": iconconfig['ProfilePictures']['DS-191 Scorpion'],
     "DS-42 Federation's Blade": iconconfig['ProfilePictures']['DS-42 Federation\'s Blade'],
-    "DS-10 Big Game Hunter": iconconfig['ProfilePictures']['DS-10 Big Game Hunter']
-	, "RS-20 Constrictor": iconconfig['ProfilePictures'].get('RS-20 Constrictor', iconconfig['ProfilePictures'].get('RS-20', ''))
-	, "RS-40 Beast of Prey": iconconfig['ProfilePictures'].get('RS-40 Beast of Prey', iconconfig['ProfilePictures'].get('RS-40', ''))
-	, "RS-6 Fiend Destroyer": iconconfig['ProfilePictures'].get('RS-6 Fiend Destroyer', iconconfig['ProfilePictures'].get('RS-6', ''))
+    "DS-10 Big Game Hunter": iconconfig['ProfilePictures']['DS-10 Big Game Hunter'],
+	"RS-6 Fiend Destroyer": iconconfig['ProfilePictures']['RS-6 Fiend Destroyer'],
+	"RS-20 Constrictor": iconconfig['ProfilePictures']['RS-20 Constrictor'],
+	"RS-40 Beast of Prey": iconconfig['ProfilePictures']['RS-40 Beast of Prey'],
+	"RS-67 Null Cipher": iconconfig['ProfilePictures']['RS-67 Null Cipher'],
+	"RS-89 Shadow Paragon": iconconfig['ProfilePictures']['RS-89 Shadow Paragon'],
+	"RS-100 Sanctioner": iconconfig['ProfilePictures']['RS-100 Sanctioner'],
+	"SA-07 Headfirst": iconconfig['ProfilePictures']['SA-07 Headfirst'],
+	"SA-08 Ram": iconconfig['ProfilePictures']['SA-08 Ram']
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)

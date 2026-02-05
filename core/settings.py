@@ -113,7 +113,23 @@ class SettingsPage(tk.Tk):
         logging.debug("[settings] SettingsPage.__init__ start")
         super().__init__()
         self.title("Discord Settings")
-        self.geometry("825x935")
+        # Compute a larger fixed window size and center it, then disable resizing
+        try:
+            desired_w, desired_h = 750, 975
+            screen_w = self.winfo_screenwidth()
+            screen_h = self.winfo_screenheight()
+            # Leave some margin for taskbar/titlebar
+            max_w = max(400, screen_w - 80)
+            max_h = max(300, screen_h - 120)
+            w = min(desired_w, max_w)
+            h = min(desired_h, max_h)
+            x = max(0, (screen_w - w) // 2)
+            y = max(0, (screen_h - h) // 2)
+            self.geometry(f"{w}x{h}+{x}+{y}")
+        except Exception:
+            # Fallback to default size if anything goes wrong
+            self.geometry("750x950")
+        # Lock window size so users cannot resize/increase it
         self.resizable(False, False)
         style = ttk.Style()
         self.apply_theme(style, DEFAULT_THEME)
@@ -198,7 +214,7 @@ class SettingsPage(tk.Tk):
     # ----- UI Build -----
     # Builds all tabs, controls, and bindings; core settings UI layout/logic
     def create_widgets(self):
-        main_frame = ttk.Frame(self, padding="20")
+        main_frame = ttk.Frame(self, padding="10")
         main_frame.pack(fill=tk.BOTH, expand=True)
 
         notebook = ttk.Notebook(main_frame)
@@ -258,7 +274,7 @@ class SettingsPage(tk.Tk):
         # Player Card frame (same style as Webhooks) to wrap the generated image
         player_card_label = ttk.Label(preferences_frame, text="Player Card", font=self.fs_sinclair_font)
         self.player_card_lf = ttk.LabelFrame(preferences_frame, labelwidget=player_card_label, padding=10)
-        self.player_card_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=10, pady=10)
+        self.player_card_lf.grid(row=1, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=5, pady=(30, 10))
         self.player_card_lf.columnconfigure(0, weight=1)
 
         # banner display label inside the Player Card frame
@@ -292,7 +308,6 @@ class SettingsPage(tk.Tk):
             cursor="hand2"
         )
         self.generate_banner_button.image = generate_btn_img_tk
-        self.generate_banner_button.grid(row=2, column=0, padx=(10, 5), pady=1)
 
         def play_generate_click(e):
             play_button_click()
@@ -332,7 +347,44 @@ class SettingsPage(tk.Tk):
             cursor="hand2"
         )
         self.export_banner_button.image = export_btn_img_tk
-        self.export_banner_button.grid(row=2, column=1, padx=(5, 10), pady=1)
+
+        # Place both buttons inside a fixed-height container so they sit vertically centered
+        # Increase height and top padding so the buttons sit lower in the Player Card area
+        banner_buttons_frame = ttk.Frame(preferences_frame, height=120)
+        banner_buttons_frame.grid(row=2, column=0, columnspan=2, sticky=(tk.E, tk.W), padx=10, pady=(18, 10))
+        banner_buttons_frame.grid_propagate(False)
+
+        # Recreate buttons inside the container to ensure correct parenting and visibility
+        try:
+            self.generate_banner_button.destroy()
+        except Exception:
+            pass
+        try:
+            self.export_banner_button.destroy()
+        except Exception:
+            pass
+
+        self.generate_banner_button = tk.Label(
+            banner_buttons_frame,
+            image=generate_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.generate_banner_button.image = generate_btn_img_tk
+        self.generate_banner_button.pack(side=tk.LEFT, padx=(20, 40), pady=18)
+
+        self.export_banner_button = tk.Label(
+            banner_buttons_frame,
+            image=export_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2"
+        )
+        self.export_banner_button.image = export_btn_img_tk
+        self.export_banner_button.pack(side=tk.RIGHT, padx=(40, 20), pady=18)
 
         def play_export_click(e):
             play_button_click()
@@ -398,49 +450,55 @@ class SettingsPage(tk.Tk):
             except Exception:
                 pass
 
-            def _worker():
-                ok = 0
-                errors = []
-                try:
-                    # Read file once into memory
-                    with open(GENERATED_BANNER_PATH, "rb") as f:
-                        data = f.read()
-                    filename = os.path.basename(GENERATED_BANNER_PATH)
-                    for url in urls:
+        # ------- Badge display settings -------
+        # Always-on badges (not selectable, always visible if applicable to user)
+        self._always_on_badges = [
+            ('bicon', 'Custom Icon'),
+            ('ticon', 'Test Icon'),
+            ('yearico', '1 Year'),
+            ('PIco', 'Platform Icon')
+        ]
+        
+        # User-selectable badges (up to 4 can be chosen)
+        self._available_badges = [
+            ('bsuperearth', 'Super Earth'),
+            ('bcyberstan', 'Cyberstan'),
+            ('bmaleveloncreek', 'Malevelon Creek'),
+            ('bcalypso', 'Calypso'),
+            ('bpopliix', 'Popli IX'),
+            ('bseyshelbeach', 'Seyshel Beach'),
+            ('boshaune', 'Oshaune')
+        ]
+
+        # BooleanVars for each selectable badge (always-on badges don't need vars)
+        self.badge_vars = {k: tk.BooleanVar(value=False) for k, _ in self._available_badges}
+
+        def _on_badge_toggle(changed_key=None):
+            # Enforce max 4 badges selected
+            selected = [k for k, var in self.badge_vars.items() if var.get()]
+            if len(selected) > 4:
+                # Revert the last change
+                if changed_key:
+                    self.badge_vars[changed_key].set(False)
+                messagebox.showwarning("Badge Limit", "You may select up to 4 additional badges to display.")
+
+        # Store the badge UI components for later attachment to profile_frame
+        self._badge_toggle_callback = _on_badge_toggle
+
+        # If DCord.json already exists, load saved badge display order/state now
+        try:
+            if os.path.exists(DCORD_PATH):
+                with open(DCORD_PATH, 'r', encoding='utf-8') as f:
+                    _d = json.load(f)
+                _saved = _d.get('display_badges') or []
+                if isinstance(_saved, list):
+                    for k in self.badge_vars:
                         try:
-                            files = {
-                                "file": (filename, io.BytesIO(data), "image/png")
-                            }
-                            payload = {
-                                "content": f"Player Card Banner for {self.Helldivers.get()}",
-                            }
-                            resp = requests.post(url, data=payload, files=files, timeout=15)
-                            if 200 <= resp.status_code < 300:
-                                ok += 1
-                            else:
-                                errors.append(f"{url} -> {resp.status_code}")
-                        except Exception as e:
-                            errors.append(f"{url} -> {e}")
-                finally:
-                    # Re-enable button
-                    try:
-                        self.export_banner_button.state(["!disabled"])
-                    except Exception:
-                        pass
-
-                if ok and not errors:
-                    logging.info(f"[settings] Banner exported to {ok} webhook(s).")
-                elif ok and errors:
-                    logging.warning(f"[settings] Exported to {ok} webhook(s), {len(errors)} failed: " + "; ".join(errors[:5]))
-                else:
-                    logging.error("[settings] Failed to export banner: " + "; ".join(errors[:5]))
-
-            # Run in background to keep UI responsive
-            try:
-                threading.Thread(target=_worker, daemon=True).start()
-            except Exception:
-                # Fallback: run inline
-                _worker()
+                            self.badge_vars[k].set(k in _saved)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
         # Load planet sectors data
         sectors_data = {}
@@ -823,7 +881,7 @@ class SettingsPage(tk.Tk):
         # Identity section (profile tab)
         identity_label = ttk.Label(profile_frame, text="Identity", font=font_to_use)
         identity_lf = ttk.LabelFrame(profile_frame, labelwidget=identity_label, padding=10)
-        identity_lf.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=10)
+        identity_lf.grid(row=0, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=(12, 18))
         identity_lf.columnconfigure(1, weight=1)
 
         ttk.Label(identity_lf, text="Username:").grid(row=0, column=0, sticky=tk.W, pady=5)
@@ -838,8 +896,8 @@ class SettingsPage(tk.Tk):
         # Preview section
         preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=font_to_use)
         preview_lf = ttk.LabelFrame(profile_frame, labelwidget=preview_label, padding=2)
-        preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=1)
-        ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W, padx=(5, 0))
+        preview_lf.grid(row=1, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=0, pady=(6, 18))
+        ttk.Label(preview_lf, text="Full Name:").grid(row=0, column=0, sticky=tk.W, padx=(0, 0))
 
         def update_preview_label_color(*args):
             val = self.full_ship_name_var.get()
@@ -884,13 +942,14 @@ class SettingsPage(tk.Tk):
         # Load transparent png for preview (inside profile tab)
         # Make preview image larger (e.g., 400x400)
         self.preview_image_label = ttk.Label(preview_lf)
-        self.preview_image_label.grid(row=1, column=0, columnspan=2, sticky="nsew", pady=0)
+        # Span full width of the preview frame so the image can be larger and centered
+        self.preview_image_label.grid(row=1, column=0, columnspan=3, sticky="", pady=0)
         preview_lf.rowconfigure(1, weight=1)
         preview_lf.columnconfigure(0, weight=0)
         preview_lf.columnconfigure(1, weight=1)
         preview_lf.columnconfigure(2, weight=1)
         # Use a larger size for preview image
-        def load_large_preview_image(image_path, size=(700, 400)):
+        def load_large_preview_image(image_path, size=(560, 288)):
             try:
                 img = Image.open(image_path)
                 img = img.resize(size, Image.LANCZOS)
@@ -905,6 +964,92 @@ class SettingsPage(tk.Tk):
             self.preview_image_label.image = preview_img
         else:
             self.preview_image_label.config(image='')
+
+        # Badge Display section in Profile tab
+        badge_label = ttk.Label(profile_frame, text="Badge Display", font=font_to_use)
+        badge_lf = ttk.LabelFrame(profile_frame, labelwidget=badge_label, padding=10)
+        badge_lf.grid(row=2, column=0, columnspan=3, sticky=(tk.W, tk.E), padx=10, pady=(14, 14))
+        badge_lf.columnconfigure(0, weight=0)
+        badge_lf.columnconfigure(1, weight=1)
+
+        badge_info_label = ttk.Label(badge_lf, text="Additional Badge Display (select up to 4)", justify=tk.LEFT)
+        badge_info_label.grid(row=0, column=0, columnspan=2, sticky=(tk.W), pady=(0, 10))
+
+        # Left side: checkboxes
+        badge_frame = ttk.Frame(badge_lf)
+        badge_frame.grid(row=1, column=0, sticky=(tk.W, tk.N), pady=(5, 10), padx=(0, 10))
+
+        # Create checkbuttons for selectable badges in two columns
+        for idx, (key, label_text) in enumerate(self._available_badges):
+            rb = ttk.Checkbutton(badge_frame, text=label_text, variable=self.badge_vars[key], command=lambda k=key: self._badge_toggle_callback(k))
+            r = idx // 2
+            c = idx % 2
+            rb.grid(row=r, column=c, sticky=tk.W, padx=5, pady=2)
+
+        # Right side: badge preview
+        preview_frame = ttk.Frame(badge_lf)
+        # Place the preview frame but don't force it to stretch; we'll center its inner content
+        preview_frame.grid(row=1, column=1, sticky=(tk.N,), pady=(5, 10), padx=(0, 0))
+
+        preview_label = ttk.Label(preview_frame, text="Selected Badges:")
+        preview_label.pack(side=tk.TOP, pady=(0, 5))
+
+        self.badge_preview_frame = ttk.Frame(preview_frame)
+        # We'll add an inner row/frame to hold the badges and center that row
+        self.badge_preview_frame.pack(side=tk.TOP, expand=True)
+
+        # Map badge keys to image filenames
+        badge_to_filename = {
+            'bsuperearth': 'bsup.png',
+            'bcyberstan': 'bcyb.png',
+            'bmaleveloncreek': 'bmal.png',
+            'bcalypso': 'bcal.png',
+            'bpopliix': 'bpop.png',
+            'bseyshelbeach': 'bsey.png',
+            'boshaune': 'bosh.png'
+        }
+
+        def update_badge_preview():
+            # Clear existing labels / rows
+            for widget in self.badge_preview_frame.winfo_children():
+                widget.destroy()
+
+            # Create a centered row container to hold badges (so group centers)
+            badge_row = ttk.Frame(self.badge_preview_frame)
+            badge_row.pack(anchor='center', pady=4)
+
+            # Get selected badges in order
+            selected = [(k, label) for k, label in self._available_badges if self.badge_vars[k].get()]
+
+            if not selected:
+                placeholder = ttk.Label(badge_row, text="(No badges selected)")
+                placeholder.pack()
+            else:
+                # Load and display badge images inside the centered row
+                for key, label_text in selected:
+                    try:
+                        badge_path = app_path('media', 'badges', badge_to_filename.get(key, ''))
+                        if os.path.exists(badge_path):
+                            img = Image.open(badge_path)
+                            img = img.resize((60, 60), Image.LANCZOS)
+                            photo = ImageTk.PhotoImage(img)
+                            badge_lbl = tk.Label(badge_row, image=photo, bg=DEFAULT_THEME["."]["configure"]["background"], bd=0)
+                            badge_lbl.image = photo
+                            badge_lbl.pack(side=tk.LEFT, padx=6)
+                    except Exception as e:
+                        logging.warning(f"[settings] Failed to load badge image for {key}: {e}")
+
+        # Wrap callback to update preview
+        original_callback = self._badge_toggle_callback
+        def updated_callback(changed_key=None):
+            original_callback(changed_key)
+            update_badge_preview()
+        self._badge_toggle_callback = updated_callback
+
+        # Existing checkbuttons already call `self._badge_toggle_callback`; no reconfiguration needed
+
+        # Initial preview
+        update_badge_preview()
 
 
         # Account section
@@ -930,9 +1075,9 @@ class SettingsPage(tk.Tk):
         # Platform Badges (horizontal images underneath webhook frame)
         platform_badges_frame = ttk.Frame(discord_frame)
         # Place with reduced left and top margins, adjust y to close the gap
-        platform_badges_frame.place(relx=0.12, rely=0.88, anchor="w")
+        platform_badges_frame.place(relx=0.05, rely=0.88, anchor="w")
 
-        def load_platform_badge(path, size=(100, 100)):
+        def load_platform_badge(path, size=(120, 120)):
             img = Image.open(path)
             img = img.resize(size, Image.LANCZOS)
             return ImageTk.PhotoImage(img)
@@ -961,7 +1106,7 @@ class SettingsPage(tk.Tk):
         for i, img in enumerate(self.platform_badge_imgs):
             lbl = tk.Label(platform_badges_frame, image=img, bg=DEFAULT_THEME["."]["configure"]["background"])
             lbl.image = img
-            lbl.pack(side=tk.LEFT, padx=35)
+            lbl.pack(side=tk.LEFT, padx=30)
             self.platform_badge_labels.append(lbl)
 
         def update_badges(*args):
@@ -1565,6 +1710,10 @@ class SettingsPage(tk.Tk):
         if os.path.exists(GENERATED_BANNER_PATH):
             try:
                 img = Image.open(GENERATED_BANNER_PATH)
+                # Resize to 95% of original size to fit better in the window
+                new_width = int(img.width * 0.90)
+                new_height = int(img.height * 0.90)
+                img = img.resize((new_width, new_height), Image.LANCZOS)
                 self._banner_preview_imgtk = ImageTk.PhotoImage(img)
                 self.banner_display_label.configure(image=self._banner_preview_imgtk)
             except Exception as e:
@@ -1637,6 +1786,15 @@ class SettingsPage(tk.Tk):
                     return out
                 self.webhooks_logging = _clean(logging_urls)
                 self.webhooks_export = _clean(export_urls)
+                # Load badge display preferences from DCord.json if present
+                display_badges = d.get('display_badges', None)
+                # badge_vars may not exist yet if called before UI is built; guard access
+                if isinstance(display_badges, list) and hasattr(self, 'badge_vars') and isinstance(self.badge_vars, dict):
+                    for k in self.badge_vars:
+                        try:
+                            self.badge_vars[k].set(k in display_badges)
+                        except Exception:
+                            pass
                 # Load backup section if present
                 bk = d.get("webhooks_backup") or {}
                 if isinstance(bk, dict):
@@ -1760,9 +1918,13 @@ class SettingsPage(tk.Tk):
                 "dont_send_to_discord": True,
                 "webhooks_backup": self._webhooks_backup,
                 "flair_colour": self.flair_colour_var.get(),
+                "display_badges": [k for k, _ in self._available_badges if self.badge_vars.get(k) and self.badge_vars[k].get()],
             }
         else:
             # Normal save; if there is a backup but flag is off, write without forcing
+            # Build display_badges list from current badge_vars (preserve original order)
+            display_badges = [k for k, _ in self._available_badges if self.badge_vars.get(k) and self.badge_vars[k].get()]
+
             dcord = {
                 "discord_uid": self.discord_uid_var.get(),
                 "discord_webhooks_logging": _extract(self.webhooks_logging),
@@ -1773,6 +1935,7 @@ class SettingsPage(tk.Tk):
                 "platform": self.platform_var.get() or "Not Selected",
                 "dont_send_to_discord": False,
                 "flair_colour": self.flair_colour_var.get(),
+                "display_badges": display_badges,
             }
         try:
             with open(SETTINGS_PATH, "w", encoding="utf-8") as f:

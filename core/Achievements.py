@@ -10,6 +10,7 @@ import time
 from core.logging_config import setup_logging
 from core.icon import TITLE_ICONS, get_badge_icons
 from core.app_core import VERSION, DEV_RELEASE
+from core.discord_integration import _sanitize_embed
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
@@ -1163,24 +1164,55 @@ except (FileNotFoundError, json.JSONDecodeError) as e:
 
 # Get badge icons using centralized function
 badge_data = get_badge_icons(DEBUG, APP_DATA, DATE_FORMAT)
-bicon = badge_data['bicon']
-ticon = badge_data['ticon']
-PIco = badge_data['PIco']
-yearico = badge_data['yearico']
-bsuperearth = badge_data['bsuperearth']
-bcyberstan = badge_data['bcyberstan']
-bmaleveloncreek = badge_data['bmaleveloncreek']
-bcalypso = badge_data['bcalypso']
-bpopliix = badge_data['bpopliix']
-bseyshelbeach = badge_data['bseyshelbeach']
-boshaune = badge_data['boshaune']
+
+# Build badge string: always-on first, then up to 4 user-selected badges
+always_on_order = ['bicon', 'ticon', 'yearico', 'PIco']
+selectable_order = ['bsuperearth', 'bcyberstan', 'bmaleveloncreek', 'bcalypso', 'bpopliix', 'bseyshelbeach', 'boshaune']
+
+# Load user's badge display preference from DCord.json if present
+try:
+    display_pref = settings_data.get('display_badges', None) if 'settings_data' in locals() else None
+except Exception:
+    display_pref = None
+
+badge_items = []
+# Add always-on badges
+for k in always_on_order:
+    if badge_data.get(k):
+        badge_items.append(badge_data.get(k))
+
+# Add user-selected badges (up to 4)
+selected_count = 0
+if isinstance(display_pref, list) and display_pref:
+    for k in display_pref:
+        if k in badge_data and badge_data.get(k):
+            badge_items.append(badge_data.get(k))
+            selected_count += 1
+        if selected_count >= 4:
+            break
+
+# Combined badge string used in embeds
+badge_string = ''.join(badge_items)
+
+# Create named references for backwards-compatibility in other code
+bicon = badge_data.get('bicon', '')
+ticon = badge_data.get('ticon', '')
+PIco = badge_data.get('PIco', '')
+yearico = badge_data.get('yearico', '')
+bsuperearth = badge_data.get('bsuperearth', '')
+bcyberstan = badge_data.get('bcyberstan', '')
+bmaleveloncreek = badge_data.get('bmaleveloncreek', '')
+bcalypso = badge_data.get('bcalypso', '')
+bpopliix = badge_data.get('bpopliix', '')
+bseyshelbeach = badge_data.get('bseyshelbeach', '')
+boshaune = badge_data.get('boshaune', '')
 
 # Create embed data
 embed_data = {
     "content": None,
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}{boshaune}",
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{badge_string}",
             "description": f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n\"{latest_note}\"\n\nTotal Completion: {achievement_percentage}%\n\n{FlairLeftIco} {Gold1Ico} Achievements {Gold1Ico} {FlairRightIco}\n" + 
                         f"> {globals()['CmdFavourite1_title']}\n" +
                         f"> *{globals()['CmdFavourite1_message']}*\n> *{CmdFavourite1_date}*\n" +
@@ -1440,23 +1472,67 @@ else:
 successes = []
 for url in ACTIVE_WEBHOOK:
     try:
+        # Sanitize first embed payload
+        payload_1 = json.loads(json.dumps(embed_data))
+        if payload_1.get('content') is None:
+            payload_1.pop('content', None)
+        
+        if 'embeds' in payload_1 and isinstance(payload_1['embeds'], list):
+            for i, embed in enumerate(payload_1['embeds']):
+                if embed:
+                    sanitized, changes = _sanitize_embed(embed)
+                    payload_1['embeds'][i] = sanitized
+                    if changes:
+                        logging.info(f"Sanitized embed {i} in first payload: {changes}")
+        
+        if not any(payload_1.get('embeds', [])):
+            logging.error(f"Skipping webhook send to {url}: first embed empty after sanitization.")
+            successes.append(False)
+            continue
+        
         # Send first embed (main achievement card)
-        response = requests.post(url, json=embed_data, timeout=10)
-        if response.status_code != 204:
-            logging.error(f"Failed to send first embed to {url}. Status code: {response.status_code}")
+        response = requests.post(url, json=payload_1, timeout=10)
+        if response.status_code not in (200, 204):
+            try:
+                resp_data = response.json()
+            except ValueError:
+                resp_data = response.text
+            logging.error(f"Failed to send first embed to {url}. Status: {response.status_code} Response: {resp_data}")
             successes.append(False)
             continue
         
         # Add delay to ensure second embed appears after first
         time.sleep(0.5)  # 500ms delay
         
+        # Sanitize second embed payload
+        payload_2 = json.loads(json.dumps(embed_data_2))
+        if payload_2.get('content') is None:
+            payload_2.pop('content', None)
+        
+        if 'embeds' in payload_2 and isinstance(payload_2['embeds'], list):
+            for i, embed in enumerate(payload_2['embeds']):
+                if embed:
+                    sanitized, changes = _sanitize_embed(embed)
+                    payload_2['embeds'][i] = sanitized
+                    if changes:
+                        logging.info(f"Sanitized embed {i} in second payload: {changes}")
+        
+        if not any(payload_2.get('embeds', [])):
+            logging.error(f"Skipping second embed send to {url}: embed empty after sanitization.")
+            successes.append(False)
+            continue
+        
         # Send second embed (stats/info card)
-        response = requests.post(url, json=embed_data_2, timeout=10)
-        if response.status_code == 204:
+        response = requests.post(url, json=payload_2, timeout=10)
+        if response.status_code in (200, 204):
             logging.info(f"Successfully sent both embeds to Discord webhook: {url}")
             successes.append(True)
         else:
-            logging.error(f"Failed to send second embed to {url}. Status code: {response.status_code}")
+            try:
+                resp_data = response.json()
+            except ValueError:
+                resp_data = response.text
+            logging.error(f"Failed to send second embed to {url}. Status: {response.status_code} Response: {resp_data}")
             successes.append(False)
     except requests.RequestException as e:
         logging.error(f"Network error sending to Discord webhook {url}: {e}")

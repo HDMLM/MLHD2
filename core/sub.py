@@ -9,6 +9,7 @@ import os
 import html as html_lib
 from datetime import datetime, timezone, timedelta
 from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS, TITLE_ICONS, get_badge_icons
+from core.discord_integration import _sanitize_embed
 from core.app_core import VERSION, DEV_RELEASE
 
 
@@ -444,17 +445,48 @@ SectorCount = df.apply(lambda row: row.astype(str).str.contains(search_sector, c
 
 # Get badge icons using centralized function
 badge_data = get_badge_icons(DEBUG, APP_DATA, DATE_FORMAT)
-bicon = badge_data['bicon']
-ticon = badge_data['ticon']
-PIco = badge_data['PIco']
-yearico = badge_data['yearico']
-bsuperearth = badge_data['bsuperearth']
-bcyberstan = badge_data['bcyberstan']
-bmaleveloncreek = badge_data['bmaleveloncreek']
-bcalypso = badge_data['bcalypso']
-bpopliix = badge_data['bpopliix']
-bseyshelbeach = badge_data['bseyshelbeach']
-boshaune = badge_data['boshaune']
+
+# Build badge string: always-on first, then up to 4 user-selected badges
+always_on_order = ['bicon', 'ticon', 'yearico', 'PIco']
+selectable_order = ['bsuperearth', 'bcyberstan', 'bmaleveloncreek', 'bcalypso', 'bpopliix', 'bseyshelbeach', 'boshaune']
+
+# Load user's badge display preference from DCord.json if present
+try:
+    display_pref = dcord_data.get('display_badges', None)
+except Exception:
+    display_pref = None
+
+badge_items = []
+# Add always-on badges
+for k in always_on_order:
+    if badge_data.get(k):
+        badge_items.append(badge_data.get(k))
+
+# Add user-selected badges (up to 4)
+selected_count = 0
+if isinstance(display_pref, list) and display_pref:
+    for k in display_pref:
+        if k in badge_data and badge_data.get(k):
+            badge_items.append(badge_data.get(k))
+            selected_count += 1
+        if selected_count >= 4:
+            break
+
+# Combined badge string used in embeds
+badge_string = ''.join(badge_items)
+
+# Create named references for backwards-compatibility in other code
+bicon = badge_data.get('bicon', '')
+ticon = badge_data.get('ticon', '')
+PIco = badge_data.get('PIco', '')
+yearico = badge_data.get('yearico', '')
+bsuperearth = badge_data.get('bsuperearth', '')
+bcyberstan = badge_data.get('bcyberstan', '')
+bmaleveloncreek = badge_data.get('bmaleveloncreek', '')
+bcalypso = badge_data.get('bcalypso', '')
+bpopliix = badge_data.get('bpopliix', '')
+bseyshelbeach = badge_data.get('bseyshelbeach', '')
+boshaune = badge_data.get('boshaune', '')
 
 highest_streak = 0
 profile_picture = ""
@@ -736,7 +768,7 @@ def _generate_html_export(df: pd.DataFrame) -> str:
 embed_data_contingency = {
     "embeds": [
         {
-            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}{boshaune}",
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{badge_string}",
             "color": 7257043,
             "fields": [
                 {
@@ -831,7 +863,22 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
             except Exception as e:
                 logging.warning(f"Could not adjust attachment notice in embed-only payload: {e}")
 
-            resp1 = requests.post(webhook_url, json=embed_only_payload, timeout=30)
+            # Sanitize embed payload to avoid Discord 400 errors
+            try:
+                if 'embeds' in embed_only_payload and isinstance(embed_only_payload['embeds'], list) and embed_only_payload['embeds']:
+                    sanitized, changes = _sanitize_embed(embed_only_payload['embeds'][0])
+                    embed_only_payload['embeds'][0] = sanitized
+                    if changes:
+                        logging.info(f"Sanitized fallback embed before sending: {changes}")
+                # If embed empty after sanitization, skip
+                if not embed_only_payload.get('embeds') or not embed_only_payload['embeds'][0]:
+                    logging.error(f"Skipping fallback embed send to {webhook_url}: embed empty after sanitization.")
+                    resp1 = None
+                else:
+                    resp1 = requests.post(webhook_url, json=embed_only_payload, timeout=30)
+            except Exception as e:
+                logging.error(f"Exception while sanitizing/sending fallback embed: {e}")
+                resp1 = None
             if resp1.status_code in (200, 204):
                 logging.info(f"Fallback embed sent (step 1/2) to {webhook_url}.")
             else:
@@ -869,8 +916,22 @@ if needs_html:
     _send_html_fallback(webhook_urls, df)
 else:
     for webhook_url in webhook_urls:
-        response = requests.post(webhook_url, json=embed_data)
-        if response.status_code == 204:
-            logging.info("Data sent successfully.")
-        else:
-            logging.error(f"Failed to send data. Status: {response.status_code} Body: {response.text[:180]}")
+        try:
+            payload = json.loads(json.dumps(embed_data))
+            if payload.get('content') is None:
+                payload.pop('content', None)
+            if 'embeds' in payload and isinstance(payload['embeds'], list) and payload['embeds']:
+                sanitized, changes = _sanitize_embed(payload['embeds'][0])
+                payload['embeds'][0] = sanitized
+                if changes:
+                    logging.info(f"Sanitized embed before sending: {changes}")
+            if not payload.get('embeds') or not payload['embeds'][0]:
+                logging.error(f"Skipping webhook send to {webhook_url}: embed is empty after sanitization.")
+                continue
+            response = requests.post(webhook_url, json=payload)
+            if response.status_code in (200, 204):
+                logging.info("Data sent successfully.")
+            else:
+                logging.error(f"Failed to send data. Status: {response.status_code} Body: {response.text[:180]}")
+        except Exception as e:
+            logging.error(f"Exception sending webhook to {webhook_url}: {e}")

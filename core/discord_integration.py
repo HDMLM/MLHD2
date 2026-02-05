@@ -61,6 +61,118 @@ def get_flair_icons():
     FlairRightIco = iconconfig['MiscIcon'].get(f'Flair Right {flair_colour}', iconconfig['MiscIcon']['Flair Right'])
     return FlairLeftIco, FlairRightIco
 
+
+# Simple URL validation used for embed image/icon fields
+def _is_valid_url(u: str) -> bool:
+    return isinstance(u, str) and u.strip().lower().startswith(('http://', 'https://'))
+
+
+def _sanitize_embed(e: dict) -> (dict, list):
+    """Sanitize and truncate embed fields to satisfy Discord validation rules.
+    Returns (sanitized_embed, list_of_changes).
+    """
+    changes = []
+    if not isinstance(e, dict):
+        return e, ["embed_not_dict"]
+
+    MAX_TITLE = 256
+    MAX_DESCRIPTION = 4096
+    MAX_FIELDS = 25
+    MAX_FIELD_NAME = 256
+    MAX_FIELD_VALUE = 1024
+    MAX_EMBED_TOTAL = 6000
+
+    # Remove empty or null keys at top level
+    for key in list(e.keys()):
+        if e[key] in (None, ""):
+            e.pop(key, None)
+            changes.append(f"removed_empty_{key}")
+
+    # Truncate title
+    if 'title' in e and isinstance(e['title'], str):
+        if len(e['title']) > MAX_TITLE:
+            e['title'] = e['title'][:MAX_TITLE]
+            changes.append('truncated_title')
+
+    # Truncate description
+    if 'description' in e and isinstance(e['description'], str):
+        if len(e['description']) > MAX_DESCRIPTION:
+            e['description'] = e['description'][:MAX_DESCRIPTION]
+            changes.append('truncated_description')
+
+    # Author and footer icon url validation
+    if 'author' in e and isinstance(e['author'], dict):
+        if 'icon_url' in e['author'] and not _is_valid_url(e['author']['icon_url']):
+            e['author'].pop('icon_url', None)
+            changes.append('removed_invalid_author_icon_url')
+
+    if 'footer' in e and isinstance(e['footer'], dict):
+        if 'icon_url' in e['footer'] and not _is_valid_url(e['footer']['icon_url']):
+            e['footer'].pop('icon_url', None)
+            changes.append('removed_invalid_footer_icon_url')
+
+    # Image/thumbnail url validation
+    if 'image' in e and isinstance(e['image'], dict):
+        if not _is_valid_url(e['image'].get('url', '')):
+            e.pop('image', None)
+            changes.append('removed_invalid_image')
+
+    if 'thumbnail' in e and isinstance(e['thumbnail'], dict):
+        if not _is_valid_url(e['thumbnail'].get('url', '')):
+            e.pop('thumbnail', None)
+            changes.append('removed_invalid_thumbnail')
+
+    # Fields validation
+    if 'fields' in e and isinstance(e['fields'], list):
+        # Remove empty fields
+        new_fields = []
+        for f in e['fields']:
+            if not isinstance(f, dict):
+                continue
+            name = f.get('name', '')
+            value = f.get('value', '')
+            if name == '' and value == '':
+                continue
+            # Truncate name/value
+            if len(name) > MAX_FIELD_NAME:
+                f['name'] = name[:MAX_FIELD_NAME]
+                changes.append('truncated_field_name')
+            if len(value) > MAX_FIELD_VALUE:
+                f['value'] = value[:MAX_FIELD_VALUE]
+                changes.append('truncated_field_value')
+            new_fields.append(f)
+        if len(new_fields) > MAX_FIELDS:
+            new_fields = new_fields[:MAX_FIELDS]
+            changes.append('trimmed_fields_count')
+        e['fields'] = new_fields
+
+    # Ensure total embed character count is within limits
+    def _embed_char_count(embed_dict):
+        s = ''
+        for k in ('title', 'description'):
+            if k in embed_dict and isinstance(embed_dict[k], str):
+                s += embed_dict[k]
+        if 'fields' in embed_dict:
+            for f in embed_dict['fields']:
+                s += str(f.get('name', '')) + str(f.get('value', ''))
+        if 'footer' in embed_dict and isinstance(embed_dict['footer'].get('text', ''), str):
+            s += embed_dict['footer'].get('text', '')
+        if 'author' in embed_dict and isinstance(embed_dict['author'].get('name', ''), str):
+            s += embed_dict['author'].get('name', '')
+        return len(s)
+
+    total_chars = _embed_char_count(e)
+    if total_chars > MAX_EMBED_TOTAL:
+        # Try to reduce description first
+        if 'description' in e and isinstance(e['description'], str):
+            excess = total_chars - MAX_EMBED_TOTAL
+            new_len = max(0, len(e['description']) - excess)
+            e['description'] = e['description'][:new_len]
+            changes.append('trimmed_description_for_total_limit')
+            total_chars = _embed_char_count(e)
+
+    return e, changes
+
 # Internal: returns enemy icon URL/key; affects embed visuals
 def _get_enemy_icon(enemy_type: str) -> str:
     return ENEMY_ICONS.get(enemy_type, "NaN")
@@ -290,17 +402,48 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         # Get badge icons using centralized function
         app_data_path = os.path.dirname(excel_file) if excel_file else os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
         badge_data = get_badge_icons(debug, app_data_path, date_format)
-        bicon = badge_data['bicon']
-        ticon = badge_data['ticon']
-        PIco = badge_data['PIco']
-        yearico = badge_data['yearico']
-        bsuperearth = badge_data['bsuperearth']
-        bcyberstan = badge_data['bcyberstan']
-        bmaleveloncreek = badge_data['bmaleveloncreek']
-        bcalypso = badge_data['bcalypso']
-        bpopliix = badge_data['bpopliix']
-        bseyshelbeach = badge_data['bseyshelbeach']
-        boshaune = badge_data['boshaune']
+
+        # Build badge string: always-on first, then up to 4 user-selected badges
+        always_on_order = ['bicon', 'ticon', 'yearico', 'PIco']
+        selectable_order = ['bsuperearth', 'bcyberstan', 'bmaleveloncreek', 'bcalypso', 'bpopliix', 'bseyshelbeach', 'boshaune']
+
+        # Load user's badge display preference if available
+        try:
+            display_pref = settings_data.get('display_badges', None) if 'settings_data' in locals() else None
+        except Exception:
+            display_pref = None
+
+        badge_items = []
+        # Add always-on badges
+        for k in always_on_order:
+            if badge_data.get(k):
+                badge_items.append(badge_data.get(k))
+
+        # Add user-selected badges (up to 4)
+        selected_count = 0
+        if isinstance(display_pref, list) and display_pref:
+            for k in display_pref:
+                if k in badge_data and badge_data.get(k):
+                    badge_items.append(badge_data.get(k))
+                    selected_count += 1
+                if selected_count >= 4:
+                    break
+
+        # Combined badge string used in embeds
+        badge_string = ''.join(badge_items)
+
+        # Create named references for backwards-compatibility
+        bicon = badge_data.get('bicon', '')
+        ticon = badge_data.get('ticon', '')
+        PIco = badge_data.get('PIco', '')
+        yearico = badge_data.get('yearico', '')
+        bsuperearth = badge_data.get('bsuperearth', '')
+        bcyberstan = badge_data.get('bcyberstan', '')
+        bmaleveloncreek = badge_data.get('bmaleveloncreek', '')
+        bcalypso = badge_data.get('bcalypso', '')
+        bpopliix = badge_data.get('bpopliix', '')
+        bseyshelbeach = badge_data.get('bseyshelbeach', '')
+        boshaune = badge_data.get('boshaune', '')
 
         # Dynamic performance tracking icons (previous mission comparison)
         try:
@@ -429,7 +572,7 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         message_content = {
             "content": None,
             "embeds": [{
-                "title": f"{data.get('Super Destroyer')}\nDeployed {data.get('Helldivers')}\n{bicon}{ticon}{yearico}{PIco}{bsuperearth}{bcyberstan}{bmaleveloncreek}{bcalypso}{bpopliix}{bseyshelbeach}{boshaune}",
+                "title": f"{data.get('Super Destroyer')}\nDeployed {data.get('Helldivers')}\n{badge_string}",
                 "description": f"**Level {data.get('Level')} | {data.get('Title')} {title_icon}\nMission: {total_missions_main}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {planet_icon} {FlairRightIco}\n> Sector: {data.get('Sector')}\n> Planet: {data.get('Planet')}\n> Mega City: {data.get('Mega City')}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data.get('DSS Modifier')} {dss_icon}\n\n",
                 "color": system_color,
                 "fields": [{
@@ -468,18 +611,28 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
 
         successes = []
         for url in ACTIVE_WEBHOOK:
+            # Prepare a sanitized copy of the payload to avoid mutation side-effects
+            payload = json.loads(json.dumps(message_content))
+            if payload.get('content') is None:
+                payload.pop('content', None)
+
+            # Sanitize embeds
+            if 'embeds' in payload and isinstance(payload['embeds'], list) and payload['embeds']:
+                sanitized, changes = _sanitize_embed(payload['embeds'][0])
+                payload['embeds'][0] = sanitized
+                if changes:
+                    logging.info(f"Sanitized embed before sending: {changes}")
+
+            # If embed is now empty (no title/description/fields/etc), skip sending
+            if not payload.get('embeds') or not payload['embeds'][0]:
+                logging.error(f"Skipping webhook send to {url}: embed is empty after sanitization.")
+                successes.append(False)
+                continue
+
+            send_url = url + ('?wait=true' if debug else '')
+
             try:
-                response = requests.post(url, json=message_content)
-                if response.status_code == 204:
-                    logging.info(f"Successfully sent to Discord webhook: {url}")
-                    successes.append(True)
-                else:
-                    logging.error(f"Failed to send to Discord webhook {url}. Status code: {response.status_code}")
-                    try:
-                        app._show_error(f"Failed to send to Discord (Status: {response.status_code})")
-                    except Exception:
-                        pass
-                    successes.append(False)
+                response = requests.post(send_url, json=payload)
             except requests.RequestException as e:
                 logging.error(f"Network error sending to Discord webhook {url}: {e}")
                 try:
@@ -487,10 +640,23 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
                 except Exception:
                     pass
                 successes.append(False)
+                continue
             except Exception as e:
-                logging.error(f"Unexpected error sending to Discord webhook {url}: {e}")
+                logging.error(f"Exception sending webhook to {url}: {e}")
+                successes.append(False)
+                continue
+
+            if response.status_code in (200, 204):
+                logging.info(f"Data sent successfully to {url} (status {response.status_code}).")
+                successes.append(True)
+            else:
                 try:
-                    app._show_error("An unexpected error occurred while sending to Discord")
+                    resp_data = response.json()
+                except ValueError:
+                    resp_data = response.text
+                logging.error(f"Failed to send data to {url}. Status: {response.status_code} Response: {resp_data}")
+                try:
+                    app._show_error(f"Failed to send to Discord (Status: {response.status_code})")
                 except Exception:
                     pass
                 successes.append(False)
