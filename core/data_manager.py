@@ -57,9 +57,20 @@ def append_mission_to_excel(excel_path: str, data: Dict) -> bool:
         data_to_save = dict(data)
         if 'flair_colour' in data_to_save:
             del data_to_save['flair_colour']
+        if 'Mega City' in data_to_save and 'Mega Structure' not in data_to_save:
+            data_to_save['Mega Structure'] = data_to_save.pop('Mega City')
         new_data = pd.DataFrame([data_to_save])
         if os.path.exists(excel_path):
             existing_df = pd.read_excel(excel_path)
+            if 'Mega City' in existing_df.columns:
+                if 'Mega Structure' in existing_df.columns:
+                    existing_df['Mega Structure'] = existing_df['Mega Structure'].where(
+                        existing_df['Mega Structure'].notna(),
+                        existing_df['Mega City']
+                    )
+                    existing_df = existing_df.drop(columns=['Mega City'])
+                else:
+                    existing_df = existing_df.rename(columns={'Mega City': 'Mega Structure'})
             updated_df = pd.concat([existing_df, new_data], ignore_index=True)
         else:
             updated_df = new_data

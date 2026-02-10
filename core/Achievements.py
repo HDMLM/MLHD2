@@ -41,6 +41,8 @@ import sys
 try:
     excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
     df = pd.read_excel(excel_file)
+    if 'Mega Structure' not in df.columns and 'Mega City' in df.columns:
+        df = df.rename(columns={'Mega City': 'Mega Structure'})
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user
@@ -80,7 +82,7 @@ total_missions_major_order = df[df['Major Order'] == 1].shape[0]
 #get total mission with DSS active
 total_missions_dss = df[df['DSS Active'] == 1].shape[0]
 
-total_missions_city = df[df['Mega City'] == 1].shape[0]
+total_missions_city = df[df['Mega Structure'] == 1].shape[0]
 
 # Get count of unique planets visited
 total_missions_planets = len(df['Planet'].unique())
@@ -152,11 +154,12 @@ total_high_priority = df[df['Mission Category'] == 'High-Priority'].shape[0] > 0
 total_attrition = df[df['Mission Category'] == 'Attrition'].shape[0] > 0
 total_bfse = df[df['Mission Category'] == 'Battle for Super Earth'].shape[0] > 0
 total_recon = df[df['Mission Category'] == 'Recon'].shape[0] > 0
+total_bfc = df[df['Mission Category'] == 'Battle for Cyberstan'].shape[0] > 0
 
 # Check if all campaign types have been completed
 all_campaigns = (total_liberation and total_defense and 
                 total_invasion and total_high_priority and 
-                total_attrition and total_bfse and total_recon)
+                total_attrition and total_bfse and total_recon and total_bfc)
 
 # Load biome mapping from json file
 with open(app_path('JSON', 'BiomePlanets.json'), 'r') as f:
@@ -392,7 +395,7 @@ DSSDiver4 = total_missions_dss >= 1000
 DSSDiver4_date = get_nth_date(df, df['DSS Active'] == 1, 1000) if DSSDiver4 else "Not Obtained"
 
 CityDiver4 = total_missions_city >= 1000
-CityDiver4_date = get_nth_date(df, df['Mega City'] == 1, 1000) if CityDiver4 else "Not Obtained"
+CityDiver4_date = get_nth_date(df, df['Mega Structure'] == 1, 1000) if CityDiver4 else "Not Obtained"
 
 OutbreakPerfected4 = total_terminid_missions >= 1000
 OutbreakPerfected4_date = get_nth_date(df, df['Enemy Type'] == 'Terminids', 1000) if OutbreakPerfected4 else "Not Obtained"
@@ -477,7 +480,7 @@ AllCampaigns = all_campaigns
 # Get the latest date when all campaign types were completed
 campaign_completion_dates = []
 if AllCampaigns:
-    for campaign in ['Liberation', 'Defense', 'Invasion', 'High-Priority', 'Attrition', 'Battle for Super Earth', 'Recon']:
+    for campaign in ['Liberation', 'Defense', 'Invasion', 'High-Priority', 'Attrition', 'Battle for Super Earth', 'Recon', 'Battle for Cyberstan']:
         if not df[df['Mission Category'] == campaign].empty:
             campaign_completion_dates.append(df[df['Mission Category'] == campaign].iloc[0]['Time'])
     AllCampaigns_date = max(campaign_completion_dates) if campaign_completion_dates else "Not Obtained"
@@ -562,7 +565,7 @@ milestone_dates = [
     get_nth_date(df, pd.Series([True] * len(df)), 1000) if total_missions >= 1000 else None,
     get_nth_date(df, df['Major Order'] == 1, 1000) if total_missions_major_order >= 1000 else None,
     get_nth_date(df, df['DSS Active'] == 1, 1000) if total_missions_dss >= 1000 else None,
-    get_nth_date(df, df['Mega City'] == 1, 1000) if total_missions_city >= 1000 else None,
+    get_nth_date(df, df['Mega Structure'] == 1, 1000) if total_missions_city >= 1000 else None,
     get_nth_date(df, df['Enemy Type'] == 'Terminids', 1000) if total_terminid_missions >= 1000 else None,
     get_nth_date(df, df['Enemy Type'] == 'Automatons', 1000) if total_automaton_missions >= 1000 else None,
     get_nth_date(df, df['Enemy Type'] == 'Illuminate', 1000) if total_illuminate_missions >= 1000 else None,

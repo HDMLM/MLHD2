@@ -540,9 +540,17 @@
       "Hangar 6"
     ]
   },
-  "New Cyberstan": {
+  "Cyberstan": {
     "mega_cities": [
-      "Planet Surface"
+      "Planet Surface",
+      "Transcendence",
+      "Ursoot Nine",
+      "Star Kield",
+      "Camrat For",
+      "Lurza",
+      "Omniparitus",
+      "Olidaritet",
+      "Autonomy"
     ]
   },
   "Klen Dahth II": {

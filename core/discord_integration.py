@@ -407,11 +407,17 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
         always_on_order = ['bicon', 'ticon', 'yearico', 'PIco']
         selectable_order = ['bsuperearth', 'bcyberstan', 'bmaleveloncreek', 'bcalypso', 'bpopliix', 'bseyshelbeach', 'boshaune']
 
-        # Load user's badge display preference if available
+        # Load user's badge display preference from DCord.json if available
         try:
-            display_pref = settings_data.get('display_badges', None) if 'settings_data' in locals() else None
+            if os.path.exists(app_path('JSON', 'DCord.json')):
+                with open(app_path('JSON', 'DCord.json'), 'r', encoding='utf-8') as f:
+                    dcord_data = json.load(f)
+            else:
+                dcord_data = {}
         except Exception:
-            display_pref = None
+            dcord_data = {}
+
+        display_pref = dcord_data.get('display_badges', None)
 
         badge_items = []
         # Add always-on badges
@@ -569,11 +575,13 @@ def send_to_discord(app, data: Dict, excel_file: str, debug: bool, date_format: 
             FlairLeftIco = iconconfig['MiscIcon'].get('Flair Left', '') if 'MiscIcon' in iconconfig else ''
             FlairRightIco = iconconfig['MiscIcon'].get('Flair Right', '') if 'MiscIcon' in iconconfig else ''
 
+        mega_label = "Mega Factory" if str(data.get('Planet', '')).strip().lower() == "cyberstan" else "Mega City"
+
         message_content = {
             "content": None,
             "embeds": [{
                 "title": f"{data.get('Super Destroyer')}\nDeployed {data.get('Helldivers')}\n{badge_string}",
-                "description": f"**Level {data.get('Level')} | {data.get('Title')} {title_icon}\nMission: {total_missions_main}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {planet_icon} {FlairRightIco}\n> Sector: {data.get('Sector')}\n> Planet: {data.get('Planet')}\n> Mega City: {data.get('Mega City')}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data.get('DSS Modifier')} {dss_icon}\n\n",
+                "description": f"**Level {data.get('Level')} | {data.get('Title')} {title_icon}\nMission: {total_missions_main}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {planet_icon} {FlairRightIco}\n> Sector: {data.get('Sector')}\n> Planet: {data.get('Planet')}\n> {mega_label}: {data.get('Mega Structure', data.get('Mega City'))}\n> Major Order: {MICo}\n> DSS Active: {DSSIco}\n> DSS Modifier: {data.get('DSS Modifier')} {dss_icon}\n\n",
                 "color": system_color,
                 "fields": [{
                     "name": f"{FlairLeftIco} {enemy_icon} **Enemy Intel** {subfaction_icon} {FlairRightIco}",

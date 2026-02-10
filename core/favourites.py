@@ -40,6 +40,8 @@ import sys
 try:
     excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
     df = pd.read_excel(excel_file)
+    if 'Mega Structure' not in df.columns and 'Mega City' in df.columns:
+        df = df.rename(columns={'Mega City': 'Mega Structure'})
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user
@@ -397,12 +399,12 @@ with open(app_path('JSON', 'streak_data.json'), 'r') as f:
 with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
 
-# Calculate Mega City deployments excluding "Planet Surface" and empty values
-mega_city_count = df[df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
+# Calculate Mega Structure deployments excluding "Planet Surface" and empty values
+mega_city_count = df[df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
 
-terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
-automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
-illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
 
 from core.utils import get_effective_flair
 flair_colour = get_effective_flair()

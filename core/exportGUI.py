@@ -515,13 +515,17 @@ def main():
             parts.append(" • ".join([p for p in topline if p]))
 
         # Common stats if present
-        stat_keys = ['Kills', 'Deaths', 'Major Order', 'DSS Active', 'Mega City', 'Sector']
+        stat_keys = ['Kills', 'Deaths', 'Major Order', 'DSS Active', 'Mega Structure', 'Sector']
         stats = []
         for k in stat_keys:
-            if k in columns:
-                v = lookup.get(k, '')
+            col_key = k
+            if k == 'Mega Structure' and k not in columns and 'Mega City' in columns:
+                col_key = 'Mega City'
+            if col_key in columns:
+                v = lookup.get(col_key, '')
                 if str(v) != '':
-                    stats.append(f"{k}: {v}")
+                    label = 'Mega Structure' if k == 'Mega Structure' else k
+                    stats.append(f"{label}: {v}")
         if stats:
             parts.append("> " + " | ".join(stats))
 
@@ -780,6 +784,8 @@ def main():
         # Read Excel into DataFrame and configure Treeview columns/headings
         try:
             df = pd.read_excel(excel_file)
+            if 'Mega Structure' not in df.columns and 'Mega City' in df.columns:
+                df = df.rename(columns={'Mega City': 'Mega Structure'})
             columns = list(df.columns)
             table["columns"] = columns
             for col in columns:
@@ -957,8 +963,8 @@ def main():
             data.get("Mission Category", "N/A"),
             "### Mission Type: ",
             data.get("Mission Type", data.get("Mission", "N/A")),
-            "### Mega City: ",
-            data.get("Mega City", "N/A"),
+            "### Mega Structure: ",
+            data.get("Mega Structure", data.get("Mega City", "N/A")),
             "### Difficulty: ",
             data.get("Difficulty", "N/A"),
             "### Major Order: ",

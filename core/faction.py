@@ -40,6 +40,8 @@ import sys
 excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
 try:
     df = pd.read_excel(excel_file)
+    if 'Mega Structure' not in df.columns and 'Mega City' in df.columns:
+        df = df.rename(columns={'Mega City': 'Mega Structure'})
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user
@@ -339,12 +341,12 @@ with open(app_path('JSON', 'streak_data.json'), 'r') as f:
 with open(app_path('JSON', 'DCord.json'), 'r') as f:
     dcord_data = json.load(f)
 
-# Calculate Mega City deployments excluding "Planet Surface" and empty values
-mega_city_count = df[df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
+# Calculate Mega Structure deployments excluding "Planet Surface" and empty values
+mega_city_count = df[df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
 
-terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
-automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
-illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+terminids_mega_city_count = df[(df['Enemy Type'] == 'Terminids') & (df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+automatons_mega_city_count = df[(df['Enemy Type'] == 'Automatons') & (df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
+illuminate_mega_city_count = df[(df['Enemy Type'] == 'Illuminate') & (df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface'))].shape[0]
 
 from core.utils import get_effective_flair
 flair_colour = get_effective_flair()
@@ -401,7 +403,7 @@ embed_data = {
                         f"> Deployments - {len(df)}\n" +
                         f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n" +
                         f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n" +
-                        f"> Mega City Deployments - {mega_city_count}\n" +
+                        f"> Mega Structure Deployments - {mega_city_count}\n" +
                         f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode().iloc[0])}\n" +
 
                         f"\n{FlairLeftIco}  {FlairGSSkullIco} Performance Statistics {FlairGSSkullIco} {FlairRightIco}\n" +                      
@@ -436,7 +438,7 @@ embed_data = {
                          f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Terminids']['Enemy Type'].count().sum()}\n" +
                          f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Terminids']['Major Order'].astype(int).sum()}\n" +
                          f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Terminids']['DSS Active'].astype(int).sum()}\n" +
-                         f"> {BugMCDeployIco} Mega City Deployments - {terminids_mega_city_count}\n" +
+                         f"> {BugMCDeployIco} Mega Structure Deployments - {terminids_mega_city_count}\n" +
                          f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Terminids')}\n\n" +
 
                          f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
@@ -445,7 +447,8 @@ embed_data = {
                          f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n" +
                          f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n" +
                          f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n" +
-                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n\n",
+                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n" +
+                         f"> {LiberationIco} Battle for Cyberstan - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Battle for Cyberstan']['Mission Category'].count().sum()}\n\n",
       
       "color": 16761088,
       "image": {
@@ -466,7 +469,7 @@ embed_data = {
                          f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Automatons']['Enemy Type'].count().sum()}\n" +
                          f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Automatons']['Major Order'].astype(int).sum()}\n" +
                          f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Automatons']['DSS Active'].astype(int).sum()}\n" +
-                         f"> {BotMCDeployIco} Mega City Deployments - {automatons_mega_city_count}\n" +
+                         f"> {BotMCDeployIco} Mega Structure Deployments - {automatons_mega_city_count}\n" +
                          f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Automatons')}\n\n" +
 
                          f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
@@ -475,7 +478,8 @@ embed_data = {
                          f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n" +
                          f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n" +
                          f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n" +
-                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n\n",
+                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n" +
+                         f"> {LiberationIco} Battle for Cyberstan - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Battle for Cyberstan']['Mission Category'].count().sum()}\n\n",
 
       "color": 16739693,
       "image": {
@@ -496,7 +500,7 @@ embed_data = {
                          f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Illuminate']['Enemy Type'].count().sum()}\n" +
                          f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Illuminate']['Major Order'].astype(int).sum()}\n" +
                          f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Illuminate']['DSS Active'].astype(int).sum()}\n" +
-                         f"> {SquidMCDeployIco} Mega City Deployments - {illuminate_mega_city_count}\n" +
+                         f"> {SquidMCDeployIco} Mega Structure Deployments - {illuminate_mega_city_count}\n" +
                          f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Illuminate')}\n\n" +
 
                          f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n" +
@@ -505,7 +509,8 @@ embed_data = {
                          f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n" +
                          f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n" +
                          f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n" +
-                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n\n",
+                         f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n" +
+                         f"> {LiberationIco} Battle for Cyberstan - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Battle for Cyberstan']['Mission Category'].count().sum()}\n\n",
 
       "color": 9003210,
       "image": {

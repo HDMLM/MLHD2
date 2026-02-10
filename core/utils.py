@@ -150,6 +150,10 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Predator Strain & Dragonroach": "PredatorStrainDragonroach",
         "Spore Burst Strain & Dragonroach": "SporeBurstStrainDragonroach",
         "Rupture Strain & Dragonroach": "RuptureStrainDragonroach",
+        "Cyborgs": "Cyborgs",
+        "Cyborgs & Jet Brigade": "CyborgsJetBrigade",
+        "Cyborgs & Incineration Corps": "CyborgsIncinerationCorps",
+        "Cyborgs, Jet Brigade & Incineration Corps": "CyborgsJetBrigadeIncinerationCorps"
     }
     return replacements.get(normalized, normalized)
 
@@ -315,7 +319,11 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Dragonroach": "Dragonroach",
         "Predator Strain & Dragonroach": "PredatorStrainDragonroach",
         "Spore Burst Strain & Dragonroach": "SporeBurstStrainDragonroach",
-        "Rupture Strain & Dragonroach": "RuptureStrainDragonroach"
+        "Rupture Strain & Dragonroach": "RuptureStrainDragonroach",
+        "Cyborgs": "Cyborgs",
+        "Cyborgs & Jet Brigade": "CyborgsJetBrigade",
+        "Cyborgs & Incineration Corps": "CyborgsIncinerationCorps",
+        "Cyborgs, Jet Brigade & Incineration Corps": "CyborgsJetBrigadeIncinerationCorps"
     }
     return replacements.get(normalized, normalized)
 

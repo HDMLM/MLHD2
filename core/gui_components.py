@@ -468,10 +468,24 @@ def build_ui(app):
     # Initial preview update
     update_planet_preview()
 
-    ttk.Label(mission_frame, text="Mega City:", foreground=flair_fg).grid(row=2, column=0, sticky=tk.W, pady=5)
+    # Label text changes based on selected planet (Cyberstan -> Mega Factory)
+    mega_city_label = ttk.Label(mission_frame, text="Mega City:", foreground=flair_fg)
+    mega_city_label.grid(row=2, column=0, sticky=tk.W, pady=5)
+    app.mega_cities_label = mega_city_label
     mega_cities_combo = ttk.Combobox(mission_frame, textvariable=app.mega_cities, state='readonly', width=27)
     mega_cities_combo.grid(row=2, column=1, sticky=tk.W, padx=(8,0), pady=5)
     app.mega_cities_combo = mega_cities_combo
+
+    # Updates the Mega City label for Cyberstan; affects UI label only
+    def update_mega_city_label(*args):
+        try:
+            planet_name = app.planet.get() or ""
+            is_cyberstan = planet_name.strip().lower() == "cyberstan"
+            label_text = "Mega Factory:" if is_cyberstan else "Mega City:"
+            if getattr(app, "mega_cities_label", None) is not None:
+                app.mega_cities_label.configure(text=label_text)
+        except Exception:
+            pass
 
     # Dynamic planet / mega city lists
     # Populates mega city options for the selected planet; affects mega city combobox
@@ -483,6 +497,7 @@ def build_ui(app):
                 planetary_data = json.load(f)
         except Exception:
             planetary_data = {}
+        update_mega_city_label()
         if not selected_planet or selected_planet not in planetary_data:
             mega_cities_combo['values'] = ["Planet Surface"]
             mega_cities_combo.set("Planet Surface")
@@ -506,13 +521,22 @@ def build_ui(app):
         else:
             planet_combo.set(planet_list[0])
         # Immediately update mega cities for the (possibly new) planet
+        update_mega_city_label()
         update_mega_cities()
 
     sector_combo.bind('<<ComboboxSelected>>', update_planets)
     planet_combo.bind('<<ComboboxSelected>>', update_mega_cities)
+    try:
+        app.planet.trace_add("write", update_mega_city_label)
+    except Exception:
+        try:
+            app.planet.trace("w", lambda *a: update_mega_city_label())
+        except Exception:
+            pass
     # Initial population
     update_planets()
     update_mega_cities()
+    update_mega_city_label()
 
     # 7 images underneath mega city and profile, packed tightly together
     # Each image is based on a dropdown: enemy type, subfaction, campaign, difficulty, mission, major order, DSS
@@ -848,8 +872,50 @@ def build_ui(app):
         except Exception:
             enemy_types = []
 
+    enemies_data = {}
+    try:
+        with open(app_path('JSON', 'Enemies.json'), 'r') as f:
+            enemies_data = json.load(f)
+    except Exception:
+        enemies_data = {}
+
     enemy_combo = ttk.Combobox(details_frame, textvariable=app.enemy_type, values=enemy_types, state='readonly', width=27)
     enemy_combo.grid(row=0, column=1, padx=5, pady=5)
+
+    # Merge missions across subfactions so enemy missions are shared.
+    def build_enemy_missions(enemy):
+        enemy_data = missions_data.get(enemy, {})
+        merged = {}
+        if not isinstance(enemy_data, dict):
+            return merged
+
+        def is_difficulty_dict(value):
+            return isinstance(value, dict) and any(
+                isinstance(k, str) and " - " in k for k in value.keys()
+            )
+
+        if any(is_difficulty_dict(value) for value in enemy_data.values()):
+            subfaction_iter = [(None, enemy_data)]
+        else:
+            subfaction_iter = enemy_data.items()
+
+        for _subfaction, sub_data in subfaction_iter:
+            if not isinstance(sub_data, dict):
+                continue
+            for category, cat_data in sub_data.items():
+                if cat_data == "Unknown":
+                    continue
+                if category not in merged:
+                    merged[category] = {}
+                if isinstance(cat_data, dict):
+                    for difficulty, missions in cat_data.items():
+                        if difficulty not in merged[category]:
+                            merged[category][difficulty] = []
+                        if isinstance(missions, list):
+                            for mission in missions:
+                                if mission not in merged[category][difficulty]:
+                                    merged[category][difficulty].append(mission)
+        return merged
 
     # Major Order + DSS toggles
     ttk.Label(details_frame, text="Major Order:", foreground=flair_fg).grid(row=2, column=2, sticky=tk.W, pady=5)
@@ -934,57 +1000,46 @@ def build_ui(app):
     def update_subfactions(*args):
         enemy = app.enemy_type.get()
         subfactions = []
-        if enemy in missions_data:
-            subfactions = list(missions_data[enemy].keys())
+        if enemy in enemies_data:
+            subfactions = list(enemies_data[enemy].keys())
             logging.info(f"Available subfactions for {enemy}: {subfactions}")
-            subfaction_combo['values'] = subfactions
-        else:
-            subfaction_combo['values'] = []
+        subfaction_combo['values'] = subfactions
         if subfactions:
             subfaction_combo.set(subfactions[0])
-            update_mission_categories()
+        update_mission_categories()
 
     # Populates HVT options for selected enemy/subfaction; affects HVT combobox
     def update_hvts(*args):
         enemy = app.enemy_type.get()
         subfaction = app.subfaction_type.get()
-        
-        try:
-            with open(app_path('JSON', 'Enemies.json'), 'r') as f:
-                enemies_data = json.load(f)
-            
-            # Get HVTs for selected enemy/subfaction
-            if enemy in enemies_data:
-                hvt_list = enemies_data[enemy].get(subfaction, [])
-                
-                # Convert string to list if needed
-                if isinstance(hvt_list, str):
-                    if hvt_list == "No HVTs":
-                        hvt_list = ["No HVTs"]
-                    else:
-                        hvt_list = [hvt_list]
-                elif not isinstance(hvt_list, list):
+
+        # Get HVTs for selected enemy/subfaction
+        if enemy in enemies_data:
+            hvt_list = enemies_data[enemy].get(subfaction, [])
+
+            # Convert string to list if needed
+            if isinstance(hvt_list, str):
+                if hvt_list == "No HVTs":
                     hvt_list = ["No HVTs"]
-                
-                # Ensure list is not empty before setting values
-                if not hvt_list:
-                    hvt_list = ["No HVTs"]
-                    
-                hvt_combo['values'] = hvt_list
-                hvt_combo.set(hvt_list[0] if hvt_list else "No HVTs")
-                logging.info(f"Updated HVTs for {enemy}/{subfaction}: {hvt_list}")
-            else:
-                hvt_combo['values'] = ["No HVTs"]
-                hvt_combo.set("No HVTs")
-                logging.info(f"No enemy type found: {enemy}")
-                
-        except Exception as e:
-            logging.error(f"Error updating HVTs: {e}")
-            hvt_combo['values'] = ["Error loading HVTs"]
-            hvt_combo.set("Error loading HVTs")
+                else:
+                    hvt_list = [hvt_list]
+            elif not isinstance(hvt_list, list):
+                hvt_list = ["No HVTs"]
+
+            # Ensure list is not empty before setting values
+            if not hvt_list:
+                hvt_list = ["No HVTs"]
+
+            hvt_combo['values'] = hvt_list
+            hvt_combo.set(hvt_list[0] if hvt_list else "No HVTs")
+            logging.info(f"Updated HVTs for {enemy}/{subfaction}: {hvt_list}")
+        else:
+            hvt_combo['values'] = ["No HVTs"]
+            hvt_combo.set("No HVTs")
+            logging.info(f"No enemy type found: {enemy}")
 
     enemy_combo.bind('<<ComboboxSelected>>', lambda e: [update_subfactions(e), update_hvts(e)])
-    subfaction_combo.bind('<<ComboboxSelected>>', lambda e: [update_mission_categories(e), update_hvts(e)])
+    subfaction_combo.bind('<<ComboboxSelected>>', lambda e: [update_hvts(e)])
     update_hvts() # Initial population
 
     # Clear HVT when enemy type changes
@@ -1002,13 +1057,9 @@ def build_ui(app):
     # Populates mission categories for enemy/subfaction; affects campaign combobox
     def update_mission_categories(*args):
         enemy = app.enemy_type.get()
-        subfaction = app.subfaction_type.get()
-        categories = []
-        if enemy in missions_data and subfaction in missions_data[enemy]:
-            categories = list(missions_data[enemy][subfaction].keys())
-            mission_cat_combo['values'] = categories
-        else:
-            mission_cat_combo['values'] = []
+        merged = build_enemy_missions(enemy)
+        categories = list(merged.keys()) if merged else []
+        mission_cat_combo['values'] = categories
         if categories:
             mission_cat_combo.set(categories[0])
             update_mission_types()
@@ -1016,21 +1067,18 @@ def build_ui(app):
     # Populates difficulties and mission names for selected category; affects difficulty/mission comboboxes
     def update_mission_types(*args):
         enemy = app.enemy_type.get()
-        subfaction = app.subfaction_type.get()
         category = app.mission_category.get()
-        
-        if (enemy in missions_data and 
-            subfaction in missions_data[enemy] and 
-            category in missions_data[enemy][subfaction]):
-            
-            if missions_data[enemy][subfaction][category] != "Unknown":
-                difficulties = list(missions_data[enemy][subfaction][category].keys())
+        merged = build_enemy_missions(enemy)
+
+        if category in merged:
+            difficulties = list(merged[category].keys())
+            if difficulties:
                 difficulty_combo['values'] = difficulties
                 difficulty_combo.set(difficulties[0])
-                
+
                 # Set initial mission types from first difficulty
                 first_difficulty = difficulties[0]
-                available_missions = missions_data[enemy][subfaction][category][first_difficulty]
+                available_missions = merged[category].get(first_difficulty, [])
                 mission_type_combo['values'] = available_missions
                 if available_missions:
                     mission_type_combo.set(available_missions[0])
@@ -1039,26 +1087,28 @@ def build_ui(app):
                 mission_type_combo.set("No missions available")
                 difficulty_combo['values'] = ["No difficulties available"]
                 difficulty_combo.set("No difficulties available")
+        else:
+            mission_type_combo['values'] = ["No missions available"]
+            mission_type_combo.set("No missions available")
+            difficulty_combo['values'] = ["No difficulties available"]
+            difficulty_combo.set("No difficulties available")
 
     # Updates mission names when difficulty changes; affects mission combobox
     def update_available_missions(*args):
         enemy = app.enemy_type.get()
-        subfaction = app.subfaction_type.get()
         category = app.mission_category.get()
         difficulty = app.difficulty.get()
-        
-        if (enemy in missions_data and 
-            subfaction in missions_data[enemy] and 
-            category in missions_data[enemy][subfaction] and 
-            difficulty in missions_data[enemy][subfaction][category]):
-            
-            available_missions = missions_data[enemy][subfaction][category][difficulty]
+        merged = build_enemy_missions(enemy)
+        if category in merged and difficulty in merged[category]:
+            available_missions = merged[category][difficulty]
             mission_type_combo['values'] = available_missions
             if available_missions:
                 mission_type_combo.set(available_missions[0])
+        else:
+            mission_type_combo['values'] = ["No missions available"]
+            mission_type_combo.set("No missions available")
 
     enemy_combo.bind('<<ComboboxSelected>>', lambda e: [update_subfactions()])
-    subfaction_combo.bind('<<ComboboxSelected>>', lambda e: [update_mission_categories()])
     app.enemy_type.trace_add("write", lambda *args: update_hvts())
     app.subfaction_type.trace_add("write", lambda *args: update_hvts())
     mission_cat_combo.bind('<<ComboboxSelected>>', update_mission_types)

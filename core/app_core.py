@@ -91,9 +91,9 @@ from core.utils import (
 import random
 
 # Manual Configuration
-GWDay = "Day: 728"
-GWDate = "Date: 05/02/2026"
-VERSION = "1.7.017"
+GWDay = "Day: 733"
+GWDate = "Date: 10/02/2026"
+VERSION = "1.7.018"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -270,7 +270,11 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Dragonroach": "Dragonroach",
         "Predator Strain & Dragonroach": "PredatorStrainDragonroach",
         "Spore Burst Strain & Dragonroach": "SporeBurstStrainDragonroach",
-        "Rupture Strain & Dragonroach": "RuptureStrainDragonroach"
+        "Rupture Strain & Dragonroach": "RuptureStrainDragonroach",
+        "Cyborgs": "Cyborgs",
+        "Cyborgs & Jet Brigade": "CyborgsJetBrigade",
+        "Cyborgs & Incineration Corps": "CyborgsIncinerationCorps",
+        "Cyborgs, Jet Brigade & Incineration Corps": "CyborgsJetBrigadeIncinerationCorps"
     }
     return replacements.get(normalized, normalized)
 
@@ -452,7 +456,7 @@ class MissionLogGUI:
             logging.debug(f"Failed to install global click sound binding: {e}")
         if not os.path.exists(EXCEL_FILE_PROD):
             columns = [
-                'Super Destroyer', 'Helldivers', 'Level', 'Title', 'Sector', 'Planet', 'Mega City',
+                'Super Destroyer', 'Helldivers', 'Level', 'Title', 'Sector', 'Planet', 'Mega Structure',
                 'Enemy Type', 'Enemy Subfaction', 'Enemy HVT', 'Major Order', 'DSS Active', 'DSS Modifier',
                 'Mission Category', 'Mission Type', 'Difficulty', 'Kills', 'Deaths', 'Rating', 'Time', 'Streak', 'Note'
             ]
@@ -629,6 +633,7 @@ class MissionLogGUI:
             'mission': self.mission_type.get(),
             'campaign': self.mission_category.get(),
             'subfaction': self.subfaction_type.get(),
+            'MO': bool(self.MO.get()),
             'DSS': bool(self.DSS.get()),
             'DSSMod': self.DSSMod.get() or 'Inactive',
         }
@@ -989,7 +994,7 @@ class MissionLogGUI:
             'Title': self.title.get(),
             'Sector': self.sector.get(),
             'Planet': self.planet.get(),
-            'Mega City': self.mega_cities.get(),
+            'Mega Structure': self.mega_cities.get(),
             'Enemy Type': self.enemy_type.get(),
             'Enemy Subfaction': self.subfaction_type.get(),
             'Enemy HVT': self.hvt_type.get(),
@@ -1126,6 +1131,10 @@ class MissionLogGUI:
         val = settings.get('mission')
         if val:
             self.mission_type.set(val)
+
+        if 'MO' in settings:
+            # Respect explicit False; only skip if key missing
+            self.MO.set(bool(settings.get('MO')))
 
         if 'DSS' in settings:
             # Respect explicit False; only skip if key missing

@@ -116,7 +116,8 @@ CAMPAIGN_ICONS = {
     "High-Priority": iconconfig['CampaignIcons']['High-Priority'],
     "Attrition": iconconfig['CampaignIcons']['Attrition'],
     "Battle for Super Earth": iconconfig['CampaignIcons']['Battle for Super Earth'],
-    "Recon": iconconfig['CampaignIcons']['Recon']
+    "Recon": iconconfig['CampaignIcons']['Recon'],
+    "Battle for Cyberstan": iconconfig['CampaignIcons']['Battle for Cyberstan']
 }
 
 
@@ -473,7 +474,11 @@ SUBFACTION_BANNERS = {
     "Dragonroach": iconconfig['SubfactionBanners'].get('Dragonroach', 'Dragonroach'),
     "Predator Strain & Dragonroach": iconconfig['SubfactionBanners'].get('PredatorStrainDragonroach', 'Predator Strain & Dragonroach'),
     "Spore Burst Strain & Dragonroach": iconconfig['SubfactionBanners'].get('SporeBurstStrainDragonroach', 'Spore Burst Strain & Dragonroach'),
-    "Rupture Strain & Dragonroach": iconconfig['SubfactionBanners'].get('RuptureStrainDragonroach', 'Rupture Strain & Dragonroach')
+    "Rupture Strain & Dragonroach": iconconfig['SubfactionBanners'].get('RuptureStrainDragonroach', 'Rupture Strain & Dragonroach'),
+    "Cyborgs": iconconfig['SubfactionBanners'].get('Cyborgs', 'Cyborgs'),
+    "Cyborgs & Jet Brigade": iconconfig['SubfactionBanners'].get('CyborgsJetBrigade', 'Cyborgs & Jet Brigade'),
+    "Cyborgs & Incineration Corps": iconconfig['SubfactionBanners'].get('CyborgsIncinerationCorps', 'Cyborgs & Incineration Corps'),
+    "Cyborgs, Jet Brigade & Incineration Corps": iconconfig['SubfactionBanners'].get('CyborgsJetBrigadeIncinerationCorps', 'Cyborgs, Jet Brigade & Incineration Corps')
 }
 
 HELLDIVER_BANNERS = {
@@ -499,7 +504,11 @@ SUBFACTION_ICONS = {
     "Dragonroach": iconconfig['SubfactionIcons']['Dragonroach'],
     "Predator Strain & Dragonroach": iconconfig['SubfactionIcons']['PredatorStrainDragonroach'],
     "Spore Burst Strain & Dragonroach": iconconfig['SubfactionIcons']['SporeBurstStrainDragonroach'],
-    "Rupture Strain & Dragonroach": iconconfig['SubfactionIcons']['RuptureStrainDragonroach']
+    "Rupture Strain & Dragonroach": iconconfig['SubfactionIcons']['RuptureStrainDragonroach'],
+    "Cyborgs": iconconfig['SubfactionIcons']['Cyborgs'],
+    "Cyborgs & Jet Brigade": iconconfig['SubfactionIcons']['CyborgsJetBrigade'],
+    "Cyborgs & Incineration Corps": iconconfig['SubfactionIcons']['CyborgsIncinerationCorps'],
+    "Cyborgs, Jet Brigade & Incineration Corps": iconconfig['SubfactionIcons']['CyborgsJetBrigadeIncinerationCorps']
 }
 
 HVT_ICONS = {
@@ -653,8 +662,9 @@ PROFILE_PICTURES = {
 	"RS-67 Null Cipher": iconconfig['ProfilePictures']['RS-67 Null Cipher'],
 	"RS-89 Shadow Paragon": iconconfig['ProfilePictures']['RS-89 Shadow Paragon'],
 	"RS-100 Sanctioner": iconconfig['ProfilePictures']['RS-100 Sanctioner'],
-	"SA-07 Headfirst": iconconfig['ProfilePictures']['SA-07 Headfirst'],
-	"SA-08 Ram": iconconfig['ProfilePictures']['SA-08 Ram']
+	"SA-7 Headfirst": iconconfig['ProfilePictures']['SA-7 Headfirst'],
+	"SA-8 Ram": iconconfig['ProfilePictures']['SA-8 Ram'],
+    "DP-8 Mountain-Scaled": iconconfig['ProfilePictures']['DP-8 Mountain-Scaled'],
 }
 
 # Biome Banners per Planet (used as embed image backgrounds)
