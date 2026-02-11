@@ -42,6 +42,10 @@ import sys
 try:
     excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
     df = pd.read_excel(excel_file)
+    if 'Mega Structure' not in df.columns and 'Mega City' in df.columns:
+        df = df.rename(columns={'Mega City': 'Mega Structure'})
+    elif 'Mega Structure' not in df.columns:
+        df['Mega Structure'] = ''
     if df.empty:
         logging.error("Error: Excel file is empty. Please ensure the file contains data.")
         # Show a message box to the user
@@ -522,8 +526,8 @@ _dcord_effective_flair = get_effective_flair()
 # Composes the main embed description; affects top section of Discord export
 def _build_primary_embed_description() -> str:
     """Compose the primary embed description (kept modular so we can reuse in HTML)."""
-    # Calculate Mega City deployments excluding "Planet Surface" and empty values
-    mega_city_count = df[df['Mega City'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
+    # Calculate Mega Structure deployments excluding "Planet Surface" and empty values
+    mega_city_count = df[df['Mega Structure'].fillna('').astype(str).apply(lambda x: x != '' and x.lower() != 'planet surface')].shape[0]
 
     return (
         f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n"
@@ -537,7 +541,7 @@ def _build_primary_embed_description() -> str:
         f"> Deployments - {len(df)}\n"
         f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n"
         f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n"
-        f"> Mega City Deployments - {mega_city_count}\n"
+        f"> Mega Structure Deployments - {mega_city_count}\n"
     f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode().iloc[0])}\n"
         f"\n{FlairLeftIco}  {FlairGSSkullIco} Performance Statistics {FlairGSSkullIco} {FlairRightIco}\n"
         f"> Rating - {Rating} | {int(Rating_Percentage)}%\n"

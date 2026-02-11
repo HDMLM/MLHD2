@@ -178,7 +178,7 @@ for planet in df['Planet'].unique():
         biome_visited[biome] = True
 
 # Check if all standard biomes have been visited
-# Filter out special biomes like "Scoured", "Black Hole", "Super Earth", etc.
+# Filter out special biomes like "Scorched", "Black Hole", "Super Earth", etc.
 standard_biomes = {
     'Desert Dunes', 'Desert Cliffs', 'Acidic Badlands', 'Rocky Canyons',
     'Moon', 'Volcanic Jungle', 'Deadlands', 'Ethereal Jungle', 

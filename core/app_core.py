@@ -91,9 +91,9 @@ from core.utils import (
 import random
 
 # Manual Configuration
-GWDay = "Day: 733"
-GWDate = "Date: 10/02/2026"
-VERSION = "1.7.018"
+GWDay = "Day: 734"
+GWDate = "Date: 11/02/2026"
+VERSION = "1.7.019"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -745,8 +745,8 @@ class MissionLogGUI:
             self._show_error("ADVISORY: You cannot deploy on a fractured planet")
             self.update_submit_button_image("Fail")
             return
-        if self.planet.get() in ["Widow's Harbor", "New Haven", "Pilen V", "Mars"]:
-            self._show_error("ADVISORY: You cannot deploy on a scoured planet")
+        if self.planet.get() in ["Widow's Harbor", "New Haven", "Pilen V", "Mars", "Merak"]:
+            self._show_error("ADVISORY: You cannot deploy on a scorched planet")
             self.update_submit_button_image("Fail")
             return
 

@@ -115,7 +115,7 @@ class SettingsPage(tk.Tk):
         self.title("Discord Settings")
         # Compute a larger fixed window size and center it, then disable resizing
         try:
-            desired_w, desired_h = 750, 975
+            desired_w, desired_h = 775, 975
             screen_w = self.winfo_screenwidth()
             screen_h = self.winfo_screenheight()
             # Leave some margin for taskbar/titlebar
@@ -374,6 +374,9 @@ class SettingsPage(tk.Tk):
         )
         self.generate_banner_button.image = generate_btn_img_tk
         self.generate_banner_button.pack(side=tk.LEFT, padx=(20, 40), pady=18)
+        self.generate_banner_button.bind("<Enter>", on_generate_btn_enter)
+        self.generate_banner_button.bind("<Leave>", on_generate_btn_leave)
+        self.generate_banner_button.bind("<Button-1>", play_generate_click)
 
         self.export_banner_button = tk.Label(
             banner_buttons_frame,
@@ -446,9 +449,66 @@ class SettingsPage(tk.Tk):
 
             # Disable button during export
             try:
-                self.export_banner_button.state(["disabled"])
+                if getattr(self, "_export_in_progress", False):
+                    return
+                self._export_in_progress = True
+                self.export_banner_button.configure(cursor="watch")
             except Exception:
                 pass
+
+            def _do_export():
+                errors = []
+                ok_count = 0
+                for url in urls:
+                    try:
+                        with open(GENERATED_BANNER_PATH, "rb") as f:
+                            payload = {
+                                "content": None,
+                                "embeds": [
+                                    {
+                                        "title": "Player Card",
+                                        "image": {"url": f"attachment://{GENERATED_BANNER_FILENAME}"},
+                                    }
+                                ],
+                            }
+                            resp = requests.post(
+                                url,
+                                data={"payload_json": json.dumps(payload)},
+                                files={"file": (GENERATED_BANNER_FILENAME, f, "image/png")},
+                                timeout=20,
+                            )
+                        if resp.status_code not in (200, 204):
+                            errors.append(f"{url} -> HTTP {resp.status_code}")
+                        else:
+                            ok_count += 1
+                    except Exception as e:
+                        errors.append(f"{url} -> {e}")
+
+                def _finish():
+                    try:
+                        self.export_banner_button.configure(cursor="hand2")
+                    except Exception:
+                        pass
+                    self._export_in_progress = False
+
+                    if errors:
+                        logging.error(f"[settings] Export banner errors: {errors}")
+                        messagebox.showerror(
+                            "Export Failed",
+                            "One or more webhooks failed. Check your URLs and try again."
+                        )
+                    else:
+                        messagebox.showinfo(
+                            "Export Complete",
+                            f"Sent player card to {ok_count} webhook(s)."
+                        )
+
+                try:
+                    self.after(0, _finish)
+                except Exception:
+                    _finish()
+
+            threading.Thread(target=_do_export, daemon=True).start()
 
         # ------- Badge display settings -------
         # Always-on badges (not selectable, always visible if applicable to user)
@@ -465,7 +525,7 @@ class SettingsPage(tk.Tk):
             ('bcyberstan', 'Cyberstan'),
             ('bmaleveloncreek', 'Malevelon Creek'),
             ('bcalypso', 'Calypso'),
-            ('bpopliix', 'Popli IX'),
+            ('bpopliix', 'Pöpli IX'),
             ('bseyshelbeach', 'Seyshel Beach'),
             ('boshaune', 'Oshaune')
         ]
@@ -1641,6 +1701,15 @@ class SettingsPage(tk.Tk):
         self.full_ship_name_var.set(f"{s1}{sep}{s2}")
 
     # ----- Banner Preview Generation -----
+    def _resize_banner_preview(self, img: Image.Image) -> Image.Image:
+        """Return a consistently sized preview image to avoid window resize."""
+        try:
+            new_width = int(img.width * 0.90)
+            new_height = int(img.height * 0.90)
+            return img.resize((new_width, new_height), Image.LANCZOS)
+        except Exception:
+            return img
+
     # Generates and saves the player banner PNG; affects preview/export
     def on_generate_banner(self):
         try:
@@ -1698,7 +1767,8 @@ class SettingsPage(tk.Tk):
             except Exception as se:
                 logging.warning(f"[settings] Failed to save generated banner to disk: {se}")
             # Convert to ImageTk and show on label; keep a reference
-            self._banner_preview_imgtk = ImageTk.PhotoImage(pil_img)
+            preview_img = self._resize_banner_preview(pil_img)
+            self._banner_preview_imgtk = ImageTk.PhotoImage(preview_img)
             self.banner_display_label.configure(image=self._banner_preview_imgtk)
         except Exception as e:
             logging.error(f"[settings] Failed generating banner: {e}")
@@ -1710,10 +1780,7 @@ class SettingsPage(tk.Tk):
         if os.path.exists(GENERATED_BANNER_PATH):
             try:
                 img = Image.open(GENERATED_BANNER_PATH)
-                # Resize to 95% of original size to fit better in the window
-                new_width = int(img.width * 0.90)
-                new_height = int(img.height * 0.90)
-                img = img.resize((new_width, new_height), Image.LANCZOS)
+                img = self._resize_banner_preview(img)
                 self._banner_preview_imgtk = ImageTk.PhotoImage(img)
                 self.banner_display_label.configure(image=self._banner_preview_imgtk)
             except Exception as e:
