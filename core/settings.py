@@ -1,99 +1,39 @@
-import tkinter as tk
-from tkinter import ttk, messagebox
 import json
+import logging
 import os
 import re
-import logging
 import sys
-import traceback
-from PIL import Image, ImageTk
+import threading
+import tkinter as tk
 import tkinter.font as tkfont
-from core.ui_sound import (
+import traceback
+from tkinter import messagebox, ttk
+
+from PIL import Image, ImageTk
+
+from core.config.placard import generate_helldiver_banner
+from core.infrastructure.runtime_paths import app_path
+from core.config.settings_shared import (
+    BASE_DIR,
+    DCORD_PATH,
+    DEFAULT_THEME,
+    GENERATED_BANNER_FILENAME,
+    GENERATED_BANNER_PATH,
+    JSON_DIR,
+    MISC_ITEMS_DIR,
+    PERSISTENT_PATH,
+    SETTINGS_PATH,
+    SHIP1_OPTIONS,
+    SHIP2_OPTIONS,
+    get_forced_webhooks_labeled,
+    norm,
+)
+from core.ui.ui_sound import (
     play_button_click,
     play_button_hover,
-    init_ui_sounds,
-    register_global_click_binding,
-    set_ui_sounds_enabled,
 )
-from core.placard import generate_helldiver_banner
-import io
-import requests
-import threading
-from core.runtime_paths import app_path
+from core.integrations.webhook import classify_webhook_error, format_webhook_failure_line, post_webhook
 
-# ---------- Paths ----------
-# Keep BASE_DIR for any module-local fallbacks, but prefer app_path for repo/installed resources
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-JSON_DIR = app_path('JSON')
-SETTINGS_PATH = app_path('JSON', 'settings.json')
-DCORD_PATH = app_path('JSON', 'DCord.json')
-PERSISTENT_PATH = app_path('JSON', 'persistent.json')
-FORCED_WEBHOOK_URL = "https://discord.com/api/webhooks/1419785470493327420/7XCGBlF3Ya5QQUiypMWP0fWAsNF-fIoui4m-nwfcp11IwWrkJzUN3VwM1uJdxHT2SGYZ"
-
-# Paths for generated media assets
-MEDIA_DIR = app_path('media')
-MISC_ITEMS_DIR = app_path('media', 'MiscItems')
-GENERATED_BANNER_FILENAME = "GeneratedBanner.png"
-GENERATED_BANNER_PATH = os.path.join(MISC_ITEMS_DIR, GENERATED_BANNER_FILENAME)
-
-# Repository root (directory containing JSON and media)
-REPO_ROOT = os.path.dirname(JSON_DIR) if JSON_DIR else None
-
-# ---------- Helpers ----------
-# Normalizes strings for comparison; used by selection helpers in UI
-def norm(s: str) -> str:
-    if s is None:
-        return ""
-    s = str(s).replace("\xa0", " ")
-    return " ".join(s.strip().split()).casefold()
-
-
-
-# ---------- Theme ----------
-# Builds a ttk theme dict for styling; affects overall UI appearance
-def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=None, frame_bg=None):
-    return {
-        ".": {"configure": {"background": bg, "foreground": fg}},
-        "TLabel": {"configure": {"background": bg, "foreground": fg}},
-        "TButton": {"configure": {"background": button_bg or bg, "foreground": button_fg or fg}},
-        "TEntry": {"configure": {
-            "background": entry_bg or bg,
-            "foreground": entry_fg or fg,
-            "fieldbackground": entry_bg or bg,
-            "insertcolor": fg,
-        }},
-        "TCheckbutton": {"configure": {"background": bg, "foreground": fg}},
-        "TCombobox": {"configure": {
-            "background": entry_bg or bg,
-            "foreground": entry_fg or fg,
-            "fieldbackground": entry_bg or bg,
-            "insertcolor": fg,
-        }},
-        "TFrame": {"configure": {"background": frame_bg or bg}},
-        "TLabelframe": {"configure": {"background": frame_bg or bg, "foreground": fg}},
-        "TLabelframe.Label": {"configure": {"background": frame_bg or bg, "foreground": fg}},
-        "TNotebook": {"configure": {"background": bg}},
-        "TNotebook.Tab": {"configure": {"background": button_bg or bg, "foreground": entry_fg or fg}},
-    }
-
-DEFAULT_THEME = make_theme(
-    bg="#252526",
-    fg="#FFFFFF",
-    entry_bg="#252526",
-    entry_fg="#000000",
-    button_bg="#4C4C4C",
-    button_fg="#000000",
-    frame_bg="#252526",
-)
-
-# ---------- Data ----------
-SHIP1_OPTIONS = [
-    "SES Adjudicator", "SES Advocate", "SES Aegis", "SES Agent", "SES Arbiter", "SES Banner", "SES Beacon", "SES Blade", "SES Bringer", "SES Champion", "SES Citizen", "SES Claw", "SES Colossus", "SES Comptroller", "SES Courier", "SES Custodian", "SES Dawn", "SES Defender", "SES Diamond", "SES Distributor", "SES Dream", "SES Elected Representative", "SES Emperor", "SES Executor", "SES Eye", "SES Father", "SES Fist", "SES Flame", "SES Force", "SES Forerunner", "SES Founding Father", "SES Gauntlet", "SES Giant", "SES Guardian", "SES Halo", "SES Hammer", "SES Harbinger", "SES Herald", "SES Judge", "SES Keeper", "SES King", "SES Knight", "SES Lady", "SES Legislator", "SES Leviathan", "SES Light", "SES Lord", "SES Magistrate", "SES Marshall", "SES Martyr", "SES Mirror", "SES Mother", "SES Octagon", "SES Ombudsman", "SES Panther", "SES Paragon", "SES Patriot", "SES Pledge", "SES Power", "SES Precursor", "SES Pride", "SES Prince", "SES Princess", "SES Progenitor", "SES Prophet", "SES Protector", "SES Purveyor", "SES Queen", "SES Ranger", "SES Reign", "SES Representative", "SES Senator", "SES Sentinel", "SES Shield", "SES Soldier", "SES Song", "SES Soul", "SES Sovereign", "SES Spear", "SES Stallion", "SES Star", "SES Steward", "SES Superintendent", "SES Sword", "SES Titan", "SES Triumph", "SES Warrior", "SES Whisper", "SES Will", "SES Wings"
-]
-
-SHIP2_OPTIONS = [
-    "of Allegiance", "of Audacity", "of Authority", "of Battle", "of Benevolence", "of Conquest", "of Conviction", "of Conviviality", "of Courage", "of Dawn", "of Democracy", "of Destiny", "of Destruction", "of Determination", "of Equality", "of Eternity", "of Family Values", "of Fortitude", "of Freedom", "of Glory", "of Gold", "of Honour", "of Humankind", "of Independence", "of Individual Merit", "of Integrity", "of Iron", "of Judgement", "of Justice", "of Law", "of Liberty", "of Mercy", "of Midnight", "of Morality", "of Morning", "of Opportunity", "of Patriotism", "of Peace", "of Perseverance", "of Pride", "of Redemption", "of Science", "of Self-Determination", "of Selfless Service", "of Serenity", "of Starlight", "of Steel", "of Super Earth", "of Supremacy", "of the Constitution", "of the People", "of the Regime", "of the Stars", "of the State", "of Truth", "of Twilight", "of Victory", "of Vigilance", "of War", "of Wrath"
-]
 
 # ---------- Settings Page ----------
 class SettingsPage(tk.Tk):
@@ -105,9 +45,10 @@ class SettingsPage(tk.Tk):
             img = img.resize((200, 200), Image.LANCZOS)
             self.preview_img = ImageTk.PhotoImage(img)
             self.preview_image_label.config(image=self.preview_img)
-        except Exception as e:
+        except (OSError, ValueError, tk.TclError) as e:
             logging.warning(f"[settings] Failed to load preview image: {e}")
-            self.preview_image_label.config(image='')
+            self.preview_image_label.config(image="")
+
     # Initializes settings window, state, and widgets; affects settings UI
     def __init__(self):
         logging.debug("[settings] SettingsPage.__init__ start")
@@ -126,7 +67,7 @@ class SettingsPage(tk.Tk):
             x = max(0, (screen_w - w) // 2)
             y = max(0, (screen_h - h) // 2)
             self.geometry(f"{w}x{h}+{x}+{y}")
-        except Exception:
+        except tk.TclError:
             # Fallback to default size if anything goes wrong
             self.geometry("750x950")
         # Lock window size so users cannot resize/increase it
@@ -134,10 +75,10 @@ class SettingsPage(tk.Tk):
         style = ttk.Style()
         self.apply_theme(style, DEFAULT_THEME)
         # Match main.py font choices
-        style.configure('TLabel', font=('Arial', 10))
-        style.configure('TButton', font=('Arial', 10, 'bold'))
-        style.configure('TEntry', font=('Arial', 10))
-        style.configure('TCombobox', font=('Arial', 10))
+        style.configure("TLabel", font=("Arial", 10))
+        style.configure("TButton", font=("Arial", 10, "bold"))
+        style.configure("TEntry", font=("Arial", 10))
+        style.configure("TCombobox", font=("Arial", 10))
         self.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
 
         # State
@@ -151,6 +92,8 @@ class SettingsPage(tk.Tk):
         self.discord_uid_var = tk.StringVar(value="")
         self.platform_var = tk.StringVar(value="Not Selected")
         self.dont_send_to_discord_var = tk.BooleanVar(value=False)
+        self.onboarding_completed = False
+        self._onboarding_mode = "--onboarding" in [str(a).lower() for a in sys.argv]
 
         # Labeled webhook items: list of {label, url}
         self.webhooks_logging = []
@@ -173,7 +116,8 @@ class SettingsPage(tk.Tk):
 
         # Global click sound binding (mirror of main.py approach)
         try:
-            if not getattr(self, '_click_sound_installed', False):
+            if not getattr(self, "_click_sound_installed", False):
+
                 def _maybe_play(event):
                     try:
                         w = event.widget
@@ -182,7 +126,8 @@ class SettingsPage(tk.Tk):
                         play_button_click()
                     except Exception:
                         pass
-                self.bind_all('<ButtonRelease-1>', _maybe_play, add=True)
+
+                self.bind_all("<ButtonRelease-1>", _maybe_play, add=True)
                 self._click_sound_installed = True
         except Exception:
             pass
@@ -193,6 +138,9 @@ class SettingsPage(tk.Tk):
         self.shipName1_var.trace_add("write", self._update_full_ship_name)
         self.shipName2_var.trace_add("write", self._update_full_ship_name)
         self._update_full_ship_name()
+
+        if self._onboarding_mode:
+            self.after(250, self.open_onboarding_dialog)
 
     # ----- Theme -----
     # Applies theme to ttk widgets; affects widget styling
@@ -219,6 +167,7 @@ class SettingsPage(tk.Tk):
 
         notebook = ttk.Notebook(main_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        self.notebook = notebook
 
         # Profile tab (Username + Ship Name)
         profile_frame = ttk.Frame(notebook, padding="10")
@@ -226,6 +175,9 @@ class SettingsPage(tk.Tk):
         discord_frame = ttk.Frame(notebook, padding="10")
         # Preferences tab
         preferences_frame = ttk.Frame(notebook, padding="10")
+        self.profile_frame = profile_frame
+        self.discord_frame = discord_frame
+        self.preferences_frame = preferences_frame
 
         def load_tab_image(path):
             img = Image.open(path)
@@ -242,31 +194,37 @@ class SettingsPage(tk.Tk):
                 bg.paste(img, (0, 0))
                 img = bg
             return ImageTk.PhotoImage(img)
-        
+
         # Font system: Try to use Insignia font if available, fallback to Arial
         try:
             self.fs_sinclair_font = tkfont.Font(family="Insignia", size=14, weight="bold")
         except Exception:
             self.fs_sinclair_font = None
-        font_to_use = self.fs_sinclair_font if self.fs_sinclair_font is not None else tkfont.Font(family="Arial", size=14, weight="bold")
+        font_to_use = (
+            self.fs_sinclair_font
+            if self.fs_sinclair_font is not None
+            else tkfont.Font(family="Arial", size=14, weight="bold")
+        )
 
         # Profile tab images
-        self.profile_tab_img_normal = load_tab_image(app_path('media', 'SettingsInt', 'ProfileTabButtonDeactive.png'))
-        self.profile_tab_img_selected = load_tab_image(app_path('media', 'SettingsInt', 'ProfileTabButton.png'))
+        self.profile_tab_img_normal = load_tab_image(app_path("media", "SettingsInt", "ProfileTabButtonDeactive.png"))
+        self.profile_tab_img_selected = load_tab_image(app_path("media", "SettingsInt", "ProfileTabButton.png"))
 
         # Discord tab images
-        self.discord_tab_img_normal = load_tab_image(app_path('media', 'SettingsInt', 'DiscordTabButtonDeactive.png'))
-        self.discord_tab_img_selected = load_tab_image(app_path('media', 'SettingsInt', 'DiscordTabButton.png'))
+        self.discord_tab_img_normal = load_tab_image(app_path("media", "SettingsInt", "DiscordTabButtonDeactive.png"))
+        self.discord_tab_img_selected = load_tab_image(app_path("media", "SettingsInt", "DiscordTabButton.png"))
 
         # Personal preference tab images
-        self.preferences_tab_img_normal = load_tab_image(app_path('media', 'SettingsInt', 'PreferencesTabButtonDeactive.png'))
-        self.preferences_tab_img_selected = load_tab_image(app_path('media', 'SettingsInt', 'PreferencesTabButton.png'))
+        self.preferences_tab_img_normal = load_tab_image(
+            app_path("media", "SettingsInt", "PreferencesTabButtonDeactive.png")
+        )
+        self.preferences_tab_img_selected = load_tab_image(app_path("media", "SettingsInt", "PreferencesTabButton.png"))
 
         # Add tabs with images, remove border/padding
         notebook.add(profile_frame, text="", image=self.profile_tab_img_normal, compound=tk.CENTER, padding=0)
         notebook.add(discord_frame, text="", image=self.discord_tab_img_normal, compound=tk.CENTER, padding=0)
         notebook.add(preferences_frame, text="", image=self.preferences_tab_img_normal, compound=tk.CENTER, padding=0)
-        
+
         # Configure preferences_frame columns with equal sizing
         preferences_frame.columnconfigure(0, weight=1, uniform="buttons")
         preferences_frame.columnconfigure(1, weight=1, uniform="buttons")
@@ -289,15 +247,17 @@ class SettingsPage(tk.Tk):
 
         # Banner generation button with image and hover effect
         def load_generate_btn_img(path):
-            pil_img = Image.open(path).convert('RGBA')
+            pil_img = Image.open(path).convert("RGBA")
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
             bg_color = (37, 37, 38, 255)
-            background = Image.new('RGBA', pil_img.size, bg_color)
+            background = Image.new("RGBA", pil_img.size, bg_color)
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        generate_btn_img_tk = load_generate_btn_img(app_path('media', 'SettingsInt', 'GeneratePlacardButton.png'))
-        generate_btn_img_hover_tk = load_generate_btn_img(app_path('media', 'SettingsInt', 'GeneratePlacardButtonHover.png'))
+        generate_btn_img_tk = load_generate_btn_img(app_path("media", "SettingsInt", "GeneratePlacardButton.png"))
+        generate_btn_img_hover_tk = load_generate_btn_img(
+            app_path("media", "SettingsInt", "GeneratePlacardButtonHover.png")
+        )
 
         self.generate_banner_button = tk.Label(
             preferences_frame,
@@ -305,7 +265,7 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.generate_banner_button.image = generate_btn_img_tk
 
@@ -328,15 +288,17 @@ class SettingsPage(tk.Tk):
 
         # Export banner button with image and hover effect
         def load_export_btn_img(path):
-            pil_img = Image.open(path).convert('RGBA')
+            pil_img = Image.open(path).convert("RGBA")
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
             bg_color = (37, 37, 38, 255)
-            background = Image.new('RGBA', pil_img.size, bg_color)
+            background = Image.new("RGBA", pil_img.size, bg_color)
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        export_btn_img_tk = load_export_btn_img(app_path('media', 'SettingsInt', 'ExportPlayerCardButton.png'))
-        export_btn_img_hover_tk = load_export_btn_img(app_path('media', 'SettingsInt', 'ExportPlayerCardButtonHover.png'))
+        export_btn_img_tk = load_export_btn_img(app_path("media", "SettingsInt", "ExportPlayerCardButton.png"))
+        export_btn_img_hover_tk = load_export_btn_img(
+            app_path("media", "SettingsInt", "ExportPlayerCardButtonHover.png")
+        )
 
         self.export_banner_button = tk.Label(
             preferences_frame,
@@ -344,7 +306,7 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.export_banner_button.image = export_btn_img_tk
 
@@ -370,7 +332,7 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.generate_banner_button.image = generate_btn_img_tk
         self.generate_banner_button.pack(side=tk.LEFT, padx=(20, 40), pady=18)
@@ -384,7 +346,7 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.export_banner_button.image = export_btn_img_tk
         self.export_banner_button.pack(side=tk.RIGHT, padx=(40, 20), pady=18)
@@ -416,6 +378,7 @@ class SettingsPage(tk.Tk):
         # Wrap on_generate_banner so the Export button enables after generation
         try:
             _orig_on_generate_banner = self.on_generate_banner
+
             def _wrapped_on_generate_banner():
                 _orig_on_generate_banner()
                 try:
@@ -423,6 +386,7 @@ class SettingsPage(tk.Tk):
                         self.export_banner_button.state(["!disabled"])
                 except Exception:
                     pass
+
             self.on_generate_banner = _wrapped_on_generate_banner
         except Exception:
             pass
@@ -456,10 +420,38 @@ class SettingsPage(tk.Tk):
             except Exception:
                 pass
 
+            status_rows = []
+
+            progress_win = tk.Toplevel(self)
+            progress_win.title("Export Progress")
+            progress_win.transient(self)
+            progress_win.grab_set()
+            progress_win.resizable(False, False)
+            progress_win.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
+            ttk.Label(progress_win, text="Sending player card to webhooks...").pack(anchor=tk.W, padx=12, pady=(12, 6))
+            progress_var = tk.StringVar(value=f"0/{len(urls)} complete")
+            ttk.Label(progress_win, textvariable=progress_var).pack(anchor=tk.W, padx=12)
+            progress_bar = ttk.Progressbar(
+                progress_win, orient=tk.HORIZONTAL, mode="determinate", maximum=len(urls), value=0, length=420
+            )
+            progress_bar.pack(fill=tk.X, padx=12, pady=(6, 8))
+            status_box = tk.Text(progress_win, width=70, height=8, state=tk.DISABLED, wrap=tk.WORD)
+            status_box.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+
+            def _append_status(line: str):
+                try:
+                    status_box.configure(state=tk.NORMAL)
+                    status_box.insert(tk.END, f"{line}\n")
+                    status_box.see(tk.END)
+                    status_box.configure(state=tk.DISABLED)
+                except Exception:
+                    pass
+
             def _do_export():
                 errors = []
                 ok_count = 0
-                for url in urls:
+                total = len(urls)
+                for idx, url in enumerate(urls, start=1):
                     try:
                         with open(GENERATED_BANNER_PATH, "rb") as f:
                             payload = {
@@ -471,18 +463,37 @@ class SettingsPage(tk.Tk):
                                     }
                                 ],
                             }
-                            resp = requests.post(
+                            success, resp, err = post_webhook(
                                 url,
                                 data={"payload_json": json.dumps(payload)},
                                 files={"file": (GENERATED_BANNER_FILENAME, f, "image/png")},
                                 timeout=20,
+                                retries=2,
                             )
-                        if resp.status_code not in (200, 204):
-                            errors.append(f"{url} -> HTTP {resp.status_code}")
+                        if not success:
+                            short_reason, _ = classify_webhook_error(err)
+                            errors.append((url, err))
+                            status_rows.append(f"✗ {url} - {short_reason}")
                         else:
                             ok_count += 1
+                            status_rows.append(f"✓ {url} - Sent")
                     except Exception as e:
-                        errors.append(f"{url} -> {e}")
+                        err_text = str(e)
+                        short_reason, _ = classify_webhook_error(err_text)
+                        errors.append((url, err_text))
+                        status_rows.append(f"✗ {url} - {short_reason}")
+
+                    try:
+                        self.after(
+                            0,
+                            lambda i=idx, t=total, line=status_rows[-1]: (
+                                progress_bar.configure(value=i),
+                                progress_var.set(f"{i}/{t} complete"),
+                                _append_status(line),
+                            ),
+                        )
+                    except Exception:
+                        pass
 
                 def _finish():
                     try:
@@ -490,18 +501,23 @@ class SettingsPage(tk.Tk):
                     except Exception:
                         pass
                     self._export_in_progress = False
+                    try:
+                        progress_win.destroy()
+                    except Exception:
+                        pass
 
                     if errors:
                         logging.error(f"[settings] Export banner errors: {errors}")
+                        detail_lines = [format_webhook_failure_line(url, err) for url, err in errors[:6]]
+                        suffix = "\n- ..." if len(errors) > 6 else ""
                         messagebox.showerror(
                             "Export Failed",
-                            "One or more webhooks failed. Check your URLs and try again."
+                            f"Sent to {ok_count}/{len(urls)} webhook(s).\n\n"
+                            f"Failures:\n{chr(10).join(detail_lines)}{suffix}\n\n"
+                            "Open Health Check in Settings to validate your webhook URLs.",
                         )
                     else:
-                        messagebox.showinfo(
-                            "Export Complete",
-                            f"Sent player card to {ok_count} webhook(s)."
-                        )
+                        messagebox.showinfo("Export Complete", f"Sent player card to {ok_count} webhook(s).")
 
                 try:
                     self.after(0, _finish)
@@ -513,21 +529,21 @@ class SettingsPage(tk.Tk):
         # ------- Badge display settings -------
         # Always-on badges (not selectable, always visible if applicable to user)
         self._always_on_badges = [
-            ('bicon', 'Custom Icon'),
-            ('ticon', 'Test Icon'),
-            ('yearico', '1 Year'),
-            ('PIco', 'Platform Icon')
+            ("bicon", "Custom Icon"),
+            ("ticon", "Test Icon"),
+            ("yearico", "1 Year"),
+            ("PIco", "Platform Icon"),
         ]
-        
+
         # User-selectable badges (up to 4 can be chosen)
         self._available_badges = [
-            ('bsuperearth', 'Super Earth'),
-            ('bcyberstan', 'Cyberstan'),
-            ('bmaleveloncreek', 'Malevelon Creek'),
-            ('bcalypso', 'Calypso'),
-            ('bpopliix', 'Pöpli IX'),
-            ('bseyshelbeach', 'Seyshel Beach'),
-            ('boshaune', 'Oshaune')
+            ("bsuperearth", "Super Earth"),
+            ("bcyberstan", "Cyberstan"),
+            ("bmaleveloncreek", "Malevelon Creek"),
+            ("bcalypso", "Calypso"),
+            ("bpopliix", "Pöpli IX"),
+            ("bseyshelbeach", "Seyshel Beach"),
+            ("boshaune", "Oshaune"),
         ]
 
         # BooleanVars for each selectable badge (always-on badges don't need vars)
@@ -548,9 +564,9 @@ class SettingsPage(tk.Tk):
         # If DCord.json already exists, load saved badge display order/state now
         try:
             if os.path.exists(DCORD_PATH):
-                with open(DCORD_PATH, 'r', encoding='utf-8') as f:
+                with open(DCORD_PATH, "r", encoding="utf-8") as f:
                     _d = json.load(f)
-                _saved = _d.get('display_badges') or []
+                _saved = _d.get("display_badges") or []
                 if isinstance(_saved, list):
                     for k in self.badge_vars:
                         try:
@@ -590,14 +606,10 @@ class SettingsPage(tk.Tk):
         sector_list = list(sectors_data.keys()) if sectors_data else []
         default_sector = "Sol System" if "Sol System" in sector_list else (sector_list[0] if sector_list else "")
         self.sector_var = tk.StringVar(value=default_sector)
-        
+
         ttk.Label(homeworld_lf, text="Sector:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
         self.sector_combo = ttk.Combobox(
-            homeworld_lf,
-            textvariable=self.sector_var,
-            values=sector_list,
-            state="readonly",
-            width=12
+            homeworld_lf, textvariable=self.sector_var, values=sector_list, state="readonly", width=12
         )
         self.sector_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=2)
 
@@ -620,18 +632,16 @@ class SettingsPage(tk.Tk):
 
         # Initialize planet selection
         initial_planets = sectors_data.get(default_sector, {}).get("planets", []) if sectors_data else []
-        default_planet = "Super Earth" if "Super Earth" in initial_planets else (initial_planets[0] if initial_planets else "")
-        self.planet_var = tk.StringVar(value=default_planet)
-        
-        ttk.Label(homeworld_lf, text="Planet:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=(50,0))
-        self.planet_combo = ttk.Combobox(
-            homeworld_lf,
-            textvariable=self.planet_var,
-            values=initial_planets,
-            state="readonly",
-            width=12
+        default_planet = (
+            "Super Earth" if "Super Earth" in initial_planets else (initial_planets[0] if initial_planets else "")
         )
-        self.planet_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=(50,0))
+        self.planet_var = tk.StringVar(value=default_planet)
+
+        ttk.Label(homeworld_lf, text="Planet:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=(50, 0))
+        self.planet_combo = ttk.Combobox(
+            homeworld_lf, textvariable=self.planet_var, values=initial_planets, state="readonly", width=12
+        )
+        self.planet_combo.grid(row=0, column=1, sticky=(tk.W, tk.E), padx=5, pady=(50, 0))
 
         # Planet Preview (image only, no frame) - positioned to the right
         self.planet_preview_label = ttk.Label(homeworld_lf, text="", background="#252526")
@@ -644,7 +654,7 @@ class SettingsPage(tk.Tk):
         self.sector_preview_label.grid(row=0, column=3, rowspan=2, padx=(10, 10), pady=(10, 5))
 
         # Bind sector change to update planets
-        self.sector_var.trace('w', update_planets)
+        self.sector_var.trace("w", update_planets)
 
         # Check if homeworld is already set and disable controls if so
         homeworld_is_set = saved_homeworld is not None
@@ -671,14 +681,14 @@ class SettingsPage(tk.Tk):
                         if saved_planet in sector_info.get("planets", []):
                             found_sector = sector_name
                             break
-                    
+
                     if found_sector and found_sector in sector_list:
                         self.sector_var.set(found_sector)
                         update_planets()  # This will populate planets for the sector
                         self.planet_var.set(saved_planet)
             except Exception:
                 pass
-            
+
             # Disable the controls
             self.sector_combo.configure(state="disabled")
             self.planet_combo.configure(state="disabled")
@@ -687,66 +697,70 @@ class SettingsPage(tk.Tk):
         def save_homeworld():
             selected_sector = self.sector_var.get()
             selected_planet = self.planet_var.get()
-            
+
             if not selected_sector or not selected_planet:
                 messagebox.showwarning("Invalid Selection", "Please select both a sector and planet.")
                 return
-            
+
             # Ask for confirmation before setting homeworld
             confirm = messagebox.askyesno(
                 "Confirm Homeworld",
                 f"Are you sure you want to set your homeworld to {selected_planet}?\n\n"
-                "This action CANNOT be undone or changed once confirmed."
+                "This action CANNOT be undone or changed once confirmed.",
             )
-            
+
             if not confirm:
                 # User clicked No, abort the operation
                 return
-            
+
             homeworld_value = selected_planet  # Save only the planet name, not the sector
-            
+
             # Save to settings.json
             try:
                 # Ensure directory exists
                 settings_dir = os.path.dirname(SETTINGS_PATH)
                 os.makedirs(settings_dir, exist_ok=True)
-                
+
                 settings_data = {}
                 if os.path.exists(SETTINGS_PATH):
                     with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
                         settings_data = json.load(f)
-                
+
                 settings_data["Player Homeworld"] = homeworld_value
-                
+
                 with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
                     json.dump(settings_data, f, indent=4)
-                
+
                 # Disable the controls after saving
                 self.sector_combo.configure(state="disabled")
                 self.planet_combo.configure(state="disabled")
-                
+
                 # Disable the button with deactive image
                 self.homeworld_button_enabled = False
                 self.save_homeworld_button.configure(image=homeworld_btn_img_deactive_tk, cursor="")
                 self.save_homeworld_button.image = homeworld_btn_img_deactive_tk
-                
+
                 messagebox.showinfo("Homeworld Set", f"Your homeworld has been set to {selected_planet}.")
-                
+
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to save homeworld: {e}")
 
         # Load and subsample images for Set Homeworld button
         def load_homeworld_btn_img(path):
-            pil_img = Image.open(path).convert('RGBA')
+            pil_img = Image.open(path).convert("RGBA")
             pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
             bg_color = (37, 37, 38, 255)
-            background = Image.new('RGBA', pil_img.size, bg_color)
+            background = Image.new("RGBA", pil_img.size, bg_color)
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        homeworld_btn_img_tk = load_homeworld_btn_img(app_path('media', 'SettingsInt', 'SetHomeworldButton.png'))
-        homeworld_btn_img_hover_tk = load_homeworld_btn_img(app_path('media', 'SettingsInt', 'SetHomeworldButtonHover.png'))
-        homeworld_btn_img_deactive_tk = load_homeworld_btn_img(app_path('media', 'SettingsInt', 'SetHomeworldButtonDeactive.png'))
+        homeworld_btn_img_tk = load_homeworld_btn_img(app_path("media", "SettingsInt", "SetHomeworldButton.png"))
+        homeworld_btn_img_hover_tk = load_homeworld_btn_img(
+            app_path("media", "SettingsInt", "SetHomeworldButtonHover.png")
+        )
+        homeworld_btn_img_deactive_tk = load_homeworld_btn_img(
+            app_path("media", "SettingsInt", "SetHomeworldButtonDeactive.png")
+        )
 
         self.save_homeworld_button = tk.Label(
             homeworld_lf,
@@ -754,11 +768,11 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.save_homeworld_button.image = homeworld_btn_img_tk
         self.save_homeworld_button.grid(row=1, column=0, columnspan=2, padx=(50, 0), pady=10)
-        
+
         # Track button state
         self.homeworld_button_enabled = True
 
@@ -784,7 +798,7 @@ class SettingsPage(tk.Tk):
         self.save_homeworld_button.bind("<Enter>", on_homeworld_btn_enter)
         self.save_homeworld_button.bind("<Leave>", on_homeworld_btn_leave)
         self.save_homeworld_button.bind("<Button-1>", play_homeworld_click)
-        
+
         # Add disclaimer label
         disclaimer_text = "⚠️ DISCLAIMER: Your Homeworld CANNOT be changed once submitted.\nYour Homeworld should be your first ever planet visited, not necessarily your first logged planet."
         disclaimer_label = ttk.Label(
@@ -793,10 +807,10 @@ class SettingsPage(tk.Tk):
             font=("Segoe UI", 9),
             foreground="#E74C3C",
             justify=tk.CENTER,
-            wraplength=2000
+            wraplength=2000,
         )
         disclaimer_label.grid(row=3, column=0, columnspan=4, pady=(2, 5), sticky=tk.EW, padx=10)
-        
+
         # Disable button if homeworld is already set
         if homeworld_is_set:
             self.homeworld_button_enabled = False
@@ -807,66 +821,66 @@ class SettingsPage(tk.Tk):
         def update_planet_preview(*args):
             selected_planet = self.planet_var.get()
             if not selected_planet:
-                self.planet_preview_label.configure(image='')
+                self.planet_preview_label.configure(image="")
                 return
-            
+
             try:
                 # Load BiomePlanets.json to get the biome
-                biome_path = app_path('JSON', 'BiomePlanets.json')
+                biome_path = app_path("JSON", "BiomePlanets.json")
                 with open(biome_path, "r", encoding="utf-8") as f:
                     biome_data = json.load(f)
-                
+
                 # Get biome for the selected planet
                 biome = biome_data.get(selected_planet, "Tundra")  # Default to Tundra if not found
-                
+
                 # Load the planet image
-                planet_img_path = app_path('media', 'planets', f"{biome}.png")
+                planet_img_path = app_path("media", "planets", f"{biome}.png")
                 if planet_img_path and os.path.exists(planet_img_path):
                     planet_img = Image.open(planet_img_path).convert("RGBA")
                     planet_img = planet_img.resize((120, 120), Image.Resampling.LANCZOS)
-                    
+
                     # Create background
                     background = Image.new("RGBA", (120, 120), "#252526")
-                    
+
                     # Composite planet on background
                     background.paste(planet_img, (0, 0), planet_img)
-                    
+
                     # Convert to PhotoImage
                     self.planet_preview_photo = ImageTk.PhotoImage(background)
                     self.planet_preview_label.configure(image=self.planet_preview_photo)
                 else:
-                    self.planet_preview_label.configure(image='')
+                    self.planet_preview_label.configure(image="")
             except Exception as e:
                 logging.error(f"[settings] Failed to update planet preview: {e}")
-                self.planet_preview_label.configure(image='')
+                self.planet_preview_label.configure(image="")
 
         # Sector Preview update function
         def update_sector_preview(*args):
             selected_sector = self.sector_var.get()
             if not selected_sector or selected_sector not in sectors_data:
-                self.sector_preview_label.configure(image='')
+                self.sector_preview_label.configure(image="")
                 return
-            
+
             try:
                 # Get enemy type for the sector
                 enemy_type = sectors_data[selected_sector].get("enemy", "Observing")
-                
+
                 # Map enemy types to colors
                 enemy_colors = {
                     "Automatons": "#ff6d6d",
                     "Terminids": "#ffc100",
                     "Illuminate": "#8960ca",
-                    "Observing": "#41639C"
+                    "Observing": "#41639C",
                 }
-                
+
                 enemy_color = enemy_colors.get(enemy_type, "#41639C")
-                
+
                 # Load the sector image
-                sector_img_path = app_path('media', 'sectors', f"{selected_sector}.png")
+                sector_img_path = app_path("media", "sectors", f"{selected_sector}.png")
                 if sector_img_path and os.path.exists(sector_img_path):
                     sector_img = Image.open(sector_img_path).convert("RGBA")
                     sector_img = sector_img.resize((120, 120), Image.Resampling.LANCZOS)
-                    
+
                     # Apply color chroma - replace white pixels with enemy color
                     pixels = sector_img.load()
                     for y in range(sector_img.height):
@@ -875,28 +889,28 @@ class SettingsPage(tk.Tk):
                             # Check if pixel is white (or close to white)
                             if r > 200 and g > 200 and b > 200 and a > 0:
                                 # Parse enemy color
-                                ec = enemy_color.lstrip('#')
-                                er, eg, eb = tuple(int(ec[i:i+2], 16) for i in (0, 2, 4))
+                                ec = enemy_color.lstrip("#")
+                                er, eg, eb = tuple(int(ec[i : i + 2], 16) for i in (0, 2, 4))
                                 pixels[x, y] = (er, eg, eb, a)
-                    
+
                     # Create background
                     background = Image.new("RGBA", (120, 120), "#252526")
-                    
+
                     # Composite sector on background
                     background.paste(sector_img, (0, 0), sector_img)
-                    
+
                     # Convert to PhotoImage
                     self.sector_preview_photo = ImageTk.PhotoImage(background)
                     self.sector_preview_label.configure(image=self.sector_preview_photo)
                 else:
-                    self.sector_preview_label.configure(image='')
+                    self.sector_preview_label.configure(image="")
             except Exception as e:
                 logging.error(f"[settings] Failed to update sector preview: {e}")
-                self.sector_preview_label.configure(image='')
+                self.sector_preview_label.configure(image="")
 
         # Bind preview updates to combobox changes
-        self.planet_var.trace('w', update_planet_preview)
-        self.sector_var.trace('w', update_sector_preview)
+        self.planet_var.trace("w", update_planet_preview)
+        self.sector_var.trace("w", update_sector_preview)
 
         # Initialize previews
         update_planet_preview()
@@ -904,17 +918,46 @@ class SettingsPage(tk.Tk):
 
         # Remove tab border/highlight (like other buttons)
         style = ttk.Style()
-        style.layout("TNotebook.Tab", [
-            ('Notebook.tab', {'sticky': 'nswe', 'children': [
-            ('Notebook.padding', {'side': 'top', 'sticky': 'nswe', 'children': [
-                ('Notebook.focus', {'side': 'top', 'sticky': 'nswe', 'children': [
-                ('Notebook.image', {'side': 'left', 'sticky': ''}),
-                ]}),
-            ]}),
-            ]}),
-        ])
+        style.layout(
+            "TNotebook.Tab",
+            [
+                (
+                    "Notebook.tab",
+                    {
+                        "sticky": "nswe",
+                        "children": [
+                            (
+                                "Notebook.padding",
+                                {
+                                    "side": "top",
+                                    "sticky": "nswe",
+                                    "children": [
+                                        (
+                                            "Notebook.focus",
+                                            {
+                                                "side": "top",
+                                                "sticky": "nswe",
+                                                "children": [
+                                                    ("Notebook.image", {"side": "left", "sticky": ""}),
+                                                ],
+                                            },
+                                        ),
+                                    ],
+                                },
+                            ),
+                        ],
+                    },
+                ),
+            ],
+        )
         style.configure("TNotebook.Tab", borderwidth=0, highlightthickness=0, padding=0)
-        style.map("TNotebook.Tab", background=[("selected", DEFAULT_THEME["."]["configure"]["background"]), ("!selected", DEFAULT_THEME["."]["configure"]["background"])])
+        style.map(
+            "TNotebook.Tab",
+            background=[
+                ("selected", DEFAULT_THEME["."]["configure"]["background"]),
+                ("!selected", DEFAULT_THEME["."]["configure"]["background"]),
+            ],
+        )
 
         def update_tab_images(event=None):
             selected = notebook.index(notebook.select())
@@ -945,13 +988,19 @@ class SettingsPage(tk.Tk):
         identity_lf.columnconfigure(1, weight=1)
 
         ttk.Label(identity_lf, text="Username:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(identity_lf, textvariable=self.Helldivers, width=30).grid(row=0, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
+        ttk.Entry(identity_lf, textvariable=self.Helldivers, width=30).grid(
+            row=0, column=1, padx=5, pady=5, sticky=(tk.W, tk.E)
+        )
 
         ttk.Label(identity_lf, text="Destroyer Name:").grid(row=1, column=0, sticky=tk.W, pady=5)
-        self.ship1_combo = ttk.Combobox(identity_lf, textvariable=self.shipName1_var, values=self.shipName1s, state='readonly', width=18)
+        self.ship1_combo = ttk.Combobox(
+            identity_lf, textvariable=self.shipName1_var, values=self.shipName1s, state="readonly", width=18
+        )
         self.ship1_combo.grid(row=1, column=1, padx=5, pady=5, sticky=(tk.W, tk.E))
-        self.ship2_combo = ttk.Combobox(identity_lf, textvariable=self.shipName2_var, values=self.shipName2s, state='readonly', width=25)
-        self.ship2_combo.grid(row=1, column=2, sticky=tk.W, padx=(3,0), pady=5)
+        self.ship2_combo = ttk.Combobox(
+            identity_lf, textvariable=self.shipName2_var, values=self.shipName2s, state="readonly", width=25
+        )
+        self.ship2_combo.grid(row=1, column=2, sticky=tk.W, padx=(3, 0), pady=5)
 
         # Preview section
         preview_label = ttk.Label(profile_frame, text="Destroyer Preview", font=font_to_use)
@@ -970,18 +1019,22 @@ class SettingsPage(tk.Tk):
             self.preview_name_label.config(foreground=color if color else DEFAULT_THEME["."]["configure"]["foreground"])
             # Show/hide note label
             if val == "SES Founding Father of Family Values":
-                self.preview_note_label.config(text="'You got this from Max0r, didn't you?'",foreground="#897f0d")
+                self.preview_note_label.config(text="'You got this from Max0r, didn't you?'", foreground="#897f0d")
             elif val == "SES Herald of Wrath":
-                self.preview_note_label.config(text="'May Malice guide your path to freedom, and the enemies of democracy be at your mercy.'",foreground="#897f0d") # Easter egg text
+                self.preview_note_label.config(
+                    text="'May Malice guide your path to freedom, and the enemies of democracy be at your mercy.'",
+                    foreground="#897f0d",
+                )  # Easter egg text
             elif val == "SES Mother of Democracy":
-                self.preview_note_label.config(text="'She'll be sure to bring you a glass of warm milk, a plate of cookies and FREEDOM!'",foreground="#897f0d")
+                self.preview_note_label.config(
+                    text="'She'll be sure to bring you a glass of warm milk, a plate of cookies and FREEDOM!'",
+                    foreground="#897f0d",
+                )
             else:
                 self.preview_note_label.config(text="")
 
         self.preview_name_label = ttk.Label(
-            preview_lf,
-            textvariable=self.full_ship_name_var,
-            font=(font_to_use.actual("family"), 24, "bold")
+            preview_lf, textvariable=self.full_ship_name_var, font=(font_to_use.actual("family"), 24, "bold")
         )
         self.preview_name_label.grid(row=0, column=1, sticky=tk.W, padx=(5, 5), pady=5)
 
@@ -991,7 +1044,7 @@ class SettingsPage(tk.Tk):
             text="",
             font=(font_to_use.actual("family"), 12, "italic"),
             foreground=DEFAULT_THEME["."]["configure"]["foreground"],
-            anchor="center"
+            anchor="center",
         )
         # Move note label to row=2 to avoid overlap with image, center it across both columns
         self.preview_note_label.grid(row=2, column=0, columnspan=2, pady=(0, 5))
@@ -1008,6 +1061,7 @@ class SettingsPage(tk.Tk):
         preview_lf.columnconfigure(0, weight=0)
         preview_lf.columnconfigure(1, weight=1)
         preview_lf.columnconfigure(2, weight=1)
+
         # Use a larger size for preview image
         def load_large_preview_image(image_path, size=(560, 288)):
             try:
@@ -1018,12 +1072,12 @@ class SettingsPage(tk.Tk):
                 logging.warning(f"[settings] Failed to load preview image: {e}")
                 return None
 
-        preview_img = load_large_preview_image(app_path('media', 'SettingsInt', 'SuperDestroyerWF.png'))
+        preview_img = load_large_preview_image(app_path("media", "SettingsInt", "SuperDestroyerWF.png"))
         if preview_img:
             self.preview_image_label.config(image=preview_img)
             self.preview_image_label.image = preview_img
         else:
-            self.preview_image_label.config(image='')
+            self.preview_image_label.config(image="")
 
         # Badge Display section in Profile tab
         badge_label = ttk.Label(profile_frame, text="Badge Display", font=font_to_use)
@@ -1041,7 +1095,12 @@ class SettingsPage(tk.Tk):
 
         # Create checkbuttons for selectable badges in two columns
         for idx, (key, label_text) in enumerate(self._available_badges):
-            rb = ttk.Checkbutton(badge_frame, text=label_text, variable=self.badge_vars[key], command=lambda k=key: self._badge_toggle_callback(k))
+            rb = ttk.Checkbutton(
+                badge_frame,
+                text=label_text,
+                variable=self.badge_vars[key],
+                command=lambda k=key: self._badge_toggle_callback(k),
+            )
             r = idx // 2
             c = idx % 2
             rb.grid(row=r, column=c, sticky=tk.W, padx=5, pady=2)
@@ -1060,13 +1119,13 @@ class SettingsPage(tk.Tk):
 
         # Map badge keys to image filenames
         badge_to_filename = {
-            'bsuperearth': 'bsup.png',
-            'bcyberstan': 'bcyb.png',
-            'bmaleveloncreek': 'bmal.png',
-            'bcalypso': 'bcal.png',
-            'bpopliix': 'bpop.png',
-            'bseyshelbeach': 'bsey.png',
-            'boshaune': 'bosh.png'
+            "bsuperearth": "bsup.png",
+            "bcyberstan": "bcyb.png",
+            "bmaleveloncreek": "bmal.png",
+            "bcalypso": "bcal.png",
+            "bpopliix": "bpop.png",
+            "bseyshelbeach": "bsey.png",
+            "boshaune": "bosh.png",
         }
 
         def update_badge_preview():
@@ -1076,7 +1135,7 @@ class SettingsPage(tk.Tk):
 
             # Create a centered row container to hold badges (so group centers)
             badge_row = ttk.Frame(self.badge_preview_frame)
-            badge_row.pack(anchor='center', pady=4)
+            badge_row.pack(anchor="center", pady=4)
 
             # Get selected badges in order
             selected = [(k, label) for k, label in self._available_badges if self.badge_vars[k].get()]
@@ -1088,12 +1147,14 @@ class SettingsPage(tk.Tk):
                 # Load and display badge images inside the centered row
                 for key, label_text in selected:
                     try:
-                        badge_path = app_path('media', 'badges', badge_to_filename.get(key, ''))
+                        badge_path = app_path("media", "badges", badge_to_filename.get(key, ""))
                         if os.path.exists(badge_path):
                             img = Image.open(badge_path)
                             img = img.resize((60, 60), Image.LANCZOS)
                             photo = ImageTk.PhotoImage(img)
-                            badge_lbl = tk.Label(badge_row, image=photo, bg=DEFAULT_THEME["."]["configure"]["background"], bd=0)
+                            badge_lbl = tk.Label(
+                                badge_row, image=photo, bg=DEFAULT_THEME["."]["configure"]["background"], bd=0
+                            )
                             badge_lbl.image = photo
                             badge_lbl.pack(side=tk.LEFT, padx=6)
                     except Exception as e:
@@ -1101,9 +1162,11 @@ class SettingsPage(tk.Tk):
 
         # Wrap callback to update preview
         original_callback = self._badge_toggle_callback
+
         def updated_callback(changed_key=None):
             original_callback(changed_key)
             update_badge_preview()
+
         self._badge_toggle_callback = updated_callback
 
         # Existing checkbuttons already call `self._badge_toggle_callback`; no reconfiguration needed
@@ -1111,27 +1174,34 @@ class SettingsPage(tk.Tk):
         # Initial preview
         update_badge_preview()
 
-
         # Account section
         account_label = ttk.Label(discord_frame, text="Account", font=self.fs_sinclair_font)
         account_lf = ttk.LabelFrame(discord_frame, labelwidget=account_label, padding=10)
         account_lf.grid(row=0, column=0, columnspan=2, sticky=(tk.W, tk.E), padx=15, pady=10)
         account_lf.columnconfigure(1, weight=1)
         ttk.Label(account_lf, text="Discord User ID:").grid(row=0, column=0, sticky=tk.W, pady=5)
-        ttk.Entry(account_lf, textvariable=self.discord_uid_var, width=30).grid(row=0, column=1, sticky=(tk.W, tk.E), padx=10, pady=5)
-        ttk.Label(account_lf, text="Platform:").grid(row=0, column=2, sticky=tk.W, padx=(20,5))
-        self.platform_combo = ttk.Combobox(account_lf, textvariable=self.platform_var, values=["Not Selected", "Steam", "PlayStation", "Xbox"], state="readonly", width=12)
+        ttk.Entry(account_lf, textvariable=self.discord_uid_var, width=30).grid(
+            row=0, column=1, sticky=(tk.W, tk.E), padx=10, pady=5
+        )
+        ttk.Label(account_lf, text="Platform:").grid(row=0, column=2, sticky=tk.W, padx=(20, 5))
+        self.platform_combo = ttk.Combobox(
+            account_lf,
+            textvariable=self.platform_var,
+            values=["Not Selected", "Steam", "PlayStation", "Xbox"],
+            state="readonly",
+            width=12,
+        )
         self.platform_combo.grid(row=0, column=3, sticky=tk.W)
         # Do-not-send to Discord toggle
         self.dont_send_chk = ttk.Checkbutton(
             account_lf,
-            text="Don't send results to Discord (We send it to an internal webhook instead)", # Too lazy to implement actual logic so hopefully this is fine for now
+            text="Don't send results to Discord (We send it to an internal webhook instead)",  # Too lazy to implement actual logic so hopefully this is fine for now
             variable=self.dont_send_to_discord_var,
             command=self.on_dont_send_toggle,
         )
-        self.dont_send_chk.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(5,0))
+        self.dont_send_chk.grid(row=1, column=0, columnspan=4, sticky=tk.W, pady=(5, 0))
 
-# START BADGE PREVIEW
+        # START BADGE PREVIEW
         # Platform Badges (horizontal images underneath webhook frame)
         platform_badges_frame = ttk.Frame(discord_frame)
         # Place with reduced left and top margins, adjust y to close the gap
@@ -1154,9 +1224,9 @@ class SettingsPage(tk.Tk):
             for plat in platforms:
                 active, inactive = badge_files[plat]
                 if plat == selected_platform:
-                    paths.append(app_path('media', 'SettingsInt', active))
+                    paths.append(app_path("media", "SettingsInt", active))
                 else:
-                    paths.append(app_path('media', 'SettingsInt', inactive))
+                    paths.append(app_path("media", "SettingsInt", inactive))
             return paths
 
         badge_paths = get_badge_paths(self.platform_var.get())
@@ -1177,7 +1247,7 @@ class SettingsPage(tk.Tk):
                 lbl.image = img
 
         self.platform_var.trace_add("write", update_badges)
-#END BADGE PREVIEW
+        # END BADGE PREVIEW
 
         # Webhooks section
         hooks_label = ttk.Label(discord_frame, text="Webhooks", font=self.fs_sinclair_font)
@@ -1192,33 +1262,38 @@ class SettingsPage(tk.Tk):
         self.webhooks_listbox_logging.grid(row=2, column=0, sticky=(tk.W, tk.E))
         # Dark style for listboxes
         try:
-            self.webhooks_listbox_logging.configure(bg="#1e1e1e", fg="#ffffff", selectbackground="#3a3d41", highlightthickness=0)
+            self.webhooks_listbox_logging.configure(
+                bg="#1e1e1e", fg="#ffffff", selectbackground="#3a3d41", highlightthickness=0
+            )
         except tk.TclError:
             pass
         log_scroll = ttk.Scrollbar(hooks_lf, orient=tk.VERTICAL, command=self.webhooks_listbox_logging.yview)
-        log_scroll.grid(row=2, column=1, sticky=tk.N+tk.S+tk.W, padx=(5,0))
+        log_scroll.grid(row=2, column=1, sticky=tk.N + tk.S + tk.W, padx=(5, 0))
         self.webhooks_listbox_logging.configure(yscrollcommand=log_scroll.set)
         log_controls = ttk.Frame(hooks_lf)
         log_controls.grid(row=3, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.new_webhook_label_var_logging = tk.StringVar()
         self.new_webhook_var_logging = tk.StringVar()
         ttk.Label(log_controls, text="Label:").pack(side=tk.LEFT, padx=5)
-        self.entry_webhook_label_logging = ttk.Entry(log_controls, textvariable=self.new_webhook_label_var_logging, width=20)
+        self.entry_webhook_label_logging = ttk.Entry(
+            log_controls, textvariable=self.new_webhook_label_var_logging, width=20
+        )
         self.entry_webhook_label_logging.pack(side=tk.LEFT, padx=5)
         ttk.Label(log_controls, text="URL:").pack(side=tk.LEFT, padx=5)
         self.entry_webhook_url_logging = ttk.Entry(log_controls, textvariable=self.new_webhook_var_logging, width=40)
         self.entry_webhook_url_logging.pack(side=tk.LEFT, padx=5)
+
         # Load and subsample images for Add button (logging)
         def load_add_btn_img(path):
-            pil_img = Image.open(path).convert('RGBA')
+            pil_img = Image.open(path).convert("RGBA")
             pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
             bg_color = (37, 37, 38, 255)
-            background = Image.new('RGBA', pil_img.size, bg_color)
+            background = Image.new("RGBA", pil_img.size, bg_color)
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        add_btn_img_tk = load_add_btn_img(app_path('media', 'SettingsInt', 'AddButton.png'))
-        add_btn_img_hover_tk = load_add_btn_img(app_path('media', 'SettingsInt', 'AddButtonHover.png'))
+        add_btn_img_tk = load_add_btn_img(app_path("media", "SettingsInt", "AddButton.png"))
+        add_btn_img_hover_tk = load_add_btn_img(app_path("media", "SettingsInt", "AddButtonHover.png"))
 
         self.add_webhook_logging_btn = tk.Label(
             log_controls,
@@ -1226,7 +1301,7 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.add_webhook_logging_btn.image = add_btn_img_tk  # Prevent garbage collection
         self.add_webhook_logging_btn.pack(side=tk.LEFT, padx=5)
@@ -1249,16 +1324,19 @@ class SettingsPage(tk.Tk):
         self.add_webhook_logging_btn.bind("<Button-1>", play_add_click)
         # Remove button with hover effect (logging webhooks)
         try:
+
             def load_remove_btn_img(path):
-                pil_img = Image.open(path).convert('RGBA')
+                pil_img = Image.open(path).convert("RGBA")
                 pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
                 bg_color = (37, 37, 38, 255)
-                background = Image.new('RGBA', pil_img.size, bg_color)
+                background = Image.new("RGBA", pil_img.size, bg_color)
                 pil_img = Image.alpha_composite(background, pil_img)
                 return ImageTk.PhotoImage(pil_img)
 
-            remove_btn_img_tk = load_remove_btn_img(app_path('media', 'SettingsInt', 'RemoveSelectedButton.png'))
-            remove_btn_img_hover_tk = load_remove_btn_img(app_path('media', 'SettingsInt', 'RemoveSelectedButtonHover.png'))
+            remove_btn_img_tk = load_remove_btn_img(app_path("media", "SettingsInt", "RemoveSelectedButton.png"))
+            remove_btn_img_hover_tk = load_remove_btn_img(
+                app_path("media", "SettingsInt", "RemoveSelectedButtonHover.png")
+            )
 
             self.remove_webhook_logging_btn = tk.Label(
                 log_controls,
@@ -1266,7 +1344,7 @@ class SettingsPage(tk.Tk):
                 bd=0,
                 highlightthickness=0,
                 bg=DEFAULT_THEME["."]["configure"]["background"],
-                cursor="hand2"
+                cursor="hand2",
             )
             self.remove_webhook_logging_btn.image = remove_btn_img_tk
             self.remove_webhook_logging_btn.pack(side=tk.LEFT, padx=5)
@@ -1289,46 +1367,49 @@ class SettingsPage(tk.Tk):
             self.remove_webhook_logging_btn.bind("<Button-1>", play_remove_click)
         except Exception as e:
             logging.warning(f"Failed to load remove button image: {e}")
-            fallback_btn = ttk.Button(
-                log_controls,
-                text="Remove",
-                command=self.remove_webhook_logging
-            )
+            fallback_btn = ttk.Button(log_controls, text="Remove", command=self.remove_webhook_logging)
             fallback_btn.pack(side=tk.LEFT, padx=5)
 
         # Export webhooks
-        ttk.Label(hooks_lf, text="Export (faction data, etc.)", font=("Arial", 10, "bold")).grid(row=4, column=0, sticky=tk.W, pady=(10,0))
+        ttk.Label(hooks_lf, text="Export (faction data, etc.)", font=("Arial", 10, "bold")).grid(
+            row=4, column=0, sticky=tk.W, pady=(10, 0)
+        )
         ttk.Label(hooks_lf, text="Label: URL (or toggle below)").grid(row=5, column=0, sticky=tk.W)
         self.webhooks_listbox_export = tk.Listbox(hooks_lf, width=60, height=5)
         self.webhooks_listbox_export.grid(row=6, column=0, sticky=(tk.W, tk.E))
         try:
-            self.webhooks_listbox_export.configure(bg="#1e1e1e", fg="#ffffff", selectbackground="#3a3d41", highlightthickness=0)
+            self.webhooks_listbox_export.configure(
+                bg="#1e1e1e", fg="#ffffff", selectbackground="#3a3d41", highlightthickness=0
+            )
         except tk.TclError:
             pass
         exp_scroll = ttk.Scrollbar(hooks_lf, orient=tk.VERTICAL, command=self.webhooks_listbox_export.yview)
-        exp_scroll.grid(row=6, column=1, sticky=tk.N+tk.S+tk.W, padx=(5,0))
+        exp_scroll.grid(row=6, column=1, sticky=tk.N + tk.S + tk.W, padx=(5, 0))
         self.webhooks_listbox_export.configure(yscrollcommand=exp_scroll.set)
         exp_controls = ttk.Frame(hooks_lf)
         exp_controls.grid(row=7, column=0, columnspan=2, sticky=tk.W, pady=5)
         self.new_webhook_label_var_export = tk.StringVar()
         self.new_webhook_var_export = tk.StringVar()
         ttk.Label(exp_controls, text="Label:").pack(side=tk.LEFT, padx=5)
-        self.entry_webhook_label_export = ttk.Entry(exp_controls, textvariable=self.new_webhook_label_var_export, width=20)
+        self.entry_webhook_label_export = ttk.Entry(
+            exp_controls, textvariable=self.new_webhook_label_var_export, width=20
+        )
         self.entry_webhook_label_export.pack(side=tk.LEFT, padx=5)
         ttk.Label(exp_controls, text="URL:").pack(side=tk.LEFT, padx=5)
         self.entry_webhook_url_export = ttk.Entry(exp_controls, textvariable=self.new_webhook_var_export, width=40)
         self.entry_webhook_url_export.pack(side=tk.LEFT, padx=5)
+
         # Load and subsample images for Add button (export) with dark compositing
         def load_add_btn_img_export(path):
-            pil_img = Image.open(path).convert('RGBA')
+            pil_img = Image.open(path).convert("RGBA")
             pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
             bg_color = (37, 37, 38, 255)
-            background = Image.new('RGBA', pil_img.size, bg_color)
+            background = Image.new("RGBA", pil_img.size, bg_color)
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        add_btn_img_export_tk = load_add_btn_img_export(app_path('media', 'SettingsInt', 'AddButton.png'))
-        add_btn_img_export_hover_tk = load_add_btn_img_export(app_path('media', 'SettingsInt', 'AddButtonHover.png'))
+        add_btn_img_export_tk = load_add_btn_img_export(app_path("media", "SettingsInt", "AddButton.png"))
+        add_btn_img_export_hover_tk = load_add_btn_img_export(app_path("media", "SettingsInt", "AddButtonHover.png"))
 
         self.add_webhook_export_btn = tk.Label(
             exp_controls,
@@ -1336,7 +1417,7 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.add_webhook_export_btn.image = add_btn_img_export_tk
         self.add_webhook_export_btn.pack(side=tk.LEFT, padx=5)
@@ -1353,17 +1434,22 @@ class SettingsPage(tk.Tk):
 
         self.add_webhook_export_btn.bind("<Enter>", on_add_btn_export_enter)
         self.add_webhook_export_btn.bind("<Leave>", on_add_btn_export_leave)
+
         # Load and subsample images for Remove button (export) with dark compositing
         def load_remove_btn_img_export(path):
-            pil_img = Image.open(path).convert('RGBA')
+            pil_img = Image.open(path).convert("RGBA")
             pil_img = pil_img.resize((pil_img.width // 5, pil_img.height // 5), Image.LANCZOS)
             bg_color = (37, 37, 38, 255)
-            background = Image.new('RGBA', pil_img.size, bg_color)
+            background = Image.new("RGBA", pil_img.size, bg_color)
             pil_img = Image.alpha_composite(background, pil_img)
             return ImageTk.PhotoImage(pil_img)
 
-        remove_btn_img_export_tk = load_remove_btn_img_export(app_path('media', 'SettingsInt', 'RemoveSelectedButton.png'))
-        remove_btn_img_export_hover_tk = load_remove_btn_img_export(app_path('media', 'SettingsInt', 'RemoveSelectedButtonHover.png'))
+        remove_btn_img_export_tk = load_remove_btn_img_export(
+            app_path("media", "SettingsInt", "RemoveSelectedButton.png")
+        )
+        remove_btn_img_export_hover_tk = load_remove_btn_img_export(
+            app_path("media", "SettingsInt", "RemoveSelectedButtonHover.png")
+        )
 
         self.remove_webhook_export_btn = tk.Label(
             exp_controls,
@@ -1371,11 +1457,10 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.remove_webhook_export_btn.image = remove_btn_img_export_tk
         self.remove_webhook_export_btn.pack(side=tk.LEFT, padx=5)
-        
 
         def play_remove_click(e):
             play_button_click()
@@ -1394,9 +1479,20 @@ class SettingsPage(tk.Tk):
         self.remove_webhook_export_btn.bind("<Leave>", on_remove_btn_export_leave)
         self.remove_webhook_export_btn.bind("<Button-1>", play_remove_click)
 
-
-        self.show_urls_chk = ttk.Checkbutton(hooks_lf, text="Show URLs (otherwise show labels)", variable=self.show_urls_var, command=self.refresh_webhook_listboxes)
+        self.show_urls_chk = ttk.Checkbutton(
+            hooks_lf,
+            text="Show URLs (otherwise show labels)",
+            variable=self.show_urls_var,
+            command=self.refresh_webhook_listboxes,
+        )
         self.show_urls_chk.grid(row=10, column=0, columnspan=2, sticky=tk.W, pady=5)
+
+        tools_frame = ttk.Frame(hooks_lf)
+        tools_frame.grid(row=10, column=1, sticky=tk.E, pady=5)
+        ttk.Button(tools_frame, text="Health Check", command=self.open_health_check_panel).pack(
+            side=tk.LEFT, padx=(0, 8)
+        )
+        ttk.Button(tools_frame, text="Onboarding", command=self.open_onboarding_dialog).pack(side=tk.LEFT)
 
         # Flair Colour Section (moved below Show URLs)
         flair_label = ttk.Label(hooks_lf, text="Flair Colour", font=("Arial", 10, "bold"))
@@ -1404,9 +1500,9 @@ class SettingsPage(tk.Tk):
         # Load flair colour from DCord.json if available
         flair_default = "Default"
         try:
-            with open(DCORD_PATH, 'r') as f:
+            with open(DCORD_PATH, "r") as f:
                 dcord_data = json.load(f)
-            flair_from_json = dcord_data.get('flair_colour', '').capitalize()
+            flair_from_json = dcord_data.get("flair_colour", "").capitalize()
             if flair_from_json in ["Default", "Gold", "Blue", "Red"]:
                 flair_default = flair_from_json
         except Exception:
@@ -1415,13 +1511,16 @@ class SettingsPage(tk.Tk):
         flair_options = ["Default", "Gold", "Blue", "Red"]
 
         # --- Updated Unlock Logic ---
-        import pandas as pd
         import json as _json
-        from core.runtime_paths import app_path as _app_path
         import os as _os
+
+        import pandas as pd
+
+        from core.infrastructure.runtime_paths import app_path as _app_path
+
         # Check mission_log.xlsx for deployments and Super Earth
-        APP_DATA = _os.path.join(_os.getenv('LOCALAPPDATA'), 'MLHD2')
-        excel_file = _os.path.join(APP_DATA, 'mission_log.xlsx')
+        APP_DATA = _os.path.join(_os.getenv("LOCALAPPDATA"), "MLHD2")
+        excel_file = _os.path.join(APP_DATA, "mission_log.xlsx")
         total_deployments = 0
         has_super_earth = False
         excel_highest_streak = 0
@@ -1429,31 +1528,34 @@ class SettingsPage(tk.Tk):
             try:
                 df = pd.read_excel(excel_file)
                 total_deployments = len(df)
-                has_super_earth = 'Super Earth' in df['Planet'].values if 'Planet' in df.columns else False
-                if 'Streak' in df.columns:
-                    excel_highest_streak = int(df['Streak'].max())
+                has_super_earth = "Super Earth" in df["Planet"].values if "Planet" in df.columns else False
+                if "Streak" in df.columns:
+                    excel_highest_streak = int(df["Streak"].max())
             except Exception:
                 pass
         # Check streak_data.json for highest_streak
         json_highest_streak = 0
-        streak_path = _app_path('JSON', 'streak_data.json')
+        streak_path = _app_path("JSON", "streak_data.json")
         if _os.path.exists(streak_path):
             try:
-                with open(streak_path, 'r') as sf:
+                with open(streak_path, "r") as sf:
                     streak_data = _json.load(sf)
-                json_highest_streak = streak_data.get('Helldiver', {}).get('highest_streak', 0)
+                json_highest_streak = streak_data.get("Helldiver", {}).get("highest_streak", 0)
             except Exception:
                 pass
         # Use the higher of the two for red flair
         highest_streak = max(excel_highest_streak, json_highest_streak)
 
-        self.flair_colour_combo = ttk.Combobox(hooks_lf, textvariable=self.flair_colour_var, values=flair_options, state="readonly", width=12)
+        self.flair_colour_combo = ttk.Combobox(
+            hooks_lf, textvariable=self.flair_colour_var, values=flair_options, state="readonly", width=12
+        )
         self.flair_colour_combo.grid(row=11, column=0, sticky=tk.W, padx=(110, 0), pady=(10, 2), columnspan=1)
 
         def on_flair_colour_selected(event=None):
             val = self.flair_colour_var.get()
             try:
                 from core.utils import validate_flair
+
                 ok, msg, stats = validate_flair(val)
                 if not ok:
                     messagebox.showinfo("Locked", msg)
@@ -1461,13 +1563,18 @@ class SettingsPage(tk.Tk):
             except Exception:
                 # Fallback to previous local checks if helper is unavailable
                 if val == "Gold" and total_deployments < 1000:
-                    messagebox.showinfo("Locked", "Gold Flair requires 1000 deployments (currently: {} deployments).".format(total_deployments))
+                    messagebox.showinfo(
+                        "Locked",
+                        "Gold Flair requires 1000 deployments (currently: {} deployments).".format(total_deployments),
+                    )
                     self.flair_colour_var.set("Default")
                 elif val == "Blue" and not has_super_earth:
                     messagebox.showinfo("Locked", "Blue Flair requires a deployment on Super Earth.")
                     self.flair_colour_var.set("Default")
                 elif val == "Red" and highest_streak < 30:
-                    messagebox.showinfo("Locked", "Red Flair requires a 30 streak (highest: {}).".format(highest_streak))
+                    messagebox.showinfo(
+                        "Locked", "Red Flair requires a 30 streak (highest: {}).".format(highest_streak)
+                    )
                     self.flair_colour_var.set("Default")
 
         self.flair_colour_combo.bind("<<ComboboxSelected>>", on_flair_colour_selected)
@@ -1476,12 +1583,14 @@ class SettingsPage(tk.Tk):
         button_frame = ttk.Frame(main_frame)
         button_frame.pack(fill=tk.X, expand=True, pady=10)
         # Load and subsample images for Reset to Defaults button
-        reset_btn_img = Image.open(app_path('media', 'SettingsInt', 'ResetToDefaultButton.png'))
+        reset_btn_img = Image.open(app_path("media", "SettingsInt", "ResetToDefaultButton.png"))
         reset_btn_img = reset_btn_img.resize((reset_btn_img.width // 2, reset_btn_img.height // 2), Image.LANCZOS)
         reset_btn_img_tk = ImageTk.PhotoImage(reset_btn_img)
 
-        reset_btn_img_hover = Image.open(app_path('media', 'SettingsInt', 'ResetToDefaultButtonHover.png'))
-        reset_btn_img_hover = reset_btn_img_hover.resize((reset_btn_img_hover.width // 2, reset_btn_img_hover.height // 2), Image.LANCZOS)
+        reset_btn_img_hover = Image.open(app_path("media", "SettingsInt", "ResetToDefaultButtonHover.png"))
+        reset_btn_img_hover = reset_btn_img_hover.resize(
+            (reset_btn_img_hover.width // 2, reset_btn_img_hover.height // 2), Image.LANCZOS
+        )
         reset_btn_img_hover_tk = ImageTk.PhotoImage(reset_btn_img_hover)
 
         self.reset_defaults_btn = tk.Label(
@@ -1490,11 +1599,10 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.reset_defaults_btn.image = reset_btn_img_tk
         self.reset_defaults_btn.pack(side=tk.LEFT)
-        
 
         def play_reset_click(e):
             play_button_click()
@@ -1513,12 +1621,14 @@ class SettingsPage(tk.Tk):
         self.reset_defaults_btn.bind("<Leave>", on_reset_btn_leave)
         self.reset_defaults_btn.bind("<Button-1>", play_reset_click)
         # Load and subsample images for Cancel button
-        cancel_btn_img = Image.open(app_path('media', 'SettingsInt', 'CancelButton.png'))
+        cancel_btn_img = Image.open(app_path("media", "SettingsInt", "CancelButton.png"))
         cancel_btn_img = cancel_btn_img.resize((cancel_btn_img.width // 2, cancel_btn_img.height // 2), Image.LANCZOS)
         cancel_btn_img_tk = ImageTk.PhotoImage(cancel_btn_img)
 
-        cancel_btn_img_hover = Image.open(app_path('media', 'SettingsInt', 'CancelButtonHover.png'))
-        cancel_btn_img_hover = cancel_btn_img_hover.resize((cancel_btn_img_hover.width // 2, cancel_btn_img_hover.height // 2), Image.LANCZOS)
+        cancel_btn_img_hover = Image.open(app_path("media", "SettingsInt", "CancelButtonHover.png"))
+        cancel_btn_img_hover = cancel_btn_img_hover.resize(
+            (cancel_btn_img_hover.width // 2, cancel_btn_img_hover.height // 2), Image.LANCZOS
+        )
         cancel_btn_img_hover_tk = ImageTk.PhotoImage(cancel_btn_img_hover)
 
         self.cancel_btn = tk.Label(
@@ -1527,11 +1637,11 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.cancel_btn.image = cancel_btn_img_tk
         self.cancel_btn.pack(side=tk.RIGHT, padx=5)
-        
+
         def play_cancel_click(e):
             play_button_click()
             self.cancel()
@@ -1549,12 +1659,14 @@ class SettingsPage(tk.Tk):
         self.cancel_btn.bind("<Leave>", on_cancel_btn_leave)
         self.cancel_btn.bind("<Button-1>", play_cancel_click)
         # Load and subsample images for Save Settings button
-        save_btn_img = Image.open(app_path('media', 'SettingsInt', 'SaveSettingsButton.png'))
+        save_btn_img = Image.open(app_path("media", "SettingsInt", "SaveSettingsButton.png"))
         save_btn_img = save_btn_img.resize((save_btn_img.width // 2, save_btn_img.height // 2), Image.LANCZOS)
         save_btn_img_tk = ImageTk.PhotoImage(save_btn_img)
 
-        save_btn_img_hover = Image.open(app_path('media', 'SettingsInt', 'SaveSettingsButtonHover.png'))
-        save_btn_img_hover = save_btn_img_hover.resize((save_btn_img_hover.width // 2, save_btn_img_hover.height // 2), Image.LANCZOS)
+        save_btn_img_hover = Image.open(app_path("media", "SettingsInt", "SaveSettingsButtonHover.png"))
+        save_btn_img_hover = save_btn_img_hover.resize(
+            (save_btn_img_hover.width // 2, save_btn_img_hover.height // 2), Image.LANCZOS
+        )
         save_btn_img_hover_tk = ImageTk.PhotoImage(save_btn_img_hover)
 
         self.save_settings_btn = tk.Label(
@@ -1563,11 +1675,10 @@ class SettingsPage(tk.Tk):
             bd=0,
             highlightthickness=0,
             bg=DEFAULT_THEME["."]["configure"]["background"],
-            cursor="hand2"
+            cursor="hand2",
         )
         self.save_settings_btn.image = save_btn_img_tk
         self.save_settings_btn.pack(side=tk.RIGHT, padx=5)
-        
 
         def play_save_click(e):
             play_button_click()
@@ -1593,16 +1704,21 @@ class SettingsPage(tk.Tk):
     # ----- Do-not-send helper -----
     # Forces internal webhooks in UI when 'don't send' is enabled
     def _set_forced_webhooks_ui(self):
-        forced_lab = {"label": "Forced", "url": FORCED_WEBHOOK_URL}
-        self.webhooks_logging = [forced_lab]
-        self.webhooks_export = [forced_lab]
+        forced_labeled = get_forced_webhooks_labeled()
+        self.webhooks_logging = list(forced_labeled)
+        self.webhooks_export = list(forced_labeled)
         self.refresh_webhook_listboxes()
 
     # Captures current webhook lists as backup; used to restore later
     def _capture_backup_from_ui(self):
         # Unlabeled arrays from current UI
         def _extract(items):
-            return [w.get("url", "").strip() for w in items if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))]
+            return [
+                w.get("url", "").strip()
+                for w in items
+                if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))
+            ]
+
         self._webhooks_backup = {
             "discord_webhooks_logging_labeled": list(self.webhooks_logging),
             "discord_webhooks_export_labeled": list(self.webhooks_export),
@@ -1616,6 +1732,7 @@ class SettingsPage(tk.Tk):
         bk = self._webhooks_backup or {}
         log_labeled = bk.get("discord_webhooks_logging_labeled") or []
         exp_labeled = bk.get("discord_webhooks_export_labeled") or []
+
         # Basic sanitation
         def _clean(items):
             out = []
@@ -1629,6 +1746,7 @@ class SettingsPage(tk.Tk):
                 if url.lower().startswith(("http://", "https://")):
                     out.append({"label": label, "url": url})
             return out
+
         self.webhooks_logging = _clean(log_labeled)
         self.webhooks_export = _clean(exp_labeled)
         self.refresh_webhook_listboxes()
@@ -1640,10 +1758,10 @@ class SettingsPage(tk.Tk):
                 # Ask for confirmation before forcing webhooks
                 proceed = messagebox.askyesno(
                     "Confirm",
-                    "Enabling 'Don't send results to Discord' will replace all of your webhook URLs with an internal webhook, this means you won't see ANY exports.\n\n"
+                    "Enabling 'Don't send results to Discord' will disable your outbound webhook sends, so you won't see exports in Discord.\n\n"
                     "Your existing webhooks will be backed up and restored if you untick this later.\n\n"
                     "We rely on webhooks to send and show you data, so if you proceed you won't see any data visually displayed, however it will still be viewable in the recent exports page.\n\n"
-                    "Do you want to proceed?"
+                    "Do you want to proceed?",
                 )
                 if not proceed:
                     # Revert toggle if user cancels
@@ -1803,7 +1921,7 @@ class SettingsPage(tk.Tk):
             else:
                 idx = 0
         # Apply to combobox and var
-        combo['values'] = options
+        combo["values"] = options
         var.set(options[idx])
         combo.current(idx)
 
@@ -1831,6 +1949,7 @@ class SettingsPage(tk.Tk):
                 self.discord_uid_var.set(str(d.get("discord_uid", "")))
                 self.platform_var.set(d.get("platform", "Not Selected") or "Not Selected")
                 self.dont_send_to_discord_var.set(bool(d.get("dont_send_to_discord", False)))
+                self.onboarding_completed = bool(d.get("onboarding_completed", False))
                 # Backward-compatible export keys
                 logging_urls = d.get("discord_webhooks_logging_labeled") or [
                     {"label": "", "url": u} for u in d.get("discord_webhooks_logging", [])
@@ -1838,6 +1957,7 @@ class SettingsPage(tk.Tk):
                 export_urls = d.get("discord_webhooks_export_labeled") or [
                     {"label": "", "url": u} for u in (d.get("discord_webhooks_export") or d.get("discord_webhooks", []))
                 ]
+
                 # Normalize labeled
                 def _clean(items):
                     out = []
@@ -1851,12 +1971,17 @@ class SettingsPage(tk.Tk):
                         if url.lower().startswith(("http://", "https://")):
                             out.append({"label": label, "url": url})
                     return out
+
                 self.webhooks_logging = _clean(logging_urls)
                 self.webhooks_export = _clean(export_urls)
                 # Load badge display preferences from DCord.json if present
-                display_badges = d.get('display_badges', None)
+                display_badges = d.get("display_badges", None)
                 # badge_vars may not exist yet if called before UI is built; guard access
-                if isinstance(display_badges, list) and hasattr(self, 'badge_vars') and isinstance(self.badge_vars, dict):
+                if (
+                    isinstance(display_badges, list)
+                    and hasattr(self, "badge_vars")
+                    and isinstance(self.badge_vars, dict)
+                ):
                     for k in self.badge_vars:
                         try:
                             self.badge_vars[k].set(k in display_badges)
@@ -1882,18 +2007,20 @@ class SettingsPage(tk.Tk):
     def save_settings(self):
         # Validate URLs
         url_pattern = re.compile(r"^(http://|https://).+")
+
         def _validate(items):
             seen = set()
             for w in items:
                 url = str(w.get("url", "")).strip()
                 if url and not url_pattern.match(url):
-                    messagebox.showerror("Error", f"Invalid webhook URL: {url}\nLabel: {w.get('label','')}")
+                    messagebox.showerror("Error", f"Invalid webhook URL: {url}\nLabel: {w.get('label', '')}")
                     return False
                 if url in seen:
                     messagebox.showerror("Error", f"Duplicate webhook URL detected: {url}")
                     return False
                 seen.add(url)
             return True
+
         if not _validate(self.webhooks_logging) or not _validate(self.webhooks_export):
             return
 
@@ -1933,6 +2060,7 @@ class SettingsPage(tk.Tk):
         # --- Validate Flair Requirements using shared helper ---
         try:
             from core.utils import validate_flair
+
             # Validate the current selection; if invalid, show message and revert
             curr = self.flair_colour_var.get()
             ok, msg, stats = validate_flair(curr)
@@ -1950,7 +2078,7 @@ class SettingsPage(tk.Tk):
             except Exception:
                 prev_flair = None
             curr_flair = self.flair_colour_var.get().capitalize()
-            flair_changed = (prev_flair != curr_flair)
+            flair_changed = prev_flair != curr_flair
         except Exception:
             # If helper isn't available for any reason, don't block save
             flair_changed = flair_changed
@@ -1967,30 +2095,44 @@ class SettingsPage(tk.Tk):
 
         # Write DCord.json
         def _extract(items):
-            return [w.get("url", "").strip() for w in items if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))]
+            return [
+                w.get("url", "").strip()
+                for w in items
+                if str(w.get("url", "")).strip().lower().startswith(("http://", "https://"))
+            ]
+
         if self.dont_send_to_discord_var.get():
-            # When forcing, store backups and overwrite webhooks with forced URL
+            # When forcing, store backups and overwrite webhooks with forced URL (if configured)
             # Ensure backup is captured from UI if not already
-            if not self._webhooks_backup or not (self._webhooks_backup.get("discord_webhooks_logging_labeled") or self._webhooks_backup.get("discord_webhooks_export_labeled")):
+            if not self._webhooks_backup or not (
+                self._webhooks_backup.get("discord_webhooks_logging_labeled")
+                or self._webhooks_backup.get("discord_webhooks_export_labeled")
+            ):
                 self._capture_backup_from_ui()
-            forced_labeled = [{"label": "Forced", "url": FORCED_WEBHOOK_URL}]
+            forced_labeled = get_forced_webhooks_labeled()
+            forced_urls = [w["url"] for w in forced_labeled]
             dcord = {
                 "discord_uid": self.discord_uid_var.get(),
-                "discord_webhooks_logging": [FORCED_WEBHOOK_URL],
-                "discord_webhooks_export": [FORCED_WEBHOOK_URL],
-                "discord_webhooks": [FORCED_WEBHOOK_URL],
+                "discord_webhooks_logging": forced_urls,
+                "discord_webhooks_export": forced_urls,
+                "discord_webhooks": forced_urls,
                 "discord_webhooks_logging_labeled": forced_labeled,
                 "discord_webhooks_export_labeled": forced_labeled,
                 "platform": self.platform_var.get() or "Not Selected",
                 "dont_send_to_discord": True,
+                "onboarding_completed": bool(self.onboarding_completed or self._onboarding_mode),
                 "webhooks_backup": self._webhooks_backup,
                 "flair_colour": self.flair_colour_var.get(),
-                "display_badges": [k for k, _ in self._available_badges if self.badge_vars.get(k) and self.badge_vars[k].get()],
+                "display_badges": [
+                    k for k, _ in self._available_badges if self.badge_vars.get(k) and self.badge_vars[k].get()
+                ],
             }
         else:
             # Normal save; if there is a backup but flag is off, write without forcing
             # Build display_badges list from current badge_vars (preserve original order)
-            display_badges = [k for k, _ in self._available_badges if self.badge_vars.get(k) and self.badge_vars[k].get()]
+            display_badges = [
+                k for k, _ in self._available_badges if self.badge_vars.get(k) and self.badge_vars[k].get()
+            ]
 
             dcord = {
                 "discord_uid": self.discord_uid_var.get(),
@@ -2001,6 +2143,7 @@ class SettingsPage(tk.Tk):
                 "discord_webhooks_export_labeled": self.webhooks_export,
                 "platform": self.platform_var.get() or "Not Selected",
                 "dont_send_to_discord": False,
+                "onboarding_completed": bool(self.onboarding_completed or self._onboarding_mode),
                 "flair_colour": self.flair_colour_var.get(),
                 "display_badges": display_badges,
             }
@@ -2009,10 +2152,15 @@ class SettingsPage(tk.Tk):
                 json.dump(settings_data, f, indent=4)
             with open(DCORD_PATH, "w", encoding="utf-8") as f:
                 json.dump(dcord, f, indent=4)
-            msg = "Settings saved successfully!" if "-ML" in sys.argv else "Settings saved! Please run MLHD2-Launcher.exe"
+            msg = (
+                "Settings saved successfully!" if "-ML" in sys.argv else "Settings saved! Please run MLHD2-Launcher.exe"
+            )
             messagebox.showinfo("Success", msg)
             if flair_changed:
-                messagebox.showinfo("Relaunch Required", "You have changed your Flair Colour. Please relaunch the Main App for any visual changes to apply.")
+                messagebox.showinfo(
+                    "Relaunch Required",
+                    "You have changed your Flair Colour. Please relaunch the Main App for any visual changes to apply.",
+                )
             self.destroy()
         except Exception as e:
             messagebox.showerror("Error", f"Could not save settings: {e}")
@@ -2022,6 +2170,7 @@ class SettingsPage(tk.Tk):
     def refresh_webhook_listboxes(self):
         def _display(w):
             return w.get("url") if self.show_urls_var.get() or not w.get("label") else w.get("label")
+
         self.webhooks_listbox_logging.delete(0, tk.END)
         for idx, w in enumerate(self.webhooks_logging):
             self.webhooks_listbox_logging.insert(tk.END, _display(w))
@@ -2088,6 +2237,175 @@ class SettingsPage(tk.Tk):
         del self.webhooks_export[sel[0]]
         self.refresh_webhook_listboxes()
 
+    def _run_health_checks(self) -> list[str]:
+        lines = []
+
+        def add(ok: bool, message: str):
+            marker = "✓" if ok else "✗"
+            lines.append(f"{marker} {message}")
+
+        json_targets = [
+            ("settings", SETTINGS_PATH),
+            ("discord", DCORD_PATH),
+            ("persistent", PERSISTENT_PATH),
+        ]
+        for label, path in json_targets:
+            if not os.path.exists(path):
+                add(False, f"{label} JSON missing: {path}")
+                continue
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    json.load(f)
+                add(True, f"{label} JSON valid")
+            except Exception as e:
+                add(False, f"{label} JSON invalid: {e}")
+
+        all_hooks = []
+        all_hooks.extend(
+            ("logging", (w.get("label") or w.get("url") or "(unlabeled)"), w.get("url", ""))
+            for w in self.webhooks_logging
+        )
+        all_hooks.extend(
+            ("export", (w.get("label") or w.get("url") or "(unlabeled)"), w.get("url", ""))
+            for w in self.webhooks_export
+        )
+        if not all_hooks:
+            add(False, "No webhooks configured")
+        else:
+            seen = set()
+            for kind, label, url in all_hooks:
+                cleaned = str(url).strip()
+                if not cleaned:
+                    add(False, f"{kind} webhook '{label}' has empty URL")
+                    continue
+                if not cleaned.lower().startswith(("http://", "https://")):
+                    add(False, f"{kind} webhook '{label}' is not a valid HTTP(S) URL")
+                    continue
+                dup_key = cleaned.lower()
+                if dup_key in seen:
+                    add(False, f"duplicate webhook URL detected: {cleaned}")
+                else:
+                    seen.add(dup_key)
+                    add(True, f"{kind} webhook '{label}' URL format looks valid")
+
+        app_data = os.path.join(os.getenv("LOCALAPPDATA") or "", "MLHD2")
+        mission_log = os.path.join(app_data, "mission_log.xlsx")
+        mission_log_test = os.path.join(app_data, "mission_log_test.xlsx")
+        if os.path.exists(mission_log) or os.path.exists(mission_log_test):
+            add(True, "Mission log file is accessible")
+        else:
+            add(False, "Mission log not found yet (run at least one mission submission)")
+
+        return lines
+
+    def open_health_check_panel(self):
+        panel = tk.Toplevel(self)
+        panel.title("Health Check")
+        panel.transient(self)
+        panel.resizable(True, True)
+        panel.geometry("760x420")
+        panel.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
+
+        ttk.Label(
+            panel,
+            text="Validate config JSON, webhook URL health, and mission log accessibility.",
+        ).pack(anchor=tk.W, padx=12, pady=(12, 6))
+
+        output = tk.Text(panel, wrap=tk.WORD, state=tk.DISABLED)
+        output.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 10))
+
+        btn_row = ttk.Frame(panel)
+        btn_row.pack(fill=tk.X, padx=12, pady=(0, 12))
+
+        def render(lines: list[str]):
+            output.configure(state=tk.NORMAL)
+            output.delete("1.0", tk.END)
+            output.insert(tk.END, "\n".join(lines) if lines else "No results.")
+            output.configure(state=tk.DISABLED)
+
+        def run_checks():
+            render(self._run_health_checks())
+
+        ttk.Button(btn_row, text="Run Checks", command=run_checks).pack(side=tk.LEFT)
+        ttk.Button(btn_row, text="Send Test Webhook", command=self.send_test_webhook).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Button(btn_row, text="Close", command=panel.destroy).pack(side=tk.RIGHT)
+
+        run_checks()
+
+    def send_test_webhook(self):
+        target = None
+        label = ""
+        for w in self.webhooks_export:
+            url = str(w.get("url", "")).strip()
+            if url.lower().startswith(("http://", "https://")):
+                target = url
+                label = str(w.get("label", "")).strip() or url
+                break
+
+        if not target:
+            messagebox.showwarning(
+                "Test Webhook",
+                "No valid export webhook configured. Add one in Discord > Webhooks first.",
+            )
+            return
+
+        def worker():
+            payload = {"content": "MLHD2 onboarding test message ✅"}
+            success, _, err = post_webhook(target, json_payload=payload, timeout=12, retries=1)
+
+            def finish():
+                if success:
+                    messagebox.showinfo("Test Webhook", f"Test message sent successfully to: {label}")
+                    return
+                short_reason, guidance = classify_webhook_error(err)
+                messagebox.showerror(
+                    "Test Webhook Failed",
+                    f"Destination: {label}\nReason: {short_reason}\n\n{guidance}",
+                )
+
+            self.after(0, finish)
+
+        threading.Thread(target=worker, daemon=True).start()
+
+    def open_onboarding_dialog(self):
+        win = tk.Toplevel(self)
+        win.title("First-Run Onboarding")
+        win.transient(self)
+        win.resizable(False, False)
+        win.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
+
+        instructions = (
+            "Complete this checklist before finishing setup:\n"
+            "1) Profile tab: set Username and Destroyer Name\n"
+            "2) Discord tab: set Platform and Discord User ID\n"
+            "3) Add at least one export webhook URL\n"
+            "4) Send a test webhook message\n"
+            "5) Save settings to finish onboarding"
+        )
+        ttk.Label(win, text=instructions, justify=tk.LEFT).pack(anchor=tk.W, padx=14, pady=(14, 10))
+
+        row1 = ttk.Frame(win)
+        row1.pack(fill=tk.X, padx=14, pady=(0, 8))
+        row2 = ttk.Frame(win)
+        row2.pack(fill=tk.X, padx=14, pady=(0, 14))
+
+        ttk.Button(row1, text="Go to Profile", command=lambda: self.notebook.select(self.profile_frame)).pack(
+            side=tk.LEFT
+        )
+        ttk.Button(row1, text="Go to Discord", command=lambda: self.notebook.select(self.discord_frame)).pack(
+            side=tk.LEFT, padx=(8, 0)
+        )
+        ttk.Button(row1, text="Health Check", command=self.open_health_check_panel).pack(side=tk.LEFT, padx=(8, 0))
+
+        ttk.Button(row2, text="Send Test Webhook", command=self.send_test_webhook).pack(side=tk.LEFT)
+
+        def finish_onboarding():
+            self.onboarding_completed = True
+            self.save_settings()
+
+        ttk.Button(row2, text="Save & Finish Onboarding", command=finish_onboarding).pack(side=tk.LEFT, padx=(8, 0))
+        ttk.Button(row2, text="Close", command=win.destroy).pack(side=tk.RIGHT)
+
     # ----- Misc -----
     # Resets settings to defaults; clears lists and restores baseline values
     def reset_defaults(self):
@@ -2108,6 +2426,7 @@ class SettingsPage(tk.Tk):
         if messagebox.askyesno("Confirm", "Exit without saving? Any unsaved changes will be lost."):
             self.destroy()
 
+
 if __name__ == "__main__":
     logging.debug("[settings] __main__ start")
     try:
@@ -2115,6 +2434,6 @@ if __name__ == "__main__":
         logging.debug("[settings] mainloop starting")
         app.mainloop()
         logging.debug("[settings] mainloop exited")
-    except Exception as e:
+    except Exception:
         logging.critical("Fatal error in settings.py:")
         traceback.print_exc()

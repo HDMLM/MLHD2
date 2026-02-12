@@ -119,3 +119,21 @@ Refer to the repository for license details.
 
 ## Summary
 A lightweight, configurable mission logging and Discord dissemination tool focusing on data organization, shareability, and minimal user friction. Configure once, then launch and play.
+
+## Developer Quality Gates
+- Install dev tooling: `pip install -r requirements-dev.txt`
+- Run lint/type/tests:
+	- `ruff check .`
+	- `ruff format --check .`
+	- `mypy`
+	- `pytest -q tests`
+- Optional local hooks: `pre-commit install`
+
+## Build and Release Docs
+- Build/distribution flow: `docs/BUILD_AND_DISTRIBUTION.md`
+- Reproducible release checklist: `docs/RELEASE_CHECKLIST.md`
+
+## Diagnostics Dump (Optional)
+Issue-report diagnostics can be generated using:
+
+`from core.data.diagnostics import generate_diagnostics_dump; print(generate_diagnostics_dump())`

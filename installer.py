@@ -5,28 +5,29 @@
 # im curious actually if this requires requests to be installed to run the launcher, if so that kinda sucks, i think we'll have to find out via Jesse's testing
 
 from __future__ import annotations
+
+import configparser
 import io
+import logging
 import os
 import re
 import shutil
 import subprocess
 import sys
-import logging
 import threading
 import time
-import zipfile
-from typing import Any, Dict, List, Optional, Tuple, Callable
 import webbrowser
-from pathlib import Path
+import zipfile
 from ast import literal_eval
-import configparser
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
-
-#Manual Constants
+# Manual Constants
 GameUpdateTitle = "INTO THE UNJUST"
 
 # NEW: imports for font detection/installation
 import ctypes
+
 try:
     import winreg  # Windows only
 except Exception:
@@ -42,17 +43,21 @@ except Exception:
 # Python 3.10.6 enforcement and bootstrap
 REQUIRED_PYTHON_VERSION = (3, 10, 6)
 
+
 def _is_frozen() -> bool:
     return getattr(sys, "frozen", False) is True
+
 
 # Paths: distinguish between the real app folder (read/write) and bundled resources
 APP_DIR = Path(os.path.dirname(sys.executable) if _is_frozen() else os.path.dirname(__file__)).resolve()
 BUNDLE_DIR = Path(getattr(sys, "_MEIPASS", APP_DIR)).resolve()
 
+
 def app_path(*parts: str) -> str:
     # Use the user-selected install directory if present, otherwise fall back to the launcher/app dir.
     base = get_install_dir()
     return str(Path(base).joinpath(*parts))
+
 
 def resource_path(*parts: str) -> str:
     return str(BUNDLE_DIR.joinpath(*parts))
@@ -63,6 +68,7 @@ def resource_path(*parts: str) -> str:
 _CONFIG_DIR_NAME = "MLHD2"
 _CONFIG_FILENAME = "launcher_config.ini"
 _INSTALL_DIR_CACHE: Optional[str] = None
+
 
 def get_user_config_file() -> str:
     # Return an absolute path to the per-user config file, creating the directory if needed.
@@ -85,6 +91,7 @@ def get_user_config_file() -> str:
         except Exception:
             # Last resort: return path under APP_DIR (may still fail later)
             return os.path.join(str(APP_DIR), _CONFIG_FILENAME)
+
 
 def read_saved_install_dir() -> Optional[str]:
     """Return saved install dir from per-user config or MLHD2_INSTALL_DIR env var, or None."""
@@ -118,6 +125,7 @@ def read_saved_install_dir() -> Optional[str]:
         _INSTALL_DIR_CACHE = env
         return env
     return None
+
 
 def save_install_dir(path: str) -> None:
     """Persist chosen install dir to per-user config file."""
@@ -186,6 +194,7 @@ def save_install_dir(path: str) -> None:
                 pass
             return
 
+
 def get_install_dir() -> str:
     """Return the directory where the application should read/write files.
 
@@ -196,6 +205,7 @@ def get_install_dir() -> str:
     if d:
         return d
     return str(APP_DIR)
+
 
 def update_paths_from_install_dir() -> None:
     """Recompute module-level path globals that depend on the install directory.
@@ -208,6 +218,7 @@ def update_paths_from_install_dir() -> None:
     MAIN_PROGRAM = app_path("main.py")
     BACKUP_DIR_ROOT = app_path("backup")
     FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
+
 
 def maybe_prompt_install_dir(parent: Optional[tk.Tk] = None) -> Optional[str]:
     """Prompt the user once (if no install dir saved) to choose an install directory.
@@ -267,7 +278,7 @@ def offer_python_installer_gui(parent: Optional[tk.Tk] = None, reason: Optional[
 
     # If no Tk root is present, just open the download page and return
     try:
-        if not getattr(tk, '_default_root', None):
+        if not getattr(tk, "_default_root", None):
             webbrowser.open(download_url)
             return
     except Exception:
@@ -286,7 +297,9 @@ def offer_python_installer_gui(parent: Optional[tk.Tk] = None, reason: Optional[
             webbrowser.open(download_url)
             return
         else:
-            if messagebox.askyesno(title, "Show instructions for installing Python and adding it to PATH?", parent=parent):
+            if messagebox.askyesno(
+                title, "Show instructions for installing Python and adding it to PATH?", parent=parent
+            ):
                 webbrowser.open(path_instructions_url)
     except Exception:
         # As fallback, open download page
@@ -295,26 +308,30 @@ def offer_python_installer_gui(parent: Optional[tk.Tk] = None, reason: Optional[
         except Exception:
             pass
 
+
 # Load launcher config for Discord RPC Client ID
 _config = configparser.ConfigParser()
 try:
     _config.read(app_path("config.config"))
-    DISCORD_CLIENT_ID = _config.get('Discord', 'DISCORD_CLIENT_ID', fallback='0')
+    DISCORD_CLIENT_ID = _config.get("Discord", "DISCORD_CLIENT_ID", fallback="0")
 except Exception:
-    DISCORD_CLIENT_ID = '0'
+    DISCORD_CLIENT_ID = "0"
+
 
 def find_python3106_executable() -> Optional[List[str]]:
     # In frozen mode, sys.executable points to the EXE; skip that candidate
     candidates: List[List[str]] = []
     if not _is_frozen():
         candidates.append([sys.executable])
-    candidates.extend([
-        ["python3.10"],
-        ["python3.10.6"],
-        ["py", "-3.10"],  # Windows Python launcher
-        [r"C:\\Python310\\python.exe"],
-        [r"C:\\Python3.10.6\\python.exe"],
-    ])
+    candidates.extend(
+        [
+            ["python3.10"],
+            ["python3.10.6"],
+            ["py", "-3.10"],  # Windows Python launcher
+            [r"C:\\Python310\\python.exe"],
+            [r"C:\\Python3.10.6\\python.exe"],
+        ]
+    )
     for exe_argv in candidates:
         try:
             out = subprocess.check_output(
@@ -328,7 +345,9 @@ def find_python3106_executable() -> Optional[List[str]]:
             continue
     return None
 
+
 PYTHON3106_CMD = find_python3106_executable()
+
 
 def _py_cmd() -> List[str]:
     return PYTHON3106_CMD or [sys.executable]
@@ -343,16 +362,20 @@ def _ensure_pip_for_python(python_cmd: List[str]) -> bool:
     """
     try:
         # Try ensurepip first (available in many Python installations)
-        subprocess.check_call([*python_cmd, "-m", "ensurepip", "--upgrade"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.check_call(
+            [*python_cmd, "-m", "ensurepip", "--upgrade"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
     except Exception:
         # Fallback: download get-pip.py and run it
         try:
             import urllib.request
+
             url = "https://bootstrap.pypa.io/get-pip.py"
             with urllib.request.urlopen(url, timeout=30) as resp:
                 data = resp.read()
             # Write to temp file
             import tempfile
+
             fd, path = tempfile.mkstemp(suffix="-get-pip.py")
             os.close(fd)
             try:
@@ -368,7 +391,9 @@ def _ensure_pip_for_python(python_cmd: List[str]) -> bool:
             return False
     # Verify pip now
     try:
-        subprocess.check_call([*python_cmd, "-m", "pip", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.check_call(
+            [*python_cmd, "-m", "pip", "--version"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
         return True
     except Exception:
         return False
@@ -392,16 +417,17 @@ def ensure_python_version():
         else:
             msg += f"Attempting to use Python 3.10.6 at: {' '.join(PYTHON3106_CMD)}\n"
             logging.info(msg)
+
+
 ensure_python_version()
 
-import requests
-import tkinter as tk
-from tkinter import messagebox, scrolledtext, filedialog
-from tkinter import ttk
-import traceback
-import platform
 import getpass
-import stat
+import platform
+import tkinter as tk
+import traceback
+from tkinter import filedialog, messagebox, scrolledtext, ttk
+
+import requests
 
 GITHUB_API_REPO = "HDMLM/MLHD2"
 GITHUB_REPO = "https://github.com/HDMLM/MLHD2"
@@ -418,6 +444,7 @@ FONT_FAMILY_NAME = "Insignia"
 FONT_FILE_NAME = "Insignia.ttf"
 FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
 
+
 # --- Discord Rich Presence helper for the launcher ---
 class _LauncherRPC:
     def __init__(self) -> None:
@@ -427,6 +454,7 @@ class _LauncherRPC:
     def start(self) -> None:
         if self._started or not discordrpc:
             return
+
         def _init():
             try:
                 app_id_int = int(DISCORD_CLIENT_ID)
@@ -438,6 +466,7 @@ class _LauncherRPC:
             except Exception:
                 self.RPC = None
                 self._started = False
+
         threading.Thread(target=_init, daemon=True).start()
 
     def set_status(self, status: str, details: Optional[str] = None) -> None:
@@ -448,9 +477,12 @@ class _LauncherRPC:
             buttons = None
             try:
                 from discordrpc import Button
+
                 buttons = Button(
-                    "GitHub Repo", "https://github.com/HDMLM/MLHD2",
-                    "Join Discord", "https://discord.gg/U6ydgwFKZG",
+                    "GitHub Repo",
+                    "https://github.com/HDMLM/MLHD2",
+                    "Join Discord",
+                    "https://discord.gg/U6ydgwFKZG",
                 )
             except Exception:
                 buttons = None
@@ -458,12 +490,12 @@ class _LauncherRPC:
             self.RPC.set_activity(
                 state=status,
                 details=details or "MLHD2 Launcher",
-                large_image="test",          # Uses same asset key as the main app
+                large_image="test",  # Uses same asset key as the main app
                 large_text="MLHD2",
-                small_image="obs",           # Neutral/observing icon
+                small_image="obs",  # Neutral/observing icon
                 small_text="Launcher",
-                act_type=3,                   # 3 = Watching
-                **({"buttons": buttons} if buttons else {})
+                act_type=3,  # 3 = Watching
+                **({"buttons": buttons} if buttons else {}),
             )
         except Exception:
             # Silently ignore RPC errors to keep launcher robust
@@ -471,24 +503,26 @@ class _LauncherRPC:
 
     def close(self) -> None:
         try:
-            if self.RPC and hasattr(self.RPC, 'close'):
+            if self.RPC and hasattr(self.RPC, "close"):
                 self.RPC.close()
         except Exception:
             pass
+
 
 # Exclusion globs / prefixes relative to repo root (from inside the ZIP)
 # We don't want to overwrite user data since even if it's outdated the program should update the JSON as required, though we could add the option
 # to clear the JSON's if the user wants to reset their data or we make a change that requires it. for future consideration i guess
 EXCLUDE_PATH_PREFIXES = (
     "JSON/persistent",  # user persistent data variants
-    "JSON/settings",    # user settings variants
-    "JSON/streak_data", # user streak data
-    "backup",           # avoid recursing into previous backups
-    ".git",             # git internals
-    "venv",             # local virtual env - This should never be in the repo but just in case
-    "mission_log.xlsx", # user excel log file
-    "DCord.json",       # user discord config
+    "JSON/settings",  # user settings variants
+    "JSON/streak_data",  # user streak data
+    "backup",  # avoid recursing into previous backups
+    ".git",  # git internals
+    "venv",  # local virtual env - This should never be in the repo but just in case
+    "mission_log.xlsx",  # user excel log file
+    "DCord.json",  # user discord config
 )
+
 
 def _is_excluded(rel_path: str) -> bool:
     # Return True if a relative path should be skipped during update
@@ -525,6 +559,7 @@ def _validate_files_against_fstruct() -> Tuple[int, int, int, List[str], List[st
     """
     try:
         import json
+
         # Locate FStruct.json (prefer bundled, fallback to app dir)
         candidates = [
             resource_path("LaunchMedia", "FStruct.json"),
@@ -604,6 +639,7 @@ def get_local_version() -> Optional[str]:
         return f"__ERROR__:{e}"
     return None
 
+
 def _github_headers() -> Dict[str, str]:
     # Build headers for GitHub API calls
     token = os.getenv("GITHUB_TOKEN")
@@ -624,12 +660,14 @@ def _github_get(path: str, timeout: int = REQUEST_TIMEOUT_RELEASES) -> Optional[
         pass
     return None
 
+
 def fetch_releases() -> List[Dict[str, Any]]:
     # Return non-draft releases newest first
     data = _github_get("releases")
     if not isinstance(data, list):
         return []
     return [r for r in data if not r.get("draft")]
+
 
 def pick_latest_release(include_prerelease: bool) -> Optional[Dict[str, Any]]:
     # Return the most recent release
@@ -639,6 +677,7 @@ def pick_latest_release(include_prerelease: bool) -> Optional[Dict[str, Any]]:
     if include_prerelease:
         return releases[0]
     return next((r for r in releases if not r.get("prerelease")), None)
+
 
 def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optional[bytes], str]:
     # Download selected release zipball. Returns (tag, bytes, error_message)
@@ -650,7 +689,9 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
             api_zip = f"{GITHUB_API_BASE}/zipball"
             try:
                 r = requests.get(api_zip, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
-                _append_debug_line(f"HTTP GET {api_zip} -> {getattr(r, 'status_code', 'NO-RESP')} len={len(getattr(r, 'content', b''))}")
+                _append_debug_line(
+                    f"HTTP GET {api_zip} -> {getattr(r, 'status_code', 'NO-RESP')} len={len(getattr(r, 'content', b''))}"
+                )
                 _append_debug_line(f"Response headers: {getattr(r, 'headers', {})}")
             except Exception as e:
                 _append_debug_line(f"HTTP GET {api_zip} failed: {e}\n{traceback.format_exc()}")
@@ -661,7 +702,9 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
             html_zip = f"{GITHUB_REPO}/archive/refs/heads/main.zip"
             try:
                 r2 = requests.get(html_zip, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
-                _append_debug_line(f"HTTP GET {html_zip} -> {getattr(r2, 'status_code', 'NO-RESP')} len={len(getattr(r2, 'content', b''))}")
+                _append_debug_line(
+                    f"HTTP GET {html_zip} -> {getattr(r2, 'status_code', 'NO-RESP')} len={len(getattr(r2, 'content', b''))}"
+                )
                 _append_debug_line(f"Response headers: {getattr(r2, 'headers', {})}")
             except Exception as e:
                 _append_debug_line(f"HTTP GET {html_zip} failed: {e}\n{traceback.format_exc()}")
@@ -684,10 +727,11 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
     except Exception as e:
         return None, None, f"Download error: {e}"
 
+
 def safe_zip_update(include_prerelease: bool = False, target_root_override: Optional[str] = None) -> str:
     # Perform safe update via zip archive with backup of changed files
 
-    #check if current version is higher than latest version if so skip update
+    # check if current version is higher than latest version if so skip update
     # Refresh path globals from saved install dir in case user previously selected one
     try:
         update_paths_from_install_dir()
@@ -703,16 +747,18 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
             return "Local version is ahead of GitHub release (development build). No update applied."
     # If local_version is None (fresh install) or an error string, proceed with installation/update
 
-
     tag, content, err = download_release_zip(include_prerelease=include_prerelease)
     if err:
-        return ("Safe update failed: " + err +
-                "\nTroubleshooting:\n - Check internet connectivity\n - Set GITHUB_TOKEN env var if rate-limited\n - Retry with prerelease toggle adjusted\n - As last resort clone repo manually.")
+        return (
+            "Safe update failed: "
+            + err
+            + "\nTroubleshooting:\n - Check internet connectivity\n - Set GITHUB_TOKEN env var if rate-limited\n - Retry with prerelease toggle adjusted\n - As last resort clone repo manually."
+        )
     if not content:
-        return ("Safe update failed: empty archive\nThis may indicate a transient GitHub issue. Retry in a minute.")
+        return "Safe update failed: empty archive\nThis may indicate a transient GitHub issue. Retry in a minute."
     updated = created = skipped = excluded = backed_up = 0
     errors: List[str] = []
-    ts = time.strftime('%Y%m%d-%H%M%S')
+    ts = time.strftime("%Y%m%d-%H%M%S")
     # Use the provided override (if any) or the user-selected install directory as the target root.
     # update_paths_from_install_dir() should be called earlier when the user chooses an install dir.
     # Normalize the target root and ensure it's a plain path string (avoid mixed separators)
@@ -723,6 +769,7 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
     try:
         test_nested = os.path.join(target_root, ".mlhd2_test_mkdir", "a", "b")
         from pathlib import Path as _P
+
         _P(test_nested).mkdir(parents=True, exist_ok=True)
         # Cleanup
         try:
@@ -731,13 +778,15 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
             pass
     except Exception as e:
         _append_debug_line(f"Preflight nested mkdir FAILED for {target_root}: {e}\n{traceback.format_exc()}")
-        return ("Safe update failed: cannot create subdirectories under the chosen install directory.\n"
-                "This environment may restrict creating folders (e.g., sandboxed/WDAG accounts).\n"
-                "Please choose a different install directory (for example C:\\Users\\<YourUser>\\Documents or a folder under C:\\) and retry.")
+        return (
+            "Safe update failed: cannot create subdirectories under the chosen install directory.\n"
+            "This environment may restrict creating folders (e.g., sandboxed/WDAG accounts).\n"
+            "Please choose a different install directory (for example C:\\Users\\<YourUser>\\Documents or a folder under C:\\) and retry."
+        )
     # DEBUG: Write diagnostic information so we can detect what install dir the
     # background updater is using (helps diagnose 'needs restart' behavior).
     try:
-        _append_debug_line("\n--- safe_zip_update debug: " + time.strftime('%Y-%m-%d %H:%M:%S') + " ---")
+        _append_debug_line("\n--- safe_zip_update debug: " + time.strftime("%Y-%m-%d %H:%M:%S") + " ---")
         _append_debug_line(f"get_install_dir() -> {get_install_dir()!r}")
         _append_debug_line(f"_INSTALL_DIR_CACHE -> {_INSTALL_DIR_CACHE!r}")
         try:
@@ -745,12 +794,12 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
             _append_debug_line(f"config_file -> {cfgfile}")
             if os.path.exists(cfgfile):
                 try:
-                    with open(cfgfile, 'r', encoding='utf-8', errors='ignore') as cf:
-                        _append_debug_line('config_contents:\n' + cf.read())
+                    with open(cfgfile, "r", encoding="utf-8", errors="ignore") as cf:
+                        _append_debug_line("config_contents:\n" + cf.read())
                 except Exception as e:
                     _append_debug_line(f"failed reading config contents: {e}\n{traceback.format_exc()}")
             else:
-                _append_debug_line('config_contents: (missing)')
+                _append_debug_line("config_contents: (missing)")
         except Exception as e:
             _append_debug_line(f"failed reading config path: {e}\n{traceback.format_exc()}")
         try:
@@ -768,10 +817,12 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
             try:
                 testfile = os.path.join(str(target_root), f".__mlhd2_debug_perm_{ts}")
                 os.makedirs(os.path.dirname(testfile), exist_ok=True)
-                with open(testfile, 'w', encoding='utf-8') as tf:
-                    tf.write('test')
+                with open(testfile, "w", encoding="utf-8") as tf:
+                    tf.write("test")
                 st = os.stat(testfile)
-                _append_debug_line(f"Permission test: wrote debug file at {testfile} mode={oct(st.st_mode)} size={st.st_size}")
+                _append_debug_line(
+                    f"Permission test: wrote debug file at {testfile} mode={oct(st.st_mode)} size={st.st_size}"
+                )
                 try:
                     os.remove(testfile)
                 except Exception:
@@ -796,32 +847,33 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
                 pass
             if not members:
                 return "Safe update failed: archive empty"
-            top = members[0].split('/')[0]
+            top = members[0].split("/")[0]
             for member in members:
-                if member.endswith('/'):
+                if member.endswith("/"):
                     continue
                 # Strip top-level folder
-                parts = member.split('/')
+                parts = member.split("/")
                 if parts[0] != top:
                     # Unexpected structure, still attempt relative mapping
                     rel_path = member
                 else:
-                    rel_path = '/'.join(parts[1:])
+                    rel_path = "/".join(parts[1:])
                 if not rel_path:
                     continue
                 if _is_excluded(rel_path):
                     excluded += 1
                     continue
                 # Compute dest_path robustly by joining path components (avoid manual replace)
-                rel_parts = [p for p in rel_path.split('/') if p]
+                rel_parts = [p for p in rel_path.split("/") if p]
                 try:
                     dest_path = os.path.join(target_root, *rel_parts)
                 except Exception:
-                    dest_path = os.path.join(str(target_root), rel_path.replace('/', os.sep))
+                    dest_path = os.path.join(str(target_root), rel_path.replace("/", os.sep))
                 dest_dir = os.path.dirname(dest_path)
                 try:
                     # Ensure directory exists
                     from pathlib import Path as _P
+
                     _P(dest_dir).mkdir(parents=True, exist_ok=True)
                 except Exception as e:
                     _append_debug_line(f"Failed to create directory for {rel_path}: {e}\n{traceback.format_exc()}")
@@ -837,7 +889,7 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
                     # Decide if needs copy
                     if os.path.exists(dest_path):
                         try:
-                            with open(dest_path, 'rb') as existing:
+                            with open(dest_path, "rb") as existing:
                                 if existing.read() == data:
                                     skipped += 1
                                     continue
@@ -856,7 +908,7 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
                             # If copy fails, still attempt to overwrite
                             _append_debug_line(f"Backup failed for {dest_path}: {traceback.format_exc()}")
                         try:
-                            with open(dest_path, 'wb') as f:
+                            with open(dest_path, "wb") as f:
                                 f.write(data)
                             updated += 1
                         except Exception as e:
@@ -864,7 +916,7 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
                             errors.append(f"{rel_path}: {e}")
                     else:
                         try:
-                            with open(dest_path, 'wb') as f:
+                            with open(dest_path, "wb") as f:
                                 f.write(data)
                             created += 1
                         except Exception as e:
@@ -915,8 +967,11 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
         return "\n".join(summary)
     except Exception as e:
         _append_debug_line(f"Safe update exception during extraction: {e}\n{traceback.format_exc()}")
-        return (f"Safe update failed during extraction: {e}\n"
-                "Ensure disk space and that existing files are not locked by another process.")
+        return (
+            f"Safe update failed during extraction: {e}\n"
+            "Ensure disk space and that existing files are not locked by another process."
+        )
+
 
 def get_latest_github_version(full: bool = False, include_prerelease: bool = False) -> Any:
     # Return latest release metadata or just tag (error string on failure)
@@ -932,20 +987,21 @@ def get_latest_github_version(full: bool = False, include_prerelease: bool = Fal
         }
     return tag
 
+
 def _parse_version(v: str) -> List[int]:
     # Parse dotted version string into list of ints; strip leading v and non-digit tails
     if not v:
         return []
     v = v.strip()
-    if v.startswith(('v', 'V')):
+    if v.startswith(("v", "V")):
         v = v[1:]
     parts = []
-    for seg in v.split('.'):
+    for seg in v.split("."):
         seg = seg.strip()
         if not seg:
             parts.append(0)
             continue
-        num = ''
+        num = ""
         for ch in seg:
             if ch.isdigit():
                 num += ch
@@ -972,9 +1028,11 @@ def _compare_versions(a: str, b: str) -> int:
             return -1
     return 0
 
+
 def _canon_name(name: str) -> str:
     # PEP 503 canonicalization: collapse -, _, . to - and lowercase
-    return re.sub(r'[-_.]+', '-', name).lower()
+    return re.sub(r"[-_.]+", "-", name).lower()
+
 
 def check_version(include_prerelease: bool = False) -> str:
     # Return formatted version + patch notes using semantic comparison
@@ -983,7 +1041,7 @@ def check_version(include_prerelease: bool = False) -> str:
     if not isinstance(latest, dict):
         # Even if we can't get latest metadata, show local state
         if raw_local is None:
-            return f"Current version: Not installed\nLatest GitHub version: (error fetching releases)\nCannot fetch patch notes right now. Try again later."
+            return "Current version: Not installed\nLatest GitHub version: (error fetching releases)\nCannot fetch patch notes right now. Try again later."
         elif isinstance(raw_local, str) and raw_local.startswith("__ERROR__:"):
             return f"Current version: Error determining local version ({raw_local[10:]})\nLatest GitHub version: (error fetching releases)\nCannot fetch patch notes right now. Try again later."
         else:
@@ -1014,6 +1072,8 @@ def check_version(include_prerelease: bool = False) -> str:
         f"Latest GitHub version: {latest_version}{' (pre-release)' if is_pr else ''}\n"
         f"{status_line}\n\nPatch Notes:\n{notes}"
     )
+
+
 def check_requirements(
     log_callback: Optional[Callable[[str], None]] = None,
     progress_init: Optional[Callable[[int], None]] = None,
@@ -1027,6 +1087,7 @@ def check_requirements(
     def log(line: str) -> None:
         # Word wrap at 80 chars for better display
         import textwrap
+
         wrapped = textwrap.fill(line, width=80)
         output.append(wrapped)
         if log_callback:
@@ -1042,7 +1103,7 @@ def check_requirements(
                     lines = []
                     for raw in f:
                         line = raw.strip()
-                        if not line or line.startswith('#'):
+                        if not line or line.startswith("#"):
                             continue
                         lines.append(line)
                     return lines
@@ -1075,6 +1136,7 @@ def check_requirements(
                 creationflags=creationflags,
             )
             import json
+
             pkgs = json.loads(data.decode("utf-8", errors="replace"))
             return {_canon_name(p["name"]): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
         except Exception:
@@ -1088,8 +1150,13 @@ def check_requirements(
                         creationflags=creationflags,
                     )
                     import json
+
                     pkgs = json.loads(data.decode("utf-8", errors="replace"))
-                    return {_canon_name(p["name"]): p.get("version", "") for p in pkgs if isinstance(p, dict) and "name" in p}
+                    return {
+                        _canon_name(p["name"]): p.get("version", "")
+                        for p in pkgs
+                        if isinstance(p, dict) and "name" in p
+                    }
             except Exception:
                 pass
             return {}
@@ -1127,6 +1194,7 @@ def check_requirements(
                 except Exception:
                     startupinfo = None
                     creationflags = 0
+
             def _call(cmd_args):
                 if DEBUG_MODE:
                     return subprocess.check_call(cmd_args)
@@ -1164,7 +1232,9 @@ def check_requirements(
     try:
         if _is_frozen() and not PYTHON3106_CMD:
             log("Python 3.10.6 not found. Cannot verify or install requirements from the bundled launcher.")
-            log("Please install Python 3.10.6 and run 'Check Requirements' again, or run 'pip install -r requirements.txt' manually.")
+            log(
+                "Please install Python 3.10.6 and run 'Check Requirements' again, or run 'pip install -r requirements.txt' manually."
+            )
             try:
                 # Try to present the guided installer to the user
                 offer_python_installer_gui()
@@ -1188,8 +1258,8 @@ def check_requirements(
         # Normalize requirements into (name, pinned_version|None)
         parsed_reqs: List[Tuple[str, Optional[str]]] = []
         for req in requirements:
-            if '==' in req:
-                pkg, pinned_version = req.split('==', 1)
+            if "==" in req:
+                pkg, pinned_version = req.split("==", 1)
                 parsed_reqs.append((pkg.strip(), pinned_version.strip()))
             else:
                 parsed_reqs.append((req.strip(), None))
@@ -1327,13 +1397,14 @@ def check_requirements(
             line.startswith("Summary:")
             or line.startswith("Actions:")
             or line.startswith("Error reading requirements:")
-            or line.startswith("Files:")            # NEW: include file validation in silent summary
+            or line.startswith("Files:")  # NEW: include file validation in silent summary
         ):
             summary_lines.append(line)
         elif line.strip().startswith("- MISSING:") or line.strip().startswith("- missing optional:"):
             # Include detailed missing entries in silent summary
             summary_lines.append(line)
     return "\n".join(summary_lines) if summary_lines else "\n".join(output[-10:])
+
 
 def launch_program_detached() -> Optional[subprocess.Popen]:
     # Start the main program process and return the Popen or None on failure
@@ -1343,7 +1414,7 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
         messagebox.showerror(
             "Not Installed",
             "The main program is not installed yet.\n"
-            "Click 'Update to Latest' to download the latest release, then try launching again."
+            "Click 'Update to Latest' to download the latest release, then try launching again.",
         )
         return None
     if not PYTHON3106_CMD and _is_frozen():
@@ -1352,7 +1423,10 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
         except Exception:
             # Fallback to original messagebox
             try:
-                messagebox.showerror("Launch Error", "Python 3.10.6 is required to run the logger. Please install Python 3.10.6 and try again.")
+                messagebox.showerror(
+                    "Launch Error",
+                    "Python 3.10.6 is required to run the logger. Please install Python 3.10.6 and try again.",
+                )
             except Exception:
                 pass
         return None
@@ -1366,7 +1440,7 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
         except Exception:
             pass
 
-        
+
 def threaded_action(
     action: Callable[..., str],
     text_widget: scrolledtext.ScrolledText,
@@ -1413,6 +1487,7 @@ def threaded_action(
     t = threading.Thread(target=run, daemon=True)
     t.start()
 
+
 # NEW: font helpers
 def _is_font_available(font_family: str) -> bool:
     try:
@@ -1420,6 +1495,7 @@ def _is_font_available(font_family: str) -> bool:
         return font_family.lower() in families
     except Exception:
         return False
+
 
 def _install_font_per_user_windows(font_path: str, font_family: str) -> Tuple[bool, str]:
     if os.name != "nt":
@@ -1446,7 +1522,7 @@ def _install_font_per_user_windows(font_path: str, font_family: str) -> Tuple[bo
         try:
             AddFontResourceExW = ctypes.windll.gdi32.AddFontResourceExW
             SendMessageTimeoutW = ctypes.windll.user32.SendMessageTimeoutW
-            res = AddFontResourceExW(dest_path, 0, 0)
+            AddFontResourceExW(dest_path, 0, 0)
             HWND_BROADCAST = 0xFFFF
             WM_FONTCHANGE = 0x001D
             SMTO_ABORTIFHUNG = 0x0002
@@ -1458,6 +1534,7 @@ def _install_font_per_user_windows(font_path: str, font_family: str) -> Tuple[bo
         return True, "Installed."
     except Exception as e:
         return False, str(e)
+
 
 class InstallerGUI(tk.Tk):
     def __init__(self) -> None:
@@ -1544,7 +1621,10 @@ class InstallerGUI(tk.Tk):
         try:
             from PIL import Image, ImageTk
         except ImportError:
-            messagebox.showerror("Missing Dependency", "Pillow (PIL) is not installed. Please run 'pip install pillow' and restart the launcher.")
+            messagebox.showerror(
+                "Missing Dependency",
+                "Pillow (PIL) is not installed. Please run 'pip install pillow' and restart the launcher.",
+            )
             self.bg_photo = None
         else:
             bg_path = resource_path("LaunchMedia", "SpacePlaceholder.png")
@@ -1581,9 +1661,21 @@ class InstallerGUI(tk.Tk):
 
         # Sidebar button image paths and icons
         sidebar_btn_info = [
-            (resource_path("LaunchMedia", "GitHubButton.png"), resource_path("LaunchMedia", "GitHubButtonHover.png"), "🏠"),
-            (resource_path("LaunchMedia", "DiscordButton.png"), resource_path("LaunchMedia", "DiscordButtonHover.png"), "📰"),
-            (resource_path("LaunchMedia", "SettingsButton.png"), resource_path("LaunchMedia", "SettingsButtonHover.png"), "⚙️"),
+            (
+                resource_path("LaunchMedia", "GitHubButton.png"),
+                resource_path("LaunchMedia", "GitHubButtonHover.png"),
+                "🏠",
+            ),
+            (
+                resource_path("LaunchMedia", "DiscordButton.png"),
+                resource_path("LaunchMedia", "DiscordButtonHover.png"),
+                "📰",
+            ),
+            (
+                resource_path("LaunchMedia", "SettingsButton.png"),
+                resource_path("LaunchMedia", "SettingsButtonHover.png"),
+                "⚙️",
+            ),
             (resource_path("LaunchMedia", "HelpButton.png"), resource_path("LaunchMedia", "HelpButtonHover.png"), "❓"),
         ]
         self.sidebar_buttons = []
@@ -1607,10 +1699,7 @@ class InstallerGUI(tk.Tk):
 
             settings_path = app_path("settings.py")
             if not os.path.exists(settings_path):
-                messagebox.showerror(
-                    "Settings Not Found",
-                    "Please \"Update to Latest\" before opening Settings."
-                )
+                messagebox.showerror("Settings Not Found", 'Please "Update to Latest" before opening Settings.')
                 return
             try:
                 subprocess.Popen([*python_exe, settings_path])
@@ -1620,7 +1709,7 @@ class InstallerGUI(tk.Tk):
         sidebar_btn_actions = [
             lambda: open_url("https://github.com/HDMLM/MLHD2"),  # GitHub
             lambda: open_url("https://discord.gg/U6ydgwFKZG"),  # Discord (same link as requested)
-            open_settings,                                        # Settings
+            open_settings,  # Settings
             lambda: open_url("https://github.com/HDMLM/MLHD2/blob/main/README.md"),  # Help
         ]
 
@@ -1644,18 +1733,18 @@ class InstallerGUI(tk.Tk):
                 btn_hover_photo = None
 
             btn = tk.Button(
-            self.sidebar,
-            image=btn_photo if btn_photo else None,
-            text=fallback_icon if not btn_photo else "",
-            bg="#252526",
-            fg="white",
-            font=("Arial", 28, "bold"),
-            borderwidth=0,
-            relief="flat",
-            activebackground="#353535",
-            highlightthickness=0,
-            compound="center",
-            command=sidebar_btn_actions[i]
+                self.sidebar,
+                image=btn_photo if btn_photo else None,
+                text=fallback_icon if not btn_photo else "",
+                bg="#252526",
+                fg="white",
+                font=("Arial", 28, "bold"),
+                borderwidth=0,
+                relief="flat",
+                activebackground="#353535",
+                highlightthickness=0,
+                compound="center",
+                command=sidebar_btn_actions[i],
             )
             btn.place(x=20, y=40 + i * 90, width=40, height=40)
             if btn_photo and btn_hover_photo:
@@ -1668,21 +1757,28 @@ class InstallerGUI(tk.Tk):
         # Banner area
         self.banner_frame = tk.Frame(self.canvas, bg="#252526", width=920, height=110)
         self.banner_frame.place(x=80, y=0)
-        self.banner_label = tk.Label(self.banner_frame, text="HD2 MISSION LOGGER", bg="#252526", fg="white", font=(insignia_font.actual("family"), 30))
+        self.banner_label = tk.Label(
+            self.banner_frame,
+            text="HD2 MISSION LOGGER",
+            bg="#252526",
+            fg="white",
+            font=(insignia_font.actual("family"), 30),
+        )
         self.banner_label.place(x=30, y=18)
         latest_version = get_latest_github_version(include_prerelease=True)
 
         self.version_label = tk.Label(
             self.banner_frame,
-            text=f"Latest Version: {latest_version} - {GameUpdateTitle}" if isinstance(latest_version, str) else "Drop Into Hell...",
+            text=f"Latest Version: {latest_version} - {GameUpdateTitle}"
+            if isinstance(latest_version, str)
+            else "Drop Into Hell...",
             bg="#252526",
             fg="#AEE2FF",
-            font=insignia_font
+            font=insignia_font,
         )
         self.version_label.place(x=30, y=60)
 
         # Install dir prompt is triggered on Update (first-run) but not shown in UI
-
 
         # Main content area (match height with patch notes)
         self.content_frame = tk.Frame(self.canvas, bg="#4C4C4C", width=400, height=180)
@@ -1693,21 +1789,32 @@ class InstallerGUI(tk.Tk):
         self.shadow.place(x=115, y=135)
         self.content_frame.lift(self.shadow)
 
-        self.text = scrolledtext.ScrolledText(self.content_frame, state="disabled", width=46, height=8, font=("Arial", 12), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
+        self.text = scrolledtext.ScrolledText(
+            self.content_frame,
+            state="disabled",
+            width=46,
+            height=8,
+            font=("Arial", 12),
+            relief="flat",
+            bd=0,
+            bg="#4C4C4C",
+            fg="white",
+            wrap="word",
+        )
         self.text.place(x=10, y=10)
 
         # Progress bar for silent operations (e.g., Check Requirements)
         self.progress_label = tk.Label(self.content_frame, text="", bg="#4C4C4C", fg="white", font=("Arial", 10))
         # ttk.Progressbar only supports color styling, not images so screw that plan i had of using a hazzard tape progress bar :(
         style = ttk.Style(self)
-        style.theme_use('default')
+        style.theme_use("default")
         style.configure(
             "YellowBlack.Horizontal.TProgressbar",
             troughcolor="#252526",  # black/dark trough
-            background="#FFD600",   # yellow bar
+            background="#FFD600",  # yellow bar
             bordercolor="#252526",
             lightcolor="#FFD600",
-            darkcolor="#FFD600"
+            darkcolor="#FFD600",
         )
         # Use maximum=1000 for finer granularity (smoother animation)
         self.progress = ttk.Progressbar(
@@ -1716,7 +1823,7 @@ class InstallerGUI(tk.Tk):
             mode="determinate",
             length=360,
             style="YellowBlack.Horizontal.TProgressbar",
-            maximum=1000
+            maximum=1000,
         )
         # Initially hidden; will be placed during operations
 
@@ -1726,7 +1833,18 @@ class InstallerGUI(tk.Tk):
         # Place directly below the log box, keeping ~10px gap
         self.patch_notes_frame.place(x=120, y=340)
         self.patch_notes_frame.config(highlightbackground="#252526", highlightthickness=2)
-        self.patch_notes_box = scrolledtext.ScrolledText(self.patch_notes_frame, state="disabled", width=46, height=15, font=("Arial", 11, "italic"), relief="flat", bd=0, bg="#4C4C4C", fg="white", wrap="word")
+        self.patch_notes_box = scrolledtext.ScrolledText(
+            self.patch_notes_frame,
+            state="disabled",
+            width=46,
+            height=15,
+            font=("Arial", 11, "italic"),
+            relief="flat",
+            bd=0,
+            bg="#4C4C4C",
+            fg="white",
+            wrap="word",
+        )
         self.patch_notes_box.place(x=10, y=10)
 
         # Button row
@@ -1734,8 +1852,7 @@ class InstallerGUI(tk.Tk):
         button_y = 670
         button_x_start = 40
         button_w = 160
-        button_h = 38
-        button_pad = 20
+
         # Button image loading helper
         def load_button_images(base_path, normal_name, hover_name, size):
             try:
@@ -1781,7 +1898,7 @@ class InstallerGUI(tk.Tk):
             borderwidth=0,
             compound="center",
             highlightthickness=0,
-            activebackground="#4C4C4C"
+            activebackground="#4C4C4C",
         )
         self.check_btn.place(x=button_x_start, y=button_y_padded, width=button_w_wide, height=button_h_tall)
 
@@ -1805,7 +1922,7 @@ class InstallerGUI(tk.Tk):
             borderwidth=0,
             compound="center",
             highlightthickness=0,
-            activebackground="#4C4C4C"
+            activebackground="#4C4C4C",
         )
         self.update_btn.place(x=update_x, y=button_y_padded, width=button_w_wide, height=button_h_tall)
 
@@ -1825,9 +1942,16 @@ class InstallerGUI(tk.Tk):
             pass
         try:
             from PIL import Image, ImageTk
-            resample_algo = getattr(Image, 'LANCZOS', Image.ANTIALIAS)
-            uninstall_img = Image.open(uninstall_img_path).convert("RGBA").resize((button_w_wide, button_h_tall), resample_algo)
-            uninstall_img_hover = Image.open(uninstall_hover_img_path).convert("RGBA").resize((button_w_wide, button_h_tall), resample_algo)
+
+            resample_algo = getattr(Image, "LANCZOS", Image.ANTIALIAS)
+            uninstall_img = (
+                Image.open(uninstall_img_path).convert("RGBA").resize((button_w_wide, button_h_tall), resample_algo)
+            )
+            uninstall_img_hover = (
+                Image.open(uninstall_hover_img_path)
+                .convert("RGBA")
+                .resize((button_w_wide, button_h_tall), resample_algo)
+            )
             self.uninstall_photo = ImageTk.PhotoImage(uninstall_img)
             self.uninstall_photo_hover = ImageTk.PhotoImage(uninstall_img_hover)
         except Exception:
@@ -1845,22 +1969,26 @@ class InstallerGUI(tk.Tk):
             borderwidth=0,
             compound="center",
             highlightthickness=0,
-            activebackground="#4C4C4C"
+            activebackground="#4C4C4C",
         )
         # Place uninstall button next to Update button
-        self.uninstall_btn.place(x=update_x + button_w_wide + 10, y=button_y_padded, width=button_w_wide, height=button_h_tall)
+        self.uninstall_btn.place(
+            x=update_x + button_w_wide + 10, y=button_y_padded, width=button_w_wide, height=button_h_tall
+        )
 
         try:
             if self.uninstall_photo and self.uninstall_photo_hover:
-                self.uninstall_btn.bind("<Enter>", lambda e: self.uninstall_btn.config(image=self.uninstall_photo_hover))
+                self.uninstall_btn.bind(
+                    "<Enter>", lambda e: self.uninstall_btn.config(image=self.uninstall_photo_hover)
+                )
                 self.uninstall_btn.bind("<Leave>", lambda e: self.uninstall_btn.config(image=self.uninstall_photo))
         except Exception:
             pass
 
-    # Always include pre-releases by default, originally a checkbox but im too lazy to refactor the code to remove it so we just set it true
+        # Always include pre-releases by default, originally a checkbox but im too lazy to refactor the code to remove it so we just set it true
         self.include_prerelease = tk.BooleanVar(value=True)
 
-    # Place Start Game button at the absolute bottom right using image button
+        # Place Start Game button at the absolute bottom right using image button
         start_btn_img_path = resource_path("LaunchMedia", "StartLoggerButton.png")
         start_btn_hover_img_path = resource_path("LaunchMedia", "StartLoggerButtonHover.png")
         start_btn_clicked_img_path = resource_path("LaunchMedia", "StartLoggerButtonActive.png")
@@ -1877,9 +2005,15 @@ class InstallerGUI(tk.Tk):
                 resample_algo = Image.Resampling.LANCZOS
             except Exception:
                 resample_algo = Image.ANTIALIAS
-            start_btn_img = Image.open(start_btn_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
-            start_btn_hover_img = Image.open(start_btn_hover_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
-            start_btn_clicked_img = Image.open(start_btn_clicked_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
+            start_btn_img = (
+                Image.open(start_btn_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
+            )
+            start_btn_hover_img = (
+                Image.open(start_btn_hover_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
+            )
+            start_btn_clicked_img = (
+                Image.open(start_btn_clicked_img_path).convert("RGBA").resize((btn_width, btn_height), resample_algo)
+            )
             self.start_btn_photo = ImageTk.PhotoImage(start_btn_img)
             self.start_btn_hover_photo = ImageTk.PhotoImage(start_btn_hover_img)
             self.start_btn_clicked_photo = ImageTk.PhotoImage(start_btn_clicked_img)
@@ -1899,7 +2033,7 @@ class InstallerGUI(tk.Tk):
             borderwidth=0,
             relief="flat",
             activebackground="#FFEA70",
-            width=25
+            width=25,
         )
         self.launch_btn.place(x=1060, y=630, width=btn_width, height=btn_height)
 
@@ -1925,7 +2059,7 @@ class InstallerGUI(tk.Tk):
             self.launch_btn.bind("<Enter>", set_hover)
             self.launch_btn.bind("<Leave>", set_normal)
 
-    # Initial display
+        # Initial display
         self.display_version_info()
 
         # NEW: prompt once on first launch to install Insignia.ttf
@@ -1937,6 +2071,7 @@ class InstallerGUI(tk.Tk):
             self._rpc.set_status("Checking Requirements", "pip dependencies")
         except Exception:
             pass
+
         def run():
             threaded_action(
                 check_requirements,
@@ -1950,6 +2085,7 @@ class InstallerGUI(tk.Tk):
                 self._rpc.set_status("Idle", "Ready")
             except Exception:
                 pass
+
         threading.Thread(target=run, daemon=True).start()
         threading.Thread(target=run, daemon=True).start()
 
@@ -1983,7 +2119,11 @@ class InstallerGUI(tk.Tk):
                         retry = False
                     if not retry:
                         try:
-                            messagebox.showinfo("Update Cancelled", "Update cancelled because no install directory was selected.", parent=self)
+                            messagebox.showinfo(
+                                "Update Cancelled",
+                                "Update cancelled because no install directory was selected.",
+                                parent=self,
+                            )
                         except Exception:
                             pass
                         return
@@ -2006,7 +2146,9 @@ class InstallerGUI(tk.Tk):
 
         def _update():
             # Background worker performs the actual update using the chosen path captured above
-            threaded_action(lambda: safe_zip_update(self.include_prerelease.get(), target_root_override=chosen), self.text)
+            threaded_action(
+                lambda: safe_zip_update(self.include_prerelease.get(), target_root_override=chosen), self.text
+            )
             try:
                 self._rpc.set_status("Idle", "Ready")
             except Exception:
@@ -2020,6 +2162,7 @@ class InstallerGUI(tk.Tk):
         except Exception:
             pass
         self.launch_and_monitor()
+
     def _action_uninstall(self) -> None:
         """Uninstall the installed application from the saved install directory.
 
@@ -2037,29 +2180,36 @@ class InstallerGUI(tk.Tk):
                 return
 
             # Double-confirm with the user
-            if not messagebox.askyesno("Confirm Uninstall",
-                                       f"Are you sure you want to uninstall MLHD2 from:\n{install_dir}\n\nThis will permanently delete files in that directory."):
+            if not messagebox.askyesno(
+                "Confirm Uninstall",
+                f"Are you sure you want to uninstall MLHD2 from:\n{install_dir}\n\nThis will permanently delete files in that directory.",
+            ):
                 return
 
             # Offer to create a backup
-            if messagebox.askyesno("Backup Before Uninstall",
-                                   "Would you like to create a backup of the install directory before uninstalling? (Recommended)"):
+            if messagebox.askyesno(
+                "Backup Before Uninstall",
+                "Would you like to create a backup of the install directory before uninstalling? (Recommended)",
+            ):
                 try:
-                    ts = time.strftime('%Y%m%d-%H%M%S')
+                    ts = time.strftime("%Y%m%d-%H%M%S")
                     backup_root = os.path.join(BACKUP_DIR_ROOT, f"uninstall-{ts}")
                     shutil.copytree(install_dir, backup_root)
                     messagebox.showinfo("Backup Created", f"Backup of install directory created at:\n{backup_root}")
                 except Exception as e:
-                    if not messagebox.askyesno("Backup Failed",
-                                               f"Backup failed: {e}\n\nProceed with uninstall anyway?"):
+                    if not messagebox.askyesno(
+                        "Backup Failed", f"Backup failed: {e}\n\nProceed with uninstall anyway?"
+                    ):
                         return
 
             # Perform removal with safety checks
             protected = os.path.abspath(str(APP_DIR))
             target = os.path.abspath(install_dir)
             # Refuse to remove APP_DIR itself unless it's different from install dir
-            if target == protected and not messagebox.askyesno("Warning",
-                                                               "The configured install directory is the same as the launcher directory.\nDo you really want to remove the launcher folder as well?"):
+            if target == protected and not messagebox.askyesno(
+                "Warning",
+                "The configured install directory is the same as the launcher directory.\nDo you really want to remove the launcher folder as well?",
+            ):
                 return
 
             try:
@@ -2099,7 +2249,10 @@ class InstallerGUI(tk.Tk):
                 update_paths_from_install_dir()
             except Exception:
                 pass
-            messagebox.showinfo("Uninstall Complete", "MLHD2 has been uninstalled from the selected directory.\nThe launcher will continue to run.")
+            messagebox.showinfo(
+                "Uninstall Complete",
+                "MLHD2 has been uninstalled from the selected directory.\nThe launcher will continue to run.",
+            )
         except Exception as e:
             messagebox.showerror("Uninstall Failed", f"An unexpected error occurred: {e}")
 
@@ -2133,7 +2286,7 @@ class InstallerGUI(tk.Tk):
                 if messagebox.askyesno(
                     "Optional Font",
                     f"The '{FONT_FAMILY_NAME}' font improves visuals.\n"
-                    f"The font file '{FONT_FILE_NAME}' was not found.\nOpen the app folder to install it manually?"
+                    f"The font file '{FONT_FILE_NAME}' was not found.\nOpen the app folder to install it manually?",
                 ):
                     try:
                         os.startfile(str(APP_DIR))
@@ -2144,19 +2297,18 @@ class InstallerGUI(tk.Tk):
                 return
 
             if messagebox.askyesno(
-                "Install Font",
-                f"The '{FONT_FAMILY_NAME}' font is recommended.\nInstall it now for this Windows user?"
+                "Install Font", f"The '{FONT_FAMILY_NAME}' font is recommended.\nInstall it now for this Windows user?"
             ):
                 ok, err = _install_font_per_user_windows(font_path, FONT_FAMILY_NAME)
                 if ok:
                     messagebox.showinfo(
                         "Font Installed",
-                        f"'{FONT_FAMILY_NAME}' installed.\nYou may need to restart the launcher to see it."
+                        f"'{FONT_FAMILY_NAME}' installed.\nYou may need to restart the launcher to see it.",
                     )
                 else:
                     messagebox.showerror(
                         "Font Install Failed",
-                        f"Automatic install failed:\n{err}\nOpening the font file; click 'Install' in the viewer."
+                        f"Automatic install failed:\n{err}\nOpening the font file; click 'Install' in the viewer.",
                     )
                     try:
                         os.startfile(font_path)  # Opens font viewer for manual install
@@ -2190,13 +2342,13 @@ class InstallerGUI(tk.Tk):
     # Launch / monitor logic
     def launch_and_monitor(self) -> None:
         # Hide launcher while main program runs; restore on exit
-        if getattr(self, '_proc', None) and self._proc.poll() is None:
+        if getattr(self, "_proc", None) and self._proc.poll() is None:
             messagebox.showinfo("Already Running", "Main program is already running.")
             return
-        self.launch_btn.config(state='disabled')
+        self.launch_btn.config(state="disabled")
         proc = launch_program_detached()
         if not proc:
-            self.launch_btn.config(state='normal')
+            self.launch_btn.config(state="normal")
             return
         self._proc = proc
         self.withdraw()
@@ -2206,18 +2358,20 @@ class InstallerGUI(tk.Tk):
             pass
 
         def monitor():
-            exit_code = proc.wait()
+            proc.wait()
+
             # Return to main thread for UI restore
             def restore():
                 self.deiconify()
-                self.launch_btn.config(state='normal')
-                self.text.config(state='normal')
-                self.text.config(state='disabled')
+                self.launch_btn.config(state="normal")
+                self.text.config(state="normal")
+                self.text.config(state="disabled")
                 try:
                     self._rpc.start()  # Restart RPC when re-shown
                     self._rpc.set_status("Idle", "Ready")
                 except Exception:
                     pass
+
             try:
                 self.after(0, restore)
             except Exception:
@@ -2226,17 +2380,19 @@ class InstallerGUI(tk.Tk):
         threading.Thread(target=monitor, daemon=True).start()
 
         def monitor():
-            exit_code = proc.wait()
+            proc.wait()
+
             # Return to main thread for UI restore
             def restore():
                 self.deiconify()
-                self.launch_btn.config(state='normal')
-                self.text.config(state='normal')
-                self.text.config(state='disabled')
+                self.launch_btn.config(state="normal")
+                self.text.config(state="normal")
+                self.text.config(state="disabled")
                 try:
                     self._rpc.set_status("Idle", "Ready")
                 except Exception:
                     pass
+
             try:
                 self.after(0, restore)
             except Exception:
@@ -2273,6 +2429,7 @@ class InstallerGUI(tk.Tk):
             self.after(500, lambda: (self.progress.place_forget(), self.progress_label.place_forget()))
         except Exception:
             pass
+
 
 if __name__ == "__main__":
     app = InstallerGUI()

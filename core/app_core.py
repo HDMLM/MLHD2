@@ -3,92 +3,99 @@
 # This module contains the core application class `MissionLogGUI` and
 # supporting functions/constants previously placed in `main.py`.
 
-import tkinter as tk
-from tkinter import ttk, messagebox
-import requests
-from datetime import datetime, timezone, timedelta
-import json
-import pandas as pd
-import logging
-from core.logging_config import setup_logging
-from typing import Dict, List, Optional
-from PIL import Image, ImageTk, ImageDraw, ImageFont
-import time
 import configparser
-from core.runtime_paths import app_path, get_install_dir
-import threading
+import json
+import logging
 import os
-import subprocess
-import shutil
 import random
-import re
-import webbrowser
-import discordrpc
+import subprocess
 import sys
-from core.ui_sound import (
+import threading
+import tkinter as tk
+import webbrowser
+from datetime import datetime
+from tkinter import messagebox, ttk
+from typing import Dict
+
+import discordrpc
+import pandas as pd
+
+from core.data.data_manager import (
+    append_mission_to_excel,
+    get_mission_data_service,
+    load_persistent_settings,
+    read_streaks,
+    save_persistent_settings,
+)
+from core.infrastructure.logging_config import setup_logging
+from core.infrastructure.runtime_paths import app_path
+from core.ui.ui_sound import (
     init_ui_sounds,
     play_button_click,
-    play_button_hover,
-    register_global_click_binding,
-    set_ui_sounds_enabled,
-)
-from core.data_manager import (
-    load_persistent_settings,
-    save_persistent_settings,
-    append_mission_to_excel,
-    read_streaks,
 )
 
 # Load config
 iconconfig = configparser.ConfigParser()
-from core.runtime_paths import app_path
-iconconfig.read(app_path('orphan', 'icon.config'))
+iconconfig.read([app_path("orphan", "icon.config"), app_path("icon.config")])
+
 
 # Validates discordrpc availability and shape; affects Discord RPC initialization
 def _verify_discordrpc():
-    try:
-        import logging
-        path = getattr(discordrpc, "__file__", "N/A")
-        logging.info(f"discordrpc loaded from: {path}")
-        if not hasattr(discordrpc, "RPC"):
-            try:
-                import discord_rpc as alt
-                logging.info(f"Also found discord_rpc at: {getattr(alt, '__file__', 'N/A')}")
-            except Exception:
-                pass
-            raise AttributeError(f"discordrpc has no attribute RPC (module path: {path})")
-    except Exception as e:
-        # Surface early and clearly
-        raise
-_verify_discordrpc()
+    path = getattr(discordrpc, "__file__", "N/A")
+    logging.info(f"discordrpc loaded from: {path}")
+    if not hasattr(discordrpc, "RPC"):
+        try:
+            import discord_rpc as alt
 
-from tkinter import font as tkfont
+            logging.info(f"Also found discord_rpc at: {getattr(alt, '__file__', 'N/A')}")
+        except ImportError:
+            pass
+        raise AttributeError(f"discordrpc has no attribute RPC (module path: {path})")
+
+
+_verify_discordrpc()
 
 
 # Ensure Pillow debug output is disabled before importing PIL
 os.environ["PILLOW_DEBUG"] = "0"
 
 from PIL import Image, ImageTk
-from core.icon import ENEMY_ICONS, DIFFICULTY_ICONS, SYSTEM_COLORS, PLANET_ICONS, CAMPAIGN_ICONS, MISSION_ICONS, BIOME_BANNERS, SUBFACTION_ICONS,  HVT_ICONS, DSS_ICONS, TITLE_ICONS, PROFILE_PICTURES, SUBFACTION_BANNERS, HELLDIVER_BANNERS, get_subfaction_banner, get_helldiver_banner
+
+from core.icon import HVT_ICONS, SUBFACTION_ICONS
 from core.utils import (
-    is_valid_numeric_value,
     clean_numeric_string,
-    normalize_subfaction_name,
-    normalize_hvt_name,
-    get_enemy_icon as util_get_enemy_icon,
-    get_planet_icon as util_get_planet_icon,
-    get_system_color as util_get_system_color,
-    get_difficulty_icon as util_get_difficulty_icon,
-    get_campaign_icon as util_get_campaign_icon,
-    get_mission_icon as util_get_mission_icon,
-    get_biome_banner as util_get_biome_banner,
-    get_dss_icon as util_get_dss_icon,
-    get_title_icon as util_get_title_icon,
-    get_profile_picture as util_get_profile_picture,
-    get_subfaction_icon as util_get_subfaction_icon,
-    get_hvt_icon as util_get_hvt_icon,
+    is_valid_numeric_value,
 )
-import random
+from core.utils import (
+    get_biome_banner as util_get_biome_banner,
+)
+from core.utils import (
+    get_campaign_icon as util_get_campaign_icon,
+)
+from core.utils import (
+    get_difficulty_icon as util_get_difficulty_icon,
+)
+from core.utils import (
+    get_dss_icon as util_get_dss_icon,
+)
+from core.utils import (
+    get_enemy_icon as util_get_enemy_icon,
+)
+from core.utils import (
+    get_mission_icon as util_get_mission_icon,
+)
+from core.utils import (
+    get_planet_icon as util_get_planet_icon,
+)
+from core.utils import (
+    get_profile_picture as util_get_profile_picture,
+)
+from core.utils import (
+    get_system_color as util_get_system_color,
+)
+from core.utils import (
+    get_title_icon as util_get_title_icon,
+)
 
 # Manual Configuration
 GWDay = "Day: 734"
@@ -102,39 +109,37 @@ DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
 config = configparser.ConfigParser()
 # Prefer install-aware config paths
 # Prefer install-aware config paths; also try orphan folder where the user moved configs
-config.read(app_path('config.config'))
+config.read(app_path("config.config"))
 # If user moved the config into orphan/, prefer that value (app_path will check install dir then repo root)
 try:
     # Try orphan explicitly first if present
-    orphan_conf = app_path('orphan', 'config.config')
+    orphan_conf = app_path("orphan", "config.config")
     if os.path.exists(orphan_conf):
         config.read(orphan_conf)
-except Exception:
+except OSError:
     pass
-DISCORD_CLIENT_ID = config.get('Discord', 'DISCORD_CLIENT_ID', fallback='0')
-iconconfig = configparser.ConfigParser()
-iconconfig.read(app_path('icon.config'))
+DISCORD_CLIENT_ID = config.get("Discord", "DISCORD_CLIENT_ID", fallback="0")
 
-DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
+DEBUG = config.getboolean("DEBUGGING", "DEBUG", fallback=False)
 setup_logging(DEBUG)
 
 # File paths
 if DEBUG:
-    SETTINGS_FILE = app_path('JSON', 'settings-dev.json')
-    PERSISTENCE_FILE = app_path('JSON', 'persistent-dev.json')
-    streak_file = app_path('JSON', 'streak_data-dev.json')
+    SETTINGS_FILE = app_path("JSON", "settings-dev.json")
+    PERSISTENCE_FILE = app_path("JSON", "persistent-dev.json")
+    streak_file = app_path("JSON", "streak_data-dev.json")
 else:
-    SETTINGS_FILE = app_path('JSON', 'settings.json')
-    PERSISTENCE_FILE = app_path('JSON', 'persistent.json')
-    streak_file = app_path('JSON', 'streak_data.json')
+    SETTINGS_FILE = app_path("JSON", "settings.json")
+    PERSISTENCE_FILE = app_path("JSON", "persistent.json")
+    streak_file = app_path("JSON", "streak_data.json")
 
-# Set up application data paths 
-APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
+# Set up application data paths
+APP_DATA = os.path.join(os.getenv("LOCALAPPDATA"), "MLHD2")
 if not os.path.exists(APP_DATA):
     os.makedirs(APP_DATA)
 
-EXCEL_FILE_PROD = os.path.join(APP_DATA, 'mission_log.xlsx')
-EXCEL_FILE_TEST = os.path.join(APP_DATA, 'mission_log_test.xlsx')
+EXCEL_FILE_PROD = os.path.join(APP_DATA, "mission_log.xlsx")
+EXCEL_FILE_TEST = os.path.join(APP_DATA, "mission_log_test.xlsx")
 
 
 # Theme System
@@ -145,20 +150,24 @@ def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=N
         ".": {"configure": {"background": bg, "foreground": fg}},
         "TLabel": {"configure": {"background": bg, "foreground": fg}},
         "TButton": {"configure": {"background": button_bg or bg, "foreground": button_fg or fg}},
-        "TEntry": {"configure": {
-            "background": entry_bg or bg,
-            "foreground": entry_fg or fg,
-            "fieldbackground": entry_bg or bg,
-            "insertcolor": fg,
-        }},
+        "TEntry": {
+            "configure": {
+                "background": entry_bg or bg,
+                "foreground": entry_fg or fg,
+                "fieldbackground": entry_bg or bg,
+                "insertcolor": fg,
+            }
+        },
         "TCheckbutton": {"configure": {"background": bg, "foreground": fg}},
-        "TCombobox": {"configure": {
-            # Force combobox/dropdown boxes to a light gray regardless of entry_bg
-            "background": combobox_bg,
-            "foreground": entry_fg or fg,
-            "fieldbackground": combobox_bg,
-            "insertcolor": fg,
-        }},
+        "TCombobox": {
+            "configure": {
+                # Force combobox/dropdown boxes to a light gray regardless of entry_bg
+                "background": combobox_bg,
+                "foreground": entry_fg or fg,
+                "fieldbackground": combobox_bg,
+                "insertcolor": fg,
+            }
+        },
         "TFrame": {"configure": {"background": frame_bg or bg}},
         "TLabelframe": {"configure": {"background": frame_bg or bg, "foreground": fg}},
         "TLabelframe.Label": {"configure": {"background": frame_bg or bg, "foreground": fg}},
@@ -166,22 +175,24 @@ def make_theme(bg, fg, entry_bg=None, entry_fg=None, button_bg=None, button_fg=N
         "TNotebook.Tab": {"configure": {"background": button_bg or bg, "foreground": fg}},
     }
 
+
 # Apply default theme to the GUI
 DEFAULT_THEME = make_theme(
-    bg="#252526",      # background color
-    fg="#FFFFFF",      # foreground/text color
+    bg="#252526",  # background color
+    fg="#FFFFFF",  # foreground/text color
     entry_bg="#D3D3D3",
     entry_fg="#000000",
     button_bg="#4C4C4C",
     button_fg="#000000",
-    frame_bg="#252526"
+    frame_bg="#252526",
 )
+
 
 # Applies the provided theme to ttk widgets (incl. combobox tweaks); affects app appearance
 def apply_theme(style, theme_dict, root=None):
     # Use clam theme for full control
     try:
-        style.theme_use('clam')
+        style.theme_use("clam")
     except Exception:
         pass
 
@@ -196,14 +207,11 @@ def apply_theme(style, theme_dict, root=None):
     # Handle TCombobox colors (readonly state)
     combobox_cfg = theme_dict.get("TCombobox", {}).get("configure", {})
     combobox_bg = combobox_cfg.get("background", "#D3D3D3")
-    style.map("TCombobox",
-              fieldbackground=[("readonly", combobox_bg)],
-              background=[("readonly", combobox_bg)])
-
+    style.map("TCombobox", fieldbackground=[("readonly", combobox_bg)], background=[("readonly", combobox_bg)])
 
     if root is not None:
-        root.option_add('*TCombobox*Listbox.background', combobox_bg)
-        root.option_add('*TCombobox*Listbox.foreground', combobox_cfg.get("foreground", "#000000"))
+        root.option_add("*TCombobox*Listbox.background", combobox_bg)
+        root.option_add("*TCombobox*Listbox.foreground", combobox_cfg.get("foreground", "#000000"))
 
 
 # Wrapper to fetch enemy icon path from utils; affects export/Discord visuals
@@ -255,6 +263,7 @@ def get_title_icon(title: str) -> str:
 def get_profile_picture(profile_picture: str) -> str:
     return util_get_profile_picture(profile_picture)
 
+
 # Normalizes subfaction names to canonical keys; affects subfaction icon lookup
 def normalize_subfaction_name(subfaction: str) -> str:
     # Normalize subfaction name. - A: is this even used rn?
@@ -274,17 +283,17 @@ def normalize_subfaction_name(subfaction: str) -> str:
         "Cyborgs": "Cyborgs",
         "Cyborgs & Jet Brigade": "CyborgsJetBrigade",
         "Cyborgs & Incineration Corps": "CyborgsIncinerationCorps",
-        "Cyborgs, Jet Brigade & Incineration Corps": "CyborgsJetBrigadeIncinerationCorps"
+        "Cyborgs, Jet Brigade & Incineration Corps": "CyborgsJetBrigadeIncinerationCorps",
     }
     return replacements.get(normalized, normalized)
+
 
 # Normalizes HVT names to canonical keys; affects HVT icon lookup
 def normalize_hvt_name(hvt: str) -> str:
     normalized = " ".join(hvt.split()).title()
-    replacements = {
-        "Hive Lords": "HiveLords"
-    }
+    replacements = {"Hive Lords": "HiveLords"}
     return replacements.get(normalized, normalized)
+
 
 # Returns subfaction icon path (or empty if missing); affects export visuals
 def get_subfaction_icon(subfaction_type: str) -> str:
@@ -295,6 +304,7 @@ def get_subfaction_icon(subfaction_type: str) -> str:
         icon = ""
     return icon
 
+
 # Returns HVT icon path (or empty if missing); affects export visuals
 def get_hvt_icon(hvt_type: str) -> str:
     # Return HVT icon (empty if missing).
@@ -304,19 +314,62 @@ def get_hvt_icon(hvt_type: str) -> str:
         icon = ""
     return icon
 
+
 # Reads Excel to count total missions; affects stats display/logic
 def total_missions():
-    excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD  # <-- FIXED
     try:
-        df = pd.read_excel(excel_file)
-        total_rows = len(df)
-        return total_rows
+        summary = get_mission_data_service().get_runtime_summary(debug=DEBUG)
+        return int(summary.get("total_deployments", 0))
     except Exception as e:
         logging.error(f"Error reading Excel file for total missions: {e}")
         return 0  # Return 0 if file doesn't exist yet
 
+
 class MissionLogGUI:
     # Core GUI application controller; orchestrates state, UI, and integrations
+    def _bind_submit_tooltip_handlers_once(self, widget) -> None:
+        if getattr(self, "_submit_tooltip_handlers_bound", False):
+            return
+
+        def leave(event):
+            if hasattr(widget, "tooltip"):
+                try:
+                    widget.tooltip.destroy()
+                except Exception:
+                    pass
+                try:
+                    delattr(widget, "tooltip")
+                except Exception:
+                    pass
+
+        def motion(event):
+            if hasattr(widget, "tooltip"):
+                try:
+                    widget.tooltip.geometry(f"+{event.x_root + 15}+{event.y_root + 10}")
+                except Exception:
+                    pass
+
+        def enter(event):
+            return
+
+        try:
+            widget.bind("<Leave>", leave)
+            widget.bind("<Motion>", motion)
+            widget.bind("<Enter>", enter)
+            self._submit_tooltip_handlers_bound = True
+        except Exception:
+            pass
+
+    def _load_discord_integration(self) -> None:
+        if getattr(self, "_discord_integration_loaded", False):
+            return
+        from core.integrations.discord_integration import send_to_discord, setup_discord_rpc, update_discord_presence
+
+        self._discord_setup_fn = setup_discord_rpc
+        self._discord_update_fn = update_discord_presence
+        self._discord_send_fn = send_to_discord
+        self._discord_integration_loaded = True
+
     def _install_click_sound(self) -> None:
         """Bind a global handler to play a click sound for primary button releases.
 
@@ -326,7 +379,7 @@ class MissionLogGUI:
         """
         try:
             # Guard so we don't bind multiple times (Tkinter can duplicate events otherwise)
-            if getattr(self, '_click_sound_installed', False):
+            if getattr(self, "_click_sound_installed", False):
                 return
 
             def _maybe_play(event):
@@ -340,10 +393,11 @@ class MissionLogGUI:
                 except Exception:
                     pass
 
-            self.root.bind_all('<ButtonRelease-1>', _maybe_play, add=True)
+            self.root.bind_all("<ButtonRelease-1>", _maybe_play, add=True)
             self._click_sound_installed = True
         except Exception as e:
             logging.debug(f"Failed installing click sound binding: {e}")
+
     # Updates the submit button image based on status; affects submit button UI/feedback
     def update_submit_button_image(self, status: str) -> None:
         """
@@ -358,7 +412,7 @@ class MissionLogGUI:
                 img = self.submit_img_no
             else:
                 img = self.submit_img_default
-            if hasattr(self, 'submit_label'):
+            if hasattr(self, "submit_label"):
                 self.submit_label.configure(image=img)
                 self.submit_label.image = img  # Prevent garbage collection
                 self._submit_img_state = img
@@ -371,9 +425,9 @@ class MissionLogGUI:
     # Resets submit/observe button image to default; affects submit button UI
     def _reset_submit_button_image(self):
         """Reset button image to appropriate default based on current faction."""
-        if hasattr(self, 'submit_label'):
+        if hasattr(self, "submit_label"):
             # Check current faction to determine correct default button
-            if hasattr(self, 'enemy_type') and self.enemy_type.get() == "Observing":
+            if hasattr(self, "enemy_type") and self.enemy_type.get() == "Observing":
                 # Reset to observe button if faction is still Observing
                 self.submit_label.configure(image=self.observe_img_default)
                 self.submit_label.image = self.observe_img_default
@@ -383,40 +437,11 @@ class MissionLogGUI:
                 self.submit_label.configure(image=self.submit_img_default)
                 self.submit_label.image = self.submit_img_default
                 self._submit_img_state = self.submit_img_default
-            self._submit_img_state = self.submit_img_default
 
         # Safely bind tooltip handlers to the submit label if it exists.
-        widget = getattr(self, 'submit_label', None)
+        widget = getattr(self, "submit_label", None)
         if widget is not None:
-            def leave(event):
-                if hasattr(widget, 'tooltip'):
-                    try:
-                        widget.tooltip.destroy()
-                    except Exception:
-                        pass
-                    try:
-                        delattr(widget, 'tooltip')
-                    except Exception:
-                        pass
-
-            def motion(event):
-                if hasattr(widget, 'tooltip'):
-                    try:
-                        widget.tooltip.geometry(f"+{event.x_root+15}+{event.y_root+10}")
-                    except Exception:
-                        pass
-
-            def enter(event):
-                # No-op enter handler kept for parity with original behavior
-                return
-
-            try:
-                widget.bind("<Leave>", leave)
-                widget.bind("<Motion>", motion)
-                widget.bind("<Enter>", enter)
-            except Exception:
-                pass
-
+            self._bind_submit_tooltip_handlers_once(widget)
 
     # Initializes app state, theme, RPC, and UI; affects entire application startup
     def __init__(self, *args, **kwargs):
@@ -425,21 +450,22 @@ class MissionLogGUI:
             init_ui_sounds(preload=True)
         except Exception:
             pass
-        
+
         # root is passed as first positional argument by the caller
-        self.root = args[0] if args else kwargs.get('root')
+        self.root = args[0] if args else kwargs.get("root")
+        self.data_service = get_mission_data_service()
 
         # Ensure selected text is readable: default selection foreground to black
         try:
             # Generic selection foreground
-            self.root.option_add('*SelectionForeground', 'black')
+            self.root.option_add("*SelectionForeground", "black")
             # Per-widget class defaults
-            self.root.option_add('*Entry.selectForeground', 'black')
-            self.root.option_add('*Text.selectForeground', 'black')
-            self.root.option_add('*Listbox.selectForeground', 'black')
+            self.root.option_add("*Entry.selectForeground", "black")
+            self.root.option_add("*Text.selectForeground", "black")
+            self.root.option_add("*Listbox.selectForeground", "black")
             # Combobox listbox entries used by ttk are handled by apply_theme already,
             # but set a fallback for the listbox widget used in dropdowns.
-            self.root.option_add('*TCombobox*Listbox.selectForeground', 'black')
+            self.root.option_add("*TCombobox*Listbox.selectForeground", "black")
         except Exception:
             pass
 
@@ -456,9 +482,28 @@ class MissionLogGUI:
             logging.debug(f"Failed to install global click sound binding: {e}")
         if not os.path.exists(EXCEL_FILE_PROD):
             columns = [
-                'Super Destroyer', 'Helldivers', 'Level', 'Title', 'Sector', 'Planet', 'Mega Structure',
-                'Enemy Type', 'Enemy Subfaction', 'Enemy HVT', 'Major Order', 'DSS Active', 'DSS Modifier',
-                'Mission Category', 'Mission Type', 'Difficulty', 'Kills', 'Deaths', 'Rating', 'Time', 'Streak', 'Note'
+                "Super Destroyer",
+                "Helldivers",
+                "Level",
+                "Title",
+                "Sector",
+                "Planet",
+                "Mega Structure",
+                "Enemy Type",
+                "Enemy Subfaction",
+                "Enemy HVT",
+                "Major Order",
+                "DSS Active",
+                "DSS Modifier",
+                "Mission Category",
+                "Mission Type",
+                "Difficulty",
+                "Kills",
+                "Deaths",
+                "Rating",
+                "Time",
+                "Streak",
+                "Note",
             ]
             df = pd.DataFrame(columns=columns)
             df.to_excel(EXCEL_FILE_PROD, index=False)
@@ -469,11 +514,12 @@ class MissionLogGUI:
         self.root.resizable(False, False)
         self.RPC = None
         self.last_rpc_update = 0
+
         def load_icon():
             try:
-                pil_icon = Image.open(app_path('orphan', 'SuperEarth.png')).convert('RGBA')
+                pil_icon = Image.open(app_path("orphan", "SuperEarth.png")).convert("RGBA")
                 bg_color = (37, 37, 38, 255)  # #252526
-                background = Image.new('RGBA', pil_icon.size, bg_color)
+                background = Image.new("RGBA", pil_icon.size, bg_color)
                 pil_icon = Image.alpha_composite(background, pil_icon)
                 icon = ImageTk.PhotoImage(pil_icon)
                 self.root.after(0, lambda: self.root.iconphoto(False, icon))
@@ -482,7 +528,7 @@ class MissionLogGUI:
 
         threading.Thread(target=load_icon, daemon=True).start()
 
-    # Core state 
+        # Core state
         self.settings_file = SETTINGS_FILE
         self.persistence_file = PERSISTENCE_FILE
         self._setup_variables()
@@ -503,6 +549,7 @@ class MissionLogGUI:
         """Initialize the dynamic icons cache on application startup"""
         try:
             from core.dynamic_icons import initialize_dynamic_icons_cache
+
             initialize_dynamic_icons_cache()
             logging.info("Dynamic icons cache initialized on startup")
         except Exception as e:
@@ -519,7 +566,7 @@ class MissionLogGUI:
 
     # Creates and wires Tk variables and validators; affects form state
     def _setup_variables(self) -> None:
-    # Initialize tkinter variables with validation.
+        # Initialize tkinter variables with validation.
         self.sector = tk.StringVar()
         self.planet = tk.StringVar()
         self.mega_cities = tk.StringVar()
@@ -545,7 +592,6 @@ class MissionLogGUI:
         self.profile_picture = tk.StringVar()
         self.streak = tk.IntVar()
 
-        validate_cmd = self.root.register(self._validate_numeric_input)
         self.kills.trace_add("write", lambda *args: self._validate_field(self.kills))
         self.deaths.trace_add("write", lambda *args: self._validate_field(self.deaths))
 
@@ -571,20 +617,19 @@ class MissionLogGUI:
     def _create_main_frame(self) -> None:
         style = ttk.Style()
 
-        self.frame = ttk.Frame(self.root, padding="10", style='Custom.TFrame')
+        self.frame = ttk.Frame(self.root, padding="10", style="Custom.TFrame")
         self.frame.grid(row=0, column=0, sticky=(tk.W, tk.E, tk.N, tk.S))
 
-        style.configure('TLabel', font=('Arial', 10))
-        style.configure('TButton', font=('Arial', 10, 'bold'))
-        style.configure('TExportButton', font=('Arial', 7))
-
+        style.configure("TLabel", font=("Arial", 10))
+        style.configure("TButton", font=("Arial", 10, "bold"))
+        style.configure("TExportButton", font=("Arial", 7))
 
     # Initializes Discord RPC via integration module; affects presence display
     def _setup_discord_rpc(self) -> None:
         # Delegate to discord_integration.setup_discord_rpc to keep main focused
         try:
-            from core.discord_integration import setup_discord_rpc
-            setup_discord_rpc(self, DISCORD_CLIENT_ID)
+            self._load_discord_integration()
+            self._discord_setup_fn(self, DISCORD_CLIENT_ID)
         except Exception as e:
             logging.error(f"Failed to initialize Discord RPC via discord_integration: {e}")
 
@@ -592,7 +637,8 @@ class MissionLogGUI:
     def _setup_ui(self) -> None:
         # Delegate UI construction to gui_components to keep main file focused
         try:
-            from core.gui_components import build_ui
+            from core.ui.gui_components import build_ui
+
             build_ui(self)
         except Exception as e:
             logging.error(f"Failed to build UI from gui_components: {e}")
@@ -601,21 +647,21 @@ class MissionLogGUI:
     # Updates Discord presence fields from current state; affects RPC status
     def _update_discord_presence(self) -> None:
         try:
-            from core.discord_integration import update_discord_presence
-            update_discord_presence(self, RPC_UPDATE_INTERVAL)
+            self._load_discord_integration()
+            self._discord_update_fn(self, RPC_UPDATE_INTERVAL)
         except Exception as e:
             logging.error(f"Failed to update Discord presence via discord_integration: {e}")
 
-
     # Loads persisted user selections and applies them; affects form defaults
     def load_settings(self) -> None:
-    # Load user settings from file.
+        # Load user settings from file.
         def load():
             try:
                 persistent_settings = load_persistent_settings(PERSISTENCE_FILE)
                 self.root.after(0, lambda: self._apply_settings(persistent_settings))
             except Exception as e:
-                self.root.after(0, lambda: self._show_error(f"Error loading settings: {e}"))
+                err_msg = f"Error loading settings: {e}"
+                self.root.after(0, lambda msg=err_msg: self._show_error(msg))
 
         threading.Thread(target=load, daemon=True).start()
 
@@ -623,25 +669,25 @@ class MissionLogGUI:
     def save_settings(self) -> None:
         # Persist commonly edited selections between sessions
         settings = {
-            'profile_picture': self.profile_picture.get(),
-            'sector': self.sector.get(),
-            'planet': self.planet.get(),
-            'mega_cities': self.mega_cities.get(),
-            'level': int(self.level.get() or 0),
-            'title': self.title.get(),
-            'difficulty': self.difficulty.get(),
-            'mission': self.mission_type.get(),
-            'campaign': self.mission_category.get(),
-            'subfaction': self.subfaction_type.get(),
-            'MO': bool(self.MO.get()),
-            'DSS': bool(self.DSS.get()),
-            'DSSMod': self.DSSMod.get() or 'Inactive',
+            "profile_picture": self.profile_picture.get(),
+            "sector": self.sector.get(),
+            "planet": self.planet.get(),
+            "mega_cities": self.mega_cities.get(),
+            "level": int(self.level.get() or 0),
+            "title": self.title.get(),
+            "difficulty": self.difficulty.get(),
+            "mission": self.mission_type.get(),
+            "campaign": self.mission_category.get(),
+            "subfaction": self.subfaction_type.get(),
+            "MO": bool(self.MO.get()),
+            "DSS": bool(self.DSS.get()),
+            "DSSMod": self.DSSMod.get() or "Inactive",
         }
         try:
             save_persistent_settings(PERSISTENCE_FILE, settings)
         except Exception as e:
             self._show_error(f"Error saving persistent settings: {e}")
-    
+
     # Handles graceful shutdown and saves settings; affects app exit behavior
     def _on_close(self) -> None:
         # Save current selections before closing the app
@@ -652,17 +698,21 @@ class MissionLogGUI:
         finally:
             try:
                 self.root.destroy()
-            except Exception:
-                os._exit(0)
+            except Exception as e:
+                logging.error(f"Error destroying root window on close: {e}")
+                try:
+                    self.root.quit()
+                except Exception as qe:
+                    logging.error(f"Error quitting root loop on close: {qe}")
 
     # Validates and submits mission report to Excel/Discord; affects data/logging
     def submit_data(self) -> None:
         # Load Discord settings and flair
-        with open(app_path('JSON', 'DCord.json'), 'r') as f:
+        with open(app_path("JSON", "DCord.json"), "r") as f:
             discord_data = json.load(f)
             global Platform
-            Platform = discord_data.get('platform', 'Not Selected')
-            flair_colour = discord_data.get('flair_colour', 'Default')
+            Platform = discord_data.get("platform", "Not Selected")
+            flair_colour = discord_data.get("flair_colour", "Default")
 
         # --- Backend Flair Validation ---
         # Gather requirements
@@ -670,53 +720,41 @@ class MissionLogGUI:
         has_super_earth = False
         highest_streak = 0
         try:
-            # Count deployments from mission log
-            import pandas as pd
-            APP_DATA = os.path.join(os.getenv('LOCALAPPDATA'), 'MLHD2')
-            DEBUG = False
-            try:
-                import configparser
-                config = configparser.ConfigParser()
-                config.read(app_path('orphan', 'config.config'))
-                DEBUG = config.getboolean('DEBUGGING', 'DEBUG', fallback=False)
-            except Exception:
-                pass
-            excel_file = os.path.join(APP_DATA, 'mission_log_test.xlsx') if DEBUG else os.path.join(APP_DATA, 'mission_log.xlsx')
-            if os.path.exists(excel_file):
-                df = pd.read_excel(excel_file)
-                total_deployments = len(df)
-                has_super_earth = 'Super Earth' in df['Planet'].values if 'Planet' in df.columns else False
+            summary = self.data_service.get_runtime_summary(debug=DEBUG)
+            total_deployments = int(summary.get("total_deployments", 0))
+            has_super_earth = bool(summary.get("has_super_earth", False))
         except Exception:
             pass
         try:
             # Highest streak from streak_data.json
-            streak_path = app_path('JSON', 'streak_data.json')
+            streak_path = app_path("JSON", "streak_data.json")
             if os.path.exists(streak_path):
-                with open(streak_path, 'r') as sf:
+                with open(streak_path, "r") as sf:
                     streak_data = json.load(sf)
-                user = 'Helldiver'
-                highest_streak = streak_data.get(user, {}).get('highest_streak', 0)
+                user = "Helldiver"
+                highest_streak = streak_data.get(user, {}).get("highest_streak", 0)
         except Exception:
             pass
 
         # Validate flair
-        valid_flair = 'Default'
-        if flair_colour == 'Gold' and total_deployments >= 1000:
-            valid_flair = 'Gold'
-        elif flair_colour == 'Blue' and has_super_earth:
-            valid_flair = 'Blue'
-        elif flair_colour == 'Red' and highest_streak >= 30:
-            valid_flair = 'Red'
-        elif flair_colour == 'Default':
-            valid_flair = 'Default'
+        if flair_colour == "Gold" and total_deployments >= 1000:
+            pass
+        elif flair_colour == "Blue" and has_super_earth:
+            pass
+        elif flair_colour == "Red" and highest_streak >= 30:
+            pass
+        elif flair_colour == "Default":
+            pass
         else:
             # Flair is not unlocked, revert and notify
-            self._show_error(f"You attempted to use a locked flair ('{flair_colour}'). It has been reverted to 'Default'.")
+            self._show_error(
+                f"You attempted to use a locked flair ('{flair_colour}'). It has been reverted to 'Default'."
+            )
             # Update DCord.json to revert flair
-            discord_data['flair_colour'] = 'Default'
-            with open(app_path('JSON', 'DCord.json'), 'w', encoding='utf-8') as f:
+            discord_data["flair_colour"] = "Default"
+            with open(app_path("JSON", "DCord.json"), "w", encoding="utf-8") as f:
                 json.dump(discord_data, f, indent=4)
-            flair_colour = 'Default'
+            flair_colour = "Default"
 
         # Continue with normal submission
         if not self._validate_submission():
@@ -734,11 +772,15 @@ class MissionLogGUI:
             self.update_submit_button_image("Fail")
             return
         if self.planet.get() == "Meridia":
-            self._show_error("ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Meridian Black Hole.")
+            self._show_error(
+                "ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Meridian Black Hole."
+            )
             self.update_submit_button_image("Fail")
             return
         if self.planet.get() == "Penta":
-            self._show_error("ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Conventional Black Hole.")
+            self._show_error(
+                "ADVISORY: Volatile spacetime fluctuations currently prohibit FTL travel to the Conventional Black Hole."
+            )
             self.update_submit_button_image("Fail")
             return
         if self.planet.get() in ["Angel's Venture", "Moradesh", "Ivis"]:
@@ -755,56 +797,50 @@ class MissionLogGUI:
         # Prepare a separate payload for Discord that includes the validated flair.
         # Do NOT store `flair_colour` in the Excel log — keep it only for Discord posts.
         discord_payload = dict(data)
-        discord_payload['flair_colour'] = flair_colour
+        discord_payload["flair_colour"] = flair_colour
 
-        sent_success = False
         if self._save_to_excel(data):
             if self._send_to_discord(discord_payload):
                 logging.info("Sent To Discord")
                 self.update_submit_button_image("Passed")
-                sent_success = True
             else:
                 self.update_submit_button_image("Fail")
             # Clear fields after submission
-            def clear_text_widgets(widget):
-                for child in widget.winfo_children():
-                    if isinstance(child, tk.Text):
-                        child.delete("1.0", tk.END)
-                    clear_text_widgets(child)
-            clear_text_widgets(self.root)
+            if hasattr(self, "note_entry") and isinstance(self.note_entry, tk.Text):
+                self.note_entry.delete("1.0", tk.END)
             self.kills.set("")
             self.deaths.set("")
             self.rating.set("Gallantry Beyond Measure")
             # Ensure underlying note state is also cleared so empty notes don't reuse previous content
             try:
-                if hasattr(self, 'note_entry'):
+                if hasattr(self, "note_entry"):
                     # If programmatic clear didn't trigger bindings, force the var to empty
                     self.note.set("")
             except Exception as e:
                 logging.error(f"Failed to reset note state: {e}")
-            
+
     # Runs observation flow for 'Observing' faction; affects observation output
     def observe_data(self) -> None:
         """Handle observation data by running the observation.py script."""
         try:
             logging.info("Running observation script...")
-            observation_path = app_path('core', 'observation.py')
+            observation_path = app_path("core", "reports", "observation.py")
             # Pass current planet from GUI to observation script
-            current_planet = self.planet.get() if hasattr(self, 'planet') else "Unknown"
-            subprocess.run([sys.executable, observation_path, current_planet], shell=False)
+            current_planet = self.planet.get() if hasattr(self, "planet") else "Unknown"
+            subprocess.Popen([sys.executable, observation_path, current_planet], shell=False)
             self.update_submit_button_image("Passed")
         except Exception as e:
             logging.error(f"Failed to run observation script: {e}")
             self._show_error(f"Failed to run observation: {e}")
             self.update_submit_button_image("Fail")
-    
+
     # Switches submit button appearance based on enemy faction; affects submit visuals
     def _update_button_for_faction(self) -> None:
         """Update button appearance based on selected faction."""
         try:
-            if not hasattr(self, 'submit_label'):
+            if not hasattr(self, "submit_label"):
                 return
-                
+
             if self.enemy_type.get() == "Observing":
                 # Switch to observe button
                 self.submit_label.configure(image=self.observe_img_default)
@@ -817,33 +853,39 @@ class MissionLogGUI:
                 self._submit_img_state = self.submit_img_default
         except Exception as e:
             logging.error(f"Failed to update button for faction: {e}")
-            
+
     # Validates inputs and enforces constraints before submission; affects UX flow
     def _validate_submission(self) -> bool:
-    # Validate all required fields before submission.
+        # Validate all required fields before submission.
         excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
-        if os.path.exists(excel_file):
-            df = pd.read_excel(excel_file)
-            last_mission = df.iloc[-1] if not df.empty else None
         try:
-            last_mission_kills = last_mission['Kills']
-            last_mission_deaths = last_mission['Deaths']
-            last_mission_note = last_mission['Note']
-            last_mission_campaign = last_mission['Mission Category']
-            last_mission_mission = last_mission['Mission Type']
+            last_mission = self.data_service.get_last_mission_row(excel_file, use_cache=True)
+            if last_mission:
+                last_mission_kills = last_mission.get("Kills")
+                last_mission_deaths = last_mission.get("Deaths")
+                last_mission_note = last_mission.get("Note")
+                last_mission_campaign = last_mission.get("Mission Category")
+                last_mission_mission = last_mission.get("Mission Type")
 
-            if (str(self.kills.get()) == str(last_mission_kills) and
-                str(self.deaths.get()) == str(last_mission_deaths) and
-                (self.note.get() or "").strip() == (last_mission_note or "").strip()):
-                result = messagebox.askyesno("ADVISORY", "You appear to be submitting a duplicate mission report. Submit anyway?")
-                if not result:
-                    return False
+                if (
+                    str(self.kills.get()) == str(last_mission_kills)
+                    and str(self.deaths.get()) == str(last_mission_deaths)
+                    and (self.note.get() or "").strip() == (str(last_mission_note or "")).strip()
+                ):
+                    result = messagebox.askyesno(
+                        "ADVISORY", "You appear to be submitting a duplicate mission report. Submit anyway?"
+                    )
+                    if not result:
+                        return False
 
-            if ((self.mission_category.get() or "").strip() == (last_mission_campaign or "").strip() and
-                (self.mission_type.get() or "").strip() == (last_mission_mission or "").strip()):
-                result = messagebox.askyesno("ADVISORY", "This report contains the same mission as your last log, is this correct?")
-                if not result:
-                    return False
+                if (self.mission_category.get() or "").strip() == (str(last_mission_campaign or "")).strip() and (
+                    self.mission_type.get() or ""
+                ).strip() == (str(last_mission_mission or "")).strip():
+                    result = messagebox.askyesno(
+                        "ADVISORY", "This report contains the same mission as your last log, is this correct?"
+                    )
+                    if not result:
+                        return False
         except Exception as e:
             logging.error(f"Error checking for duplicate missions: {e}")
 
@@ -851,22 +893,21 @@ class MissionLogGUI:
             # Validate numeric fields
             level = int(self.level.get())
 
-            # Remove leading zeros using regex for kills
-            kills_str = re.sub(r'^0+', '', self.kills.get())
+            # Remove leading zeros for kills/deaths
+            kills_str = clean_numeric_string(self.kills.get())
             kills = int(kills_str) if kills_str else 0
 
-            # Remove leading zeros using regex for deaths
-            deaths_str = re.sub(r'^0+', '', self.deaths.get())
+            deaths_str = clean_numeric_string(self.deaths.get())
             deaths = int(deaths_str) if deaths_str else 0
 
-            #set the cleaned values back to the variables
-            self.kills.set(kills)
-            self.deaths.set(deaths)
+            # set the cleaned values back to the variables
+            self.kills.set(kills_str)
+            self.deaths.set(deaths_str)
 
-            #create a randint between 1 and 0 - to randomise for lil easter egg
+            # create a randint between 1 and 0 - to randomise for lil easter egg
             rndint = random.randint(0, 1)
 
-            #check for stupid values
+            # check for stupid values
             if len(str(kills)) > 5 or len(str(deaths)) > 4:
                 self._show_error("ADVISORY: What are you even trying?")
                 self.update_submit_button_image("Fail")
@@ -882,7 +923,9 @@ class MissionLogGUI:
 
             if kills < 0 or kills > 10000:
                 if rndint == 1:
-                    self._show_error("These kills will be reported to your Democracy Officer... I dear hope you're not lying...")
+                    self._show_error(
+                        "These kills will be reported to your Democracy Officer... I dear hope you're not lying..."
+                    )
                 else:
                     self._show_error("Invalid number of kills")
                 self.update_submit_button_image("Fail")
@@ -899,7 +942,9 @@ class MissionLogGUI:
             # Validate required text fields
             if not self.Helldivers.get().strip():
                 if rndint == 1:
-                    self._show_error("I know we're cannon fodder but you could at least give yourself a name... have some dignity!")
+                    self._show_error(
+                        "I know we're cannon fodder but you could at least give yourself a name... have some dignity!"
+                    )
                 else:
                     self._show_error("Helldiver name is required")
                 self.update_submit_button_image("Fail")
@@ -953,19 +998,19 @@ class MissionLogGUI:
         try:
             streak_data = read_streaks(streak_file)
             helldiver_name = "Helldiver"
-            user_data = streak_data.get(helldiver_name, {'streak': 0, 'last_time': None})
-            
+            user_data = streak_data.get(helldiver_name, {"streak": 0, "last_time": None})
+
             # Default to streak 1 (reset)
             streak = 1
-            
+
             # Check if we should continue the streak based on time difference
-            if user_data.get('last_time'):
-                last_time = datetime.strptime(user_data['last_time'], "%Y-%m-%d %H:%M:%S")
+            if user_data.get("last_time"):
+                last_time = datetime.strptime(user_data["last_time"], "%Y-%m-%d %H:%M:%S")
                 time_diff = datetime.now() - last_time
                 # If last mission was within 1 hour (3600 seconds), continue the streak
                 if time_diff.total_seconds() <= 3600:
-                    streak = user_data['streak'] + 1
-            
+                    streak = user_data["streak"] + 1
+
             return streak
         except Exception as e:
             logging.error(f"Error calculating current streak: {e}")
@@ -973,10 +1018,10 @@ class MissionLogGUI:
 
     # Gathers current form values into a report dict; affects saved/exported data
     def _collect_mission_data(self) -> Dict:
-    # Collect all mission data into a dictionary.
+        # Collect all mission data into a dictionary.
         # Read the current note text directly from the Text widget if available to avoid stale cached values
         try:
-            if hasattr(self, 'note_entry') and isinstance(self.note_entry, tk.Text):
+            if hasattr(self, "note_entry") and isinstance(self.note_entry, tk.Text):
                 note_value = self.note_entry.get("1.0", "end-1c").strip()
             else:
                 note_value = (self.note.get() or "").strip()
@@ -988,43 +1033,46 @@ class MissionLogGUI:
         current_streak = self._calculate_current_streak()
 
         return {
-            'Super Destroyer': self.shipname1_default +" "+ self.shipname2_default,
-            'Helldivers': self.helldiver_default,
-            'Level': self.level.get(),
-            'Title': self.title.get(),
-            'Sector': self.sector.get(),
-            'Planet': self.planet.get(),
-            'Mega Structure': self.mega_cities.get(),
-            'Enemy Type': self.enemy_type.get(),
-            'Enemy Subfaction': self.subfaction_type.get(),
-            'Enemy HVT': self.hvt_type.get(),
-            'Major Order': self.MO.get(),
-            'DSS Active': self.DSS.get(),
-            'DSS Modifier': self.DSSMod.get(),
-            'Mission Category': self.mission_category.get(),
-            'Mission Type': self.mission_type.get(),
-            'Difficulty': self.difficulty.get(),
-            'Kills': self.kills.get(),
-            'Deaths': self.deaths.get(),
-            'Rating': self.rating.get(),
-            'Time': datetime.now().strftime(DATE_FORMAT),
-            'Streak': current_streak,
-            'Note': note_value,
+            "Super Destroyer": self.shipname1_default + " " + self.shipname2_default,
+            "Helldivers": self.helldiver_default,
+            "Level": self.level.get(),
+            "Title": self.title.get(),
+            "Sector": self.sector.get(),
+            "Planet": self.planet.get(),
+            "Mega Structure": self.mega_cities.get(),
+            "Enemy Type": self.enemy_type.get(),
+            "Enemy Subfaction": self.subfaction_type.get(),
+            "Enemy HVT": self.hvt_type.get(),
+            "Major Order": self.MO.get(),
+            "DSS Active": self.DSS.get(),
+            "DSS Modifier": self.DSSMod.get(),
+            "Mission Category": self.mission_category.get(),
+            "Mission Type": self.mission_type.get(),
+            "Difficulty": self.difficulty.get(),
+            "Kills": self.kills.get(),
+            "Deaths": self.deaths.get(),
+            "Rating": self.rating.get(),
+            "Time": datetime.now().strftime(DATE_FORMAT),
+            "Streak": current_streak,
+            "Note": note_value,
         }
 
     # Appends mission data to Excel and updates dynamic icons; affects local log/cache
     def _save_to_excel(self, data: Dict) -> bool:
-    # Save mission data to Excel file by appending new rows.
+        # Save mission data to Excel file by appending new rows.
         excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
         success = append_mission_to_excel(excel_file, data)
-        
+
         # Update dynamic icons cache after successful mission submission
         if success:
             try:
-                from core.dynamic_icons import update_dynamic_icons_from_excel, initialize_dynamic_icons_cache
+                from core.dynamic_icons import initialize_dynamic_icons_cache, update_dynamic_icons_from_excel
+
                 updated = update_dynamic_icons_from_excel()
                 if not updated:
-                    logging.warning("update_dynamic_icons_from_excel() returned False, attempting initialize_dynamic_icons_cache()")
+                    logging.warning(
+                        "update_dynamic_icons_from_excel() returned False, attempting initialize_dynamic_icons_cache()"
+                    )
                     try:
                         initialized = initialize_dynamic_icons_cache()
                         if initialized:
@@ -1038,42 +1086,39 @@ class MissionLogGUI:
             except Exception as e:
                 logging.warning(f"Failed to update dynamic icons cache: {e}")
                 # Don't fail the mission submission if cache update fails
-        
+
         return success
 
     # Formats and sends mission data to Discord webhook; affects external posting
     def _send_to_discord(self, data: Dict) -> bool:
         try:
-            from core.discord_integration import send_to_discord
+            self._load_discord_integration()
             excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
-            return send_to_discord(self, data, excel_file, DEBUG, DATE_FORMAT, VERSION, DEV_RELEASE)
+            return self._discord_send_fn(self, data, excel_file, DEBUG, DATE_FORMAT, VERSION, DEV_RELEASE)
         except Exception as e:
             logging.error(f"Failed to send to Discord via discord_integration: {e}")
-            return False
-        except Exception as e:
-            logging.error(f"Error preparing Discord message: {e}")
-            self._show_error("Error preparing Discord message")
             return False
 
     # Iterates Excel and posts historical rows to Discord; affects webhook batch export
     def export_data(self) -> None:
-    # Export Excel data to webhook.
-        excel_file = "mission_log_test.xlsx" if DEBUG else "mission_log.xlsx"
+        # Export Excel data to webhook.
+        excel_file = EXCEL_FILE_TEST if DEBUG else EXCEL_FILE_PROD
         try:
             if not os.path.exists(excel_file):
                 self._show_error("No Excel file found to export")
                 return
 
-            df = pd.read_excel(excel_file)
+            df = self.data_service.read_mission_log(excel_file, use_cache=True)
             for _, row in df.iterrows():
                 data = row.to_dict()
                 try:
                     from core.utils import get_effective_flair
+
                     # Ensure exported rows include the current effective flair for Discord posts,
                     # but do NOT write flair back into the Excel file.
-                    data['flair_colour'] = get_effective_flair()
+                    data["flair_colour"] = get_effective_flair()
                 except Exception:
-                    data['flair_colour'] = data.get('flair_colour', 'Default')
+                    data["flair_colour"] = data.get("flair_colour", "Default")
                 self._send_to_discord(data)
 
             self._show_success("Excel data exported successfully!")
@@ -1083,11 +1128,11 @@ class MissionLogGUI:
 
     # Attempts to clean up RPC resources on deletion; affects shutdown hygiene
     def __del__(self) -> None:
-    # Clean up resources on deletion.
-        if hasattr(self, 'RPC') and self.RPC is not None:
+        # Clean up resources on deletion.
+        if hasattr(self, "RPC") and self.RPC is not None:
             try:
                 # discordrpc does not expose close like pypresence; set no-op or future cleanup
-                if hasattr(self.RPC, 'close'):
+                if hasattr(self.RPC, "close"):
                     self.RPC.close()
             except Exception:
                 pass
@@ -1096,112 +1141,111 @@ class MissionLogGUI:
     def export_excel(self):
         try:
             try:
-                sub_path = app_path('core', 'sub.py')
+                sub_path = app_path("core", "reports", "sub.py")
             except Exception:
-                sub_path = os.path.join(os.path.dirname(__file__), 'core', 'sub.py')
-            subprocess.run([sys.executable, sub_path], 
-                          shell=False,
-                          check=True,
-                          capture_output=True)
-        except subprocess.CalledProcessError as e:
-            self._show_error(f"Export failed: {e}")
+                sub_path = os.path.join(os.path.dirname(__file__), "core", "sub.py")
+            subprocess.Popen([sys.executable, sub_path], shell=False)
+        except Exception as e:
+            self._show_error(f"Export failed to start: {e}")
 
     # Applies persisted settings to Tk variables and dependent widgets; affects initial state
     def _apply_settings(self, settings: dict) -> None:
-        lvl = settings.get('level')
+        lvl = settings.get("level")
         if isinstance(lvl, int) and lvl > 0:
             self.level.set(lvl)
 
-        val = settings.get('title')
+        val = settings.get("title")
         if val:
             self.title.set(val)
 
-        val = settings.get('sector')
+        val = settings.get("sector")
         if val:
             self.sector.set(val)
 
-        val = settings.get('planet')
+        val = settings.get("planet")
         if val:
             self.planet.set(val)
 
-        val = settings.get('difficulty')
+        val = settings.get("difficulty")
         if val:
             self.difficulty.set(val)
 
-        val = settings.get('mission')
+        val = settings.get("mission")
         if val:
             self.mission_type.set(val)
 
-        if 'MO' in settings:
+        if "MO" in settings:
             # Respect explicit False; only skip if key missing
-            self.MO.set(bool(settings.get('MO')))
+            self.MO.set(bool(settings.get("MO")))
 
-        if 'DSS' in settings:
+        if "DSS" in settings:
             # Respect explicit False; only skip if key missing
-            self.DSS.set(bool(settings.get('DSS')))
+            self.DSS.set(bool(settings.get("DSS")))
 
-        val = settings.get('DSSMod')
+        val = settings.get("DSSMod")
         if val:
             self.DSSMod.set(val)
 
-        val = settings.get('campaign')
+        val = settings.get("campaign")
         if val:
             self.mission_category.set(val)
 
-        val = settings.get('subfaction')
+        val = settings.get("subfaction")
         if val:
             self.subfaction_type.set(val)
         # Mega city
-        val = settings.get('mega_cities')
+        val = settings.get("mega_cities")
         if val:
             self.mega_cities.set(val)
-        self.shipName1.set(getattr(self, 'shipname1_default', 'SES Adjudicator'))
-        self.shipName2.set(getattr(self, 'shipname2_default', 'of Allegiance'))
-        val = settings.get('profile_picture')
+        self.shipName1.set(getattr(self, "shipname1_default", "SES Adjudicator"))
+        self.shipName2.set(getattr(self, "shipname2_default", "of Allegiance"))
+        val = settings.get("profile_picture")
         if val:
             try:
                 # Only apply if the value exists in the available options to avoid blanking a readonly combobox
-                options = getattr(self, 'profile_pictures', [])
+                options = getattr(self, "profile_pictures", [])
                 if val in options:
                     self.profile_picture.set(val)
-                    if hasattr(self, 'profile_picture_combo'):
+                    if hasattr(self, "profile_picture_combo"):
                         self.profile_picture_combo.set(val)
                 else:
-                    logging.warning(f"Persisted profile_picture '{val}' not found in available options; keeping current selection.")
+                    logging.warning(
+                        f"Persisted profile_picture '{val}' not found in available options; keeping current selection."
+                    )
             except Exception as e:
                 logging.error(f"Failed applying persisted profile_picture '{val}': {e}")
 
         # After loading saved sector/planet ensure dependent dropdowns refresh
         try:
-            if hasattr(self, 'sectors_data') and self.sector.get() in self.sectors_data:
-                planets = self.sectors_data[self.sector.get()]['planets']
-                self.planet_combo['values'] = planets
+            if hasattr(self, "sectors_data") and self.sector.get() in self.sectors_data:
+                planets = self.sectors_data[self.sector.get()]["planets"]
+                self.planet_combo["values"] = planets
                 if self.planet.get() not in planets and planets:
                     self.planet.set(planets[0])
             # Trigger dependent refreshes
-            if hasattr(self, 'planet_combo'):
-                self.planet_combo.event_generate('<<ComboboxSelected>>')
+            if hasattr(self, "planet_combo"):
+                self.planet_combo.event_generate("<<ComboboxSelected>>")
             try:
-                if callable(locals().get('update_subfactions', None)):
-                    locals()['update_subfactions']()
-                if callable(locals().get('update_mission_categories', None)):
-                    locals()['update_mission_categories']()
-                if callable(locals().get('update_mission_types', None)):
-                    locals()['update_mission_types']()
+                if callable(locals().get("update_subfactions", None)):
+                    locals()["update_subfactions"]()
+                if callable(locals().get("update_mission_categories", None)):
+                    locals()["update_mission_categories"]()
+                if callable(locals().get("update_mission_types", None)):
+                    locals()["update_mission_types"]()
             except Exception:
                 pass
         except Exception as e:
             logging.error(f"Failed to refresh planet / mega city lists after settings load: {e}")
-        
+
         # Load banner setting from settings.json file
         try:
             if os.path.exists(self.settings_file):
-                with open(self.settings_file, 'r', encoding='utf-8') as f:
+                with open(self.settings_file, "r", encoding="utf-8") as f:
                     settings_data = json.load(f)
-                banner_setting = settings_data.get('banner', 'Biome Banner')
-                if hasattr(self, 'banner_type_var'):
+                banner_setting = settings_data.get("banner", "Biome Banner")
+                if hasattr(self, "banner_type_var"):
                     self.banner_type_var.set(banner_setting)
         except Exception as e:
             logging.error(f"Failed to load banner setting: {e}")
-            if hasattr(self, 'banner_type_var'):
-                self.banner_type_var.set('Biome Banner')
+            if hasattr(self, "banner_type_var"):
+                self.banner_type_var.set("Biome Banner")

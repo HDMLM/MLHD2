@@ -2,7 +2,7 @@ Privacy Policy
 
 Effective Date: 16/09/2025
 
-Your privacy is important to us. This program is designed with your privacy in mind and does not collect, store, or transmit any personal information. 
+Your privacy is important to us. This program is designed with your privacy in mind and does not collect, store, or transmit any personal information.
 We are committed to transparency and ensuring you understand how your data is handled.
 This program is open-source and available for review on GitHub as such we encourage you to examine the source code to verify our privacy practices.
 

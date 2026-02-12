@@ -4,23 +4,42 @@ This module exposes functions used throughout the UI to load and prepare
 images for display. Each function returns an ImageTk.PhotoImage or None
 on failure. The functions avoid side-effects other than reading files.
 """
-import os
-import logging
-import random
+
 import json
-from datetime import datetime
+import logging
+import os
+import random
+from collections import OrderedDict
 from typing import Optional, Tuple
 
-from PIL import Image, ImageTk, ImageDraw
+from PIL import Image, ImageDraw, ImageTk
 
-from core.runtime_paths import app_path
+from core.infrastructure.runtime_paths import app_path
+
+_MAX_IMAGE_CACHE_ITEMS = 256
+_PIL_CACHE: "OrderedDict[tuple, Image.Image]" = OrderedDict()
+_PHOTO_CACHE: "OrderedDict[tuple, ImageTk.PhotoImage]" = OrderedDict()
+
+
+def _cache_get(cache: OrderedDict, key):
+    value = cache.get(key)
+    if value is not None:
+        cache.move_to_end(key)
+    return value
+
+
+def _cache_set(cache: OrderedDict, key, value) -> None:
+    cache[key] = value
+    cache.move_to_end(key)
+    while len(cache) > _MAX_IMAGE_CACHE_ITEMS:
+        cache.popitem(last=False)
 
 
 # Composites image onto app background to avoid halos; affects image appearance
 def _composite_bg(pil_img: Image.Image, bg_color=(37, 37, 38, 255)) -> Image.Image:
     """Composite the image onto a uniform background to avoid haloing."""
     try:
-        background = Image.new('RGBA', pil_img.size, bg_color)
+        background = Image.new("RGBA", pil_img.size, bg_color)
         return Image.alpha_composite(background, pil_img)
     except Exception:
         return pil_img
@@ -30,6 +49,41 @@ def _composite_bg(pil_img: Image.Image, bg_color=(37, 37, 38, 255)) -> Image.Ima
 def pil_to_photo(pil_img: Image.Image) -> ImageTk.PhotoImage:
     pil_img = _composite_bg(pil_img)
     return ImageTk.PhotoImage(pil_img)
+
+
+def load_photo_image_cached(
+    path: str, size: Optional[Tuple[int, int]] = None, convert_mode: str = "RGBA", composite_bg: bool = True
+) -> Optional[ImageTk.PhotoImage]:
+    try:
+        norm_path = os.path.normpath(path)
+        photo_key = (norm_path, convert_mode, size, composite_bg)
+        cached_photo = _cache_get(_PHOTO_CACHE, photo_key)
+        if cached_photo is not None:
+            return cached_photo
+
+        pil_key = (norm_path, convert_mode)
+        pil = _cache_get(_PIL_CACHE, pil_key)
+        if pil is None:
+            pil = Image.open(norm_path).convert(convert_mode)
+            _cache_set(_PIL_CACHE, pil_key, pil)
+
+        working = pil
+        if size:
+            resize_key = (norm_path, convert_mode, size)
+            resized = _cache_get(_PIL_CACHE, resize_key)
+            if resized is None:
+                resized = pil.resize(size, Image.LANCZOS)
+                _cache_set(_PIL_CACHE, resize_key, resized)
+            working = resized
+
+        if composite_bg:
+            working = _composite_bg(working)
+
+        photo = ImageTk.PhotoImage(working)
+        _cache_set(_PHOTO_CACHE, photo_key, photo)
+        return photo
+    except Exception:
+        return None
 
 
 # Resolves media path via install-aware and package-local locations; affects asset lookup
@@ -57,10 +111,11 @@ def _media_path(*parts: str) -> str:
 # Loads Galactic War icon for header; affects top-right GW display
 def load_gw_icon() -> Optional[ImageTk.PhotoImage]:
     try:
-        path = _media_path('media', 'SyInt', 'gw_icon.png')
-        pil = Image.open(path).convert('RGBA')
-        pil = pil.resize((max(1, pil.width // 55), max(1, pil.height // 55)), Image.LANCZOS)
-        return pil_to_photo(pil)
+        path = _media_path("media", "SyInt", "gw_icon.png")
+        src = Image.open(path)
+        size = (max(1, src.width // 55), max(1, src.height // 55))
+        src.close()
+        return load_photo_image_cached(path, size=size, convert_mode="RGBA", composite_bg=True)
     except Exception as e:
         logging.error(f"image_utils: failed to load gw icon: {e}")
         return None
@@ -69,10 +124,8 @@ def load_gw_icon() -> Optional[ImageTk.PhotoImage]:
 # Loads profile picture preview; affects profile preview frame
 def load_profile_preview(profile_name: str, size: Tuple[int, int] = (120, 120)) -> Optional[ImageTk.PhotoImage]:
     try:
-        img_path = _media_path('media', 'profile_pictures', f"{profile_name}.png")
-        pil = Image.open(img_path).convert('RGBA')
-        pil = pil.resize(size, Image.LANCZOS)
-        return pil_to_photo(pil)
+        img_path = _media_path("media", "profile_pictures", f"{profile_name}.png")
+        return load_photo_image_cached(img_path, size=size, convert_mode="RGBA", composite_bg=True)
     except Exception as e:
         logging.error(f"image_utils: failed to load profile preview '{profile_name}': {e}")
         return None
@@ -82,13 +135,10 @@ def load_profile_preview(profile_name: str, size: Tuple[int, int] = (120, 120)) 
 def load_sector_placeholder(size: Optional[Tuple[int, int]] = None) -> Optional[ImageTk.PhotoImage]:
     try:
         # Try orphan folder first (user moved placeholder there), then regular media resolution
-        path = _media_path('orphan', 'sector-placeholder.png')
+        path = _media_path("orphan", "sector-placeholder.png")
         if not os.path.exists(path):
-            path = _media_path('sector-placeholder.png')
-        pil = Image.open(path).convert('RGBA')
-        if size:
-            pil = pil.resize(size, Image.LANCZOS)
-        return pil_to_photo(pil)
+            path = _media_path("sector-placeholder.png")
+        return load_photo_image_cached(path, size=size, convert_mode="RGBA", composite_bg=True)
     except Exception as e:
         logging.error(f"image_utils: failed to load sector placeholder: {e}")
         return None
@@ -97,9 +147,8 @@ def load_sector_placeholder(size: Optional[Tuple[int, int]] = None) -> Optional[
 # Loads planet biome preview image; affects planet preview frame
 def load_planet_preview(biome_name: str) -> Optional[ImageTk.PhotoImage]:
     try:
-        img_path = _media_path('media', 'planets', f"{biome_name}.png")
-        pil = Image.open(img_path).convert('RGBA')
-        return pil_to_photo(pil)
+        img_path = _media_path("media", "planets", f"{biome_name}.png")
+        return load_photo_image_cached(img_path, size=None, convert_mode="RGBA", composite_bg=True)
     except Exception as e:
         logging.error(f"image_utils: failed to load planet preview '{biome_name}': {e}")
         return None
@@ -108,15 +157,15 @@ def load_planet_preview(biome_name: str) -> Optional[ImageTk.PhotoImage]:
 # Loads sector image and chroma-tints whites by enemy; affects sector preview frame
 def load_sector_preview(sector_name: str, enemy_type: str) -> Optional[ImageTk.PhotoImage]:
     try:
-        img_path = _media_path('media', 'sectors', f"{sector_name}.png")
-        pil = Image.open(img_path).convert('RGBA')
+        img_path = _media_path("media", "sectors", f"{sector_name}.png")
+        pil = Image.open(img_path).convert("RGBA")
 
         # Replace near-white pixels with chroma color depending on enemy type
         enemy_colors = {
             "Automatons": "#ff6d6d",
             "Terminids": "#ffc100",
             "Illuminate": "#8960ca",
-            "Observing": "#41639C"
+            "Observing": "#41639C",
         }
         chroma_color = enemy_colors.get(enemy_type, "#ffffff")
         data = pil.getdata()
@@ -147,9 +196,7 @@ def load_row_image(img_path: str, size: Tuple[int, int] = (60, 60)) -> Optional[
             p = _media_path(*p.split(os.path.sep) if os.path.sep in p else (p,))
         if not os.path.exists(p):
             return None
-        pil = Image.open(p).convert('RGBA')
-        pil = pil.resize(size, Image.LANCZOS)
-        return pil_to_photo(pil)
+        return load_photo_image_cached(p, size=size, convert_mode="RGBA", composite_bg=True)
     except Exception as e:
         logging.error(f"image_utils: failed to load row image '{img_path}': {e}")
         return None
@@ -158,14 +205,20 @@ def load_row_image(img_path: str, size: Tuple[int, int] = (60, 60)) -> Optional[
 # Loads settings gear button default/hover images; affects settings control
 def load_settings_button_images() -> Tuple[Optional[ImageTk.PhotoImage], Optional[ImageTk.PhotoImage]]:
     try:
-        def _load(path):
-            p = path if os.path.isabs(path) else _media_path(*path.split(os.path.sep) if os.path.sep in path else (path,))
-            pil = Image.open(p).convert('RGBA')
-            pil = pil.resize((max(1, pil.width // 4), max(1, pil.height // 4)), Image.LANCZOS)
-            return pil_to_photo(pil)
 
-        default = _load(os.path.join('media', 'SyInt', 'SettingsButton.png'))
-        hover = _load(os.path.join('media', 'SyInt', 'SettingsButtonHover.png'))
+        def _load(path):
+            p = (
+                path
+                if os.path.isabs(path)
+                else _media_path(*path.split(os.path.sep) if os.path.sep in path else (path,))
+            )
+            src = Image.open(p)
+            size = (max(1, src.width // 4), max(1, src.height // 4))
+            src.close()
+            return load_photo_image_cached(p, size=size, convert_mode="RGBA", composite_bg=True)
+
+        default = _load(os.path.join("media", "SyInt", "SettingsButton.png"))
+        hover = _load(os.path.join("media", "SyInt", "SettingsButtonHover.png"))
         return default, hover
     except Exception as e:
         logging.error(f"image_utils: failed to load settings button images: {e}")
@@ -183,19 +236,19 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
 
         # Subfaction banner
         if banner_type_selected == "Subfaction Banner":
-            subfaction = (getattr(app, 'subfaction_type', None) and app.subfaction_type.get()) or "Unknown"
+            subfaction = (getattr(app, "subfaction_type", None) and app.subfaction_type.get()) or "Unknown"
             subf_clean = subfaction.replace(" ", "_")
             candidates = [
-                _media_path('media', 'subfaction_banner', f"{subfaction}.png"),
-                _media_path('media', 'subfaction_banner', f"{subf_clean}.png"),
-                _media_path('media', 'subfactions', f"{subf_clean}.png"),
+                _media_path("media", "subfaction_banner", f"{subfaction}.png"),
+                _media_path("media", "subfaction_banner", f"{subf_clean}.png"),
+                _media_path("media", "subfactions", f"{subf_clean}.png"),
             ]
             for path in candidates:
                 if os.path.isfile(path):
-                    img = Image.open(path).convert('RGBA')
-                    if 'media/subfactions' in path.replace('\\', '/'):
+                    img = Image.open(path).convert("RGBA")
+                    if "media/subfactions" in path.replace("\\", "/"):
                         W, H = 640, 180
-                        canvas = Image.new('RGBA', (W, H), (37, 37, 38, 0))
+                        canvas = Image.new("RGBA", (W, H), (37, 37, 38, 0))
                         draw = ImageDraw.Draw(canvas)
                         for y in range(H):
                             shade = 37 + int((y / max(1, H - 1)) * 18)
@@ -216,15 +269,15 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
             try:
                 idx = random.randint(1, 6)
                 candidates = [
-                    _media_path('media', 'helldiver_banner', f'helldiver{idx}.png'),
-                    _media_path('media', 'helldivers', f'helldiver{idx}.png'),
-                    _media_path(f'helldiver{idx}.png'),
+                    _media_path("media", "helldiver_banner", f"helldiver{idx}.png"),
+                    _media_path("media", "helldivers", f"helldiver{idx}.png"),
+                    _media_path(f"helldiver{idx}.png"),
                 ]
                 hld_path = next((p for p in candidates if os.path.isfile(p)), None)
                 if hld_path:
-                    img = Image.open(hld_path).convert('RGBA')
+                    img = Image.open(hld_path).convert("RGBA")
                     W, H = 460, 148
-                    canvas = Image.new('RGBA', (W, H), (37, 37, 38, 0))
+                    canvas = Image.new("RGBA", (W, H), (37, 37, 38, 0))
                     x = (W - img.width) // 2
                     y = (H - img.height) // 2
                     canvas.paste(img, (x, y), img)
@@ -235,31 +288,32 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
         # Default biome banner
         if pil_banner is None:
             # Look up the biome type for this planet from BiomePlanets.json
-            biome_name = 'Mars'  # Default fallback
+            biome_name = "Mars"  # Default fallback
             try:
-                biome_planets_path = _media_path('JSON', 'BiomePlanets.json')
+                biome_planets_path = _media_path("JSON", "BiomePlanets.json")
                 # Also try app_path if _media_path doesn't find it
                 if not os.path.isfile(biome_planets_path):
-                    from core.runtime_paths import app_path
-                    biome_planets_path = app_path('JSON', 'BiomePlanets.json')
-                
+                    from core.infrastructure.runtime_paths import app_path
+
+                    biome_planets_path = app_path("JSON", "BiomePlanets.json")
+
                 if os.path.isfile(biome_planets_path):
-                    with open(biome_planets_path, 'r', encoding='utf-8') as f:
+                    with open(biome_planets_path, "r", encoding="utf-8") as f:
                         biome_map = json.load(f)
-                        biome_name = biome_map.get(planet_name, 'Mars')
+                        biome_name = biome_map.get(planet_name, "Mars")
                         logging.debug(f"Looked up biome for planet '{planet_name}': '{biome_name}'")
             except Exception as e:
                 logging.warning(f"Could not load BiomePlanets.json: {e}, using fallback biome 'Mars'")
-            
-            path = _media_path('media', 'biome_banners', f"{biome_name}.png")
+
+            path = _media_path("media", "biome_banners", f"{biome_name}.png")
             if not os.path.isfile(path):
                 logging.warning(f"Biome banner not found for '{biome_name}', falling back to Mars.png")
-                path = _media_path('media', 'biome_banners', 'Mars.png')
-            pil_banner = Image.open(path).convert('RGBA')
+                path = _media_path("media", "biome_banners", "Mars.png")
+            pil_banner = Image.open(path).convert("RGBA")
 
         # Overlay HVT if present
         try:
-            hvt_name = (getattr(app, 'hvt_type', None) and app.hvt_type.get()) or ""
+            hvt_name = (getattr(app, "hvt_type", None) and app.hvt_type.get()) or ""
             if hvt_name and hvt_name != "No HVTs":
                 hvt_norm = hvt_name.replace(" ", "")
                 hvt_underscored = hvt_name.replace(" ", "_")
@@ -273,7 +327,7 @@ def load_biome_banner(app, banner_type_selected: str, planet_name: str) -> Optio
                     candidates.append(_media_path("Hive_Lords_Overlay.png"))
                 overlay_path = next((p for p in candidates if os.path.isfile(p)), None)
                 if overlay_path:
-                    hvt_img = Image.open(overlay_path).convert('RGBA')
+                    hvt_img = Image.open(overlay_path).convert("RGBA")
                     if hvt_img.size != pil_banner.size:
                         hvt_img = hvt_img.resize(pil_banner.size, Image.LANCZOS)
                     pil_banner.paste(hvt_img, (0, 0), hvt_img)

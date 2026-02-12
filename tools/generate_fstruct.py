@@ -1,6 +1,6 @@
 import json
-import os
 import logging
+import os
 from typing import Dict, List
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -8,6 +8,7 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 # Exclusions per your request (+ common VCS/IDE dirs)
 IGNORE_FILES = {".gitignore", ".gitattributes", "installer.spec", "app.log"}
 IGNORE_DIRS = {".git", ".vscode", "__pycache__", "venv", ".venv"}
+
 
 def build_tree(dir_path: str) -> Dict:
     node = {"name": os.path.basename(dir_path) or dir_path, "type": "dir", "children": []}
@@ -56,6 +57,7 @@ def build_tree(dir_path: str) -> Dict:
 
     return node
 
+
 def main():
     tree = build_tree(ROOT)
     out_dir = os.path.join(ROOT, "LaunchMedia")
@@ -64,6 +66,7 @@ def main():
     with open(out_path, "w", encoding="utf-8") as fh:
         json.dump(tree, fh, indent=2)
     logging.info(f"Wrote {os.path.relpath(out_path, ROOT)}")
+
 
 if __name__ == "__main__":
     main()

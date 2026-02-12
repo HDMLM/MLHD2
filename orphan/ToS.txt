@@ -26,8 +26,8 @@ These terms may be updated at any time without prior notice. Continued use of th
 It is your responsibility to review the terms periodically for updates.
 
 7. Project Status and Abandonment
-As a fan-made, open-source project, this application may be abandoned and receive no further updates at any time. 
-If the project is officially abandoned, this will be clearly communicated through the project's repository and related Discord channels. 
+As a fan-made, open-source project, this application may be abandoned and receive no further updates at any time.
+If the project is officially abandoned, this will be clearly communicated through the project's repository and related Discord channels.
 Users are encouraged to continue updating and maintaining the application under the open-source license; however, the original developers will no longer be responsible for any changes made to the program after abandonment.
 
 8. Contact
