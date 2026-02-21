@@ -165,6 +165,7 @@ def build_ui(app):
     except (OSError, ValueError, TypeError):
         shipName1_default = "SES Adjudicator"
         shipName2_default = "of Allegiance"
+        banner_type = "Biome Banner"
         app.shipname1_default = shipName1_default
         app.shipname2_default = shipName2_default
         app.helldiver_default = ""
@@ -984,7 +985,7 @@ def build_ui(app):
     app.dss_frame = ttk.Frame(details_frame)
     app.dss_frame.grid(row=3, column=2, sticky=tk.W, pady=5)
     ttk.Label(app.dss_frame, text="DSS Modifier:", foreground=flair_fg).pack(side=tk.LEFT)
-    dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm", "Eagle Blockade"]
+    dss_mods = ["Inactive", "Orbital Blockade", "Heavy Ordnance Distribution", "Eagle Storm", "Eagle Blockade", "Planetary Bombardment"]
     app.DSSMod.set("Inactive")  # Set default value
     app.dss_combo = ttk.Combobox(app.dss_frame, textvariable=app.DSSMod, values=dss_mods, state="readonly", width=27)
     app.dss_combo.pack(side=tk.LEFT, padx=(40, 0))

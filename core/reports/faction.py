@@ -97,12 +97,9 @@ rating_mapping = {
     "Disgraceful Conduct": 0,
 }
 # Calculate total rating
-total_rating = sum(
-    rating_mapping[row["Rating"]]
-    for index, row in df.iterrows()
-    if "Rating" in df.columns and row["Rating"] in rating_mapping
-)
-Rating_Percentage = (total_rating / max_rating) * 100
+rating_series = df["Rating"] if "Rating" in df.columns else pd.Series([], dtype=object)
+total_rating = rating_series.map(rating_mapping).fillna(0).sum() if not rating_series.empty else 0
+Rating_Percentage = (total_rating / max_rating) * 100 if max_rating else 0
 
 # Get the user's name and level from the last row of the DataFrame
 helldiver_ses = df["Super Destroyer"].iloc[-1] if "Super Destroyer" in df.columns else "Unknown"
@@ -110,18 +107,21 @@ helldiver_name = df["Helldivers"].iloc[-1] if "Helldivers" in df.columns else "U
 helldiver_level = df["Level"].iloc[-1] if "Level" in df.columns else 0
 helldiver_title = df["Title"].iloc[-1] if "Title" in df.columns else "Unknown"
 
-if DEBUG:
-    webhook_urls = [config["Webhooks"]["TEST"]]  # Use the webhook URL from the config for debugging
-else:
-    # Load webhook URLs from DCord.json
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        discord_data = json.load(f)
+        webhook_urls = discord_data.get("discord_webhooks", [])
+except (FileNotFoundError, json.JSONDecodeError):
     with open(app_path("JSON", "DCord.json"), "r") as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get("discord_webhooks", [])
-        webhook_urls = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in webhook_urls
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+
+webhook_urls = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in webhook_urls
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 if Rating_Percentage >= 90:
     Rating = "Outstanding Patriotism"
@@ -211,104 +211,96 @@ def get_first_deployment(df: pd.DataFrame, enemy_type: str) -> str:
     return first_ts.strftime("%d-%m-%Y %H:%M:%S")
 
 
-# Iterate through each row
-for index, row in df.iterrows():
-    # Append Sector values to the list
-    if "Sector" in df.columns and row["Sector"] not in sectors:
-        sectors.append(row["Sector"])
+if "Sector" in df.columns:
+    sectors = df["Sector"].dropna().unique().tolist()
+if "Planet" in df.columns:
+    planets = df["Planet"].dropna().unique().tolist()
+if "Enemy Type" in df.columns:
+    enemy_types = df["Enemy Type"].dropna().unique().tolist()
+if "Mission Category" in df.columns:
+    MissionCategory = df["Mission Category"].dropna().unique().tolist()
+if "Difficulty" in df.columns:
+    difficulties = df["Difficulty"].dropna().unique().tolist()
 
-    # Append Planet values to the list
-    if "Planet" in df.columns and row["Planet"] not in planets:
-        planets.append(row["Planet"])
-
-    # Append Enemy Type values to the list
-    if "Enemy Type" in df.columns and row["Enemy Type"] not in enemy_types:
-        enemy_types.append(row["Enemy Type"])
-
-    # Append Category values to the list
-    if "Mission Category" in df.columns and row["Mission Category"] not in MissionCategory:
-        MissionCategory.append(row["Mission Category"])
-
-    # Append Difficulty values to the list
-    if "Difficulty" in df.columns and row["Difficulty"] not in difficulties:
-        difficulties.append(row["Difficulty"])
-
-# Initialize lists to store stats for each planet
-planet_kills_list = []
-planet_deaths_list = []
-planet_orders_list = []
-
-for Planets in planets:
-    # Filter data for this planet and sum stats
-    planet_data = df[df["Planet"] == Planets]
-    planet_kills = planet_data["Kills"].sum()
-    planet_deaths = planet_data["Deaths"].sum()
-    planet_major_orders = planet_data["Major Order"].astype(int).sum()
-    planet_last_date = planet_data["Time"].max() if "Time" in df.columns else "No date available"
-    planet_deployments = len(planet_data)
-
-    # Create dictionaries to store data for each planet if they don't exist
-    if "planet_data_dict" not in locals():
-        planet_data_dict = {}
-        planet_kills_dict = {}
-        planet_deaths_dict = {}
-        planet_orders_dict = {}
-        planet_last_date_dict = {}
-        planet_deployments_dict = {}
-
-    # Store data in dictionaries with planet name as key
-    planet_data_dict[Planets] = planet_data
-    planet_kills_dict[Planets] = planet_kills
-    planet_deaths_dict[Planets] = planet_deaths
-    planet_orders_dict[Planets] = planet_major_orders
-    planet_last_date_dict[Planets] = planet_last_date
-    planet_deployments_dict[Planets] = planet_deployments
-
-# Create a DataFrame from the planet stats
-planet_stats_df = pd.DataFrame(
-    {
-        "Planet": planets,
-        "Total Kills": [planet_kills_dict[planet] for planet in planets],
-        "Total Deaths": [planet_deaths_dict[planet] for planet in planets],
-        "Major Orders": [planet_orders_dict[planet] for planet in planets],
-        "Last Date": [planet_last_date_dict[planet] for planet in planets],
-    }
-)
+planet_stats_df = pd.DataFrame()
+if "Planet" in df.columns:
+    planet_stats_df = (
+        df.groupby("Planet", dropna=False)
+        .agg(
+            **{
+                "Total Kills": ("Kills", "sum"),
+                "Total Deaths": ("Deaths", "sum"),
+                "Major Orders": ("Major Order", lambda s: s.astype(int).sum()),
+                "Last Date": ("Time", "max"),
+            }
+        )
+        .reset_index()
+    )
 
 # Discord webhook configuration
-if DEBUG:
-    # Use TEST webhook from config if in debug mode
-    ACTIVE_WEBHOOK = [config["Webhooks"]["TEST"]]
-else:
-    # Use PROD webhook in production mode
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        dcord_data = json.load(f)
+        ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks", [])
+except (FileNotFoundError, json.JSONDecodeError):
     with open(app_path("JSON", "DCord.json"), "r") as f:
         dcord_data = json.load(f)
         ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks", [])
-        ACTIVE_WEBHOOK = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in ACTIVE_WEBHOOK
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+
+ACTIVE_WEBHOOK = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in ACTIVE_WEBHOOK
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 # Get latest note
 non_blank_notes = df["Note"].dropna()
 latest_note = non_blank_notes.iloc[-1] if not non_blank_notes.empty else "No Quote"
 
-# Get Instances from Data
-search_mission = df["Mission Type"].mode()[0]
-MissionCount = df.apply(lambda row: row.astype(str).str.contains(search_mission, case=False).sum(), axis=1).sum()
-search_campaign = df["Mission Category"].mode()[0]
-CampaignCount = df.apply(lambda row: row.astype(str).str.contains(search_campaign, case=False).sum(), axis=1).sum()
-search_faction = df["Enemy Type"].mode()[0]
-FactionCount = df["Enemy Type"].apply(lambda x: str(x).lower() == search_faction.lower()).sum()
-search_subfaction = df["Enemy Subfaction"].mode()[0]
-SubfactionCount = df.apply(lambda row: row.astype(str).str.contains(search_subfaction, case=False).sum(), axis=1).sum()
-search_difficulty = df["Difficulty"].mode()[0]
-DifficultyCount = df.apply(lambda row: row.astype(str).str.contains(search_difficulty, case=False).sum(), axis=1).sum()
-search_planet = df["Planet"].mode()[0]
-PlanetCount = df["Planet"].apply(lambda x: str(x).lower() == search_planet.lower()).sum()
-search_sector = df["Sector"].mode()[0]
-SectorCount = df.apply(lambda row: row.astype(str).str.contains(search_sector, case=False).sum(), axis=1).sum()
+enemy_type_series = df["Enemy Type"] if "Enemy Type" in df.columns else pd.Series([], dtype=object)
+enemy_type_key = enemy_type_series.fillna("Unknown")
+mission_category_series = df["Mission Category"] if "Mission Category" in df.columns else pd.Series([], dtype=object)
+mission_category_key = mission_category_series.fillna("Unknown")
+kills_series = df["Kills"] if "Kills" in df.columns else pd.Series([], dtype=float)
+deaths_series = df["Deaths"] if "Deaths" in df.columns else pd.Series([], dtype=float)
+major_order_series = df["Major Order"].astype(int) if "Major Order" in df.columns else pd.Series([], dtype=int)
+dss_series = df["DSS Active"].astype(int) if "DSS Active" in df.columns else pd.Series([], dtype=int)
+
+enemy_group = df.groupby(enemy_type_key, dropna=False) if not enemy_type_key.empty else None
+enemy_kills = enemy_group["Kills"].sum() if enemy_group is not None else pd.Series(dtype=float)
+enemy_deaths = enemy_group["Deaths"].sum() if enemy_group is not None else pd.Series(dtype=float)
+enemy_max_kills = enemy_group["Kills"].max() if enemy_group is not None else pd.Series(dtype=float)
+enemy_deployments = enemy_group.size() if enemy_group is not None else pd.Series(dtype=int)
+enemy_major_orders = major_order_series.groupby(enemy_type_key).sum() if not enemy_type_key.empty else pd.Series(dtype=int)
+enemy_dss = dss_series.groupby(enemy_type_key).sum() if not enemy_type_key.empty else pd.Series(dtype=int)
+mission_counts_by_enemy = (
+    df.groupby([enemy_type_key, mission_category_key]).size() if not enemy_type_key.empty else pd.Series(dtype=int)
+)
+
+# Get value counts for each category
+mission_counts = df["Mission Type"].value_counts()
+campaign_counts = df["Mission Category"].value_counts()
+faction_counts = df["Enemy Type"].value_counts()
+subfaction_counts = df["Enemy Subfaction"].value_counts()
+difficulty_counts = df["Difficulty"].value_counts()
+planet_counts = df["Planet"].value_counts()
+sector_counts = df["Sector"].value_counts()
+
+search_mission = mission_counts.index[0] if not mission_counts.empty else "Unknown"
+MissionCount = int(mission_counts.iloc[0]) if not mission_counts.empty else 0
+search_campaign = campaign_counts.index[0] if not campaign_counts.empty else "Unknown"
+CampaignCount = int(campaign_counts.iloc[0]) if not campaign_counts.empty else 0
+search_faction = faction_counts.index[0] if not faction_counts.empty else "Unknown"
+FactionCount = int(faction_counts.iloc[0]) if not faction_counts.empty else 0
+search_subfaction = subfaction_counts.index[0] if not subfaction_counts.empty else "Unknown"
+SubfactionCount = int(subfaction_counts.iloc[0]) if not subfaction_counts.empty else 0
+search_difficulty = difficulty_counts.index[0] if not difficulty_counts.empty else "Unknown"
+DifficultyCount = int(difficulty_counts.iloc[0]) if not difficulty_counts.empty else 0
+search_planet = planet_counts.index[0] if not planet_counts.empty else "Unknown"
+PlanetCount = int(planet_counts.iloc[0]) if not planet_counts.empty else 0
+search_sector = sector_counts.index[0] if not sector_counts.empty else "Unknown"
+SectorCount = int(sector_counts.iloc[0]) if not sector_counts.empty else 0
 
 # Get badge icons using centralized function
 badge_data = get_badge_icons(DEBUG, APP_DATA, DATE_FORMAT)
@@ -425,6 +417,100 @@ HighPriorityIco = iconconfig["CampaignIcons"]["High-Priority"]
 AttritionIco = iconconfig["CampaignIcons"]["Attrition"]
 ReconIco = iconconfig["CampaignIcons"]["Recon"]
 
+
+def _safe_div(numer, denom):
+    return (numer / denom) if denom else 0
+
+
+def _fmt_number(value):
+    # Format numeric stats without trailing .0 while keeping real decimals.
+    try:
+        if pd.isna(value):
+            return "0"
+    except Exception:
+        pass
+    try:
+        as_float = float(value)
+    except Exception:
+        return str(value)
+    if as_float.is_integer():
+        return str(int(as_float))
+    return f"{as_float:.2f}".rstrip("0").rstrip(".")
+
+
+def _enemy_stat(series, enemy, default=0):
+    return series.get(enemy, default) if series is not None else default
+
+
+terminid_kills = float(_enemy_stat(enemy_kills, "Terminids", 0))
+terminid_deaths = float(_enemy_stat(enemy_deaths, "Terminids", 0))
+terminid_kdr = _safe_div(terminid_kills, terminid_deaths)
+terminid_max_kills = float(_enemy_stat(enemy_max_kills, "Terminids", 0))
+terminid_deployments = int(_enemy_stat(enemy_deployments, "Terminids", 0))
+terminid_major_orders = int(_enemy_stat(enemy_major_orders, "Terminids", 0))
+terminid_dss = int(_enemy_stat(enemy_dss, "Terminids", 0))
+
+automaton_kills = float(_enemy_stat(enemy_kills, "Automatons", 0))
+automaton_deaths = float(_enemy_stat(enemy_deaths, "Automatons", 0))
+automaton_kdr = _safe_div(automaton_kills, automaton_deaths)
+automaton_max_kills = float(_enemy_stat(enemy_max_kills, "Automatons", 0))
+automaton_deployments = int(_enemy_stat(enemy_deployments, "Automatons", 0))
+automaton_major_orders = int(_enemy_stat(enemy_major_orders, "Automatons", 0))
+automaton_dss = int(_enemy_stat(enemy_dss, "Automatons", 0))
+
+illuminate_kills = float(_enemy_stat(enemy_kills, "Illuminate", 0))
+illuminate_deaths = float(_enemy_stat(enemy_deaths, "Illuminate", 0))
+illuminate_kdr = _safe_div(illuminate_kills, illuminate_deaths)
+illuminate_max_kills = float(_enemy_stat(enemy_max_kills, "Illuminate", 0))
+illuminate_deployments = int(_enemy_stat(enemy_deployments, "Illuminate", 0))
+illuminate_major_orders = int(_enemy_stat(enemy_major_orders, "Illuminate", 0))
+illuminate_dss = int(_enemy_stat(enemy_dss, "Illuminate", 0))
+
+
+def _enemy_campaign(enemy, category):
+    return int(mission_counts_by_enemy.get((enemy, category), 0))
+
+
+def _campaign_line(enemy, category, label, icon, hide_zero=False):
+    count = _enemy_campaign(enemy, category)
+    if hide_zero and count < 1:
+        return ""
+    return f"> {icon} {label} - {count}\n"
+
+
+terminid_campaign_lines = (
+    _campaign_line("Terminids", "Liberation", "Liberations", LiberationIco)
+    + _campaign_line("Terminids", "Defense", "Defenses", DefenceIco)
+    + _campaign_line("Terminids", "Invasion", "Invasion", InvasionIco, hide_zero=True)
+    + _campaign_line("Terminids", "High-Priority", "High-Priority", HighPriorityIco)
+    + _campaign_line("Terminids", "Attrition", "Attrition", AttritionIco, hide_zero=True)
+    + _campaign_line("Terminids", "Battle for Super Earth", "Battle for Super Earth", InvasionIco, hide_zero=True)
+    + _campaign_line("Terminids", "Recon", "Recon", ReconIco)
+    + _campaign_line("Terminids", "Battle for Cyberstan", "Battle for Cyberstan", LiberationIco, hide_zero=True)
+)
+
+automaton_campaign_lines = (
+    _campaign_line("Automatons", "Liberation", "Liberations", LiberationIco)
+    + _campaign_line("Automatons", "Defense", "Defenses", DefenceIco)
+    + _campaign_line("Automatons", "Invasion", "Invasion", InvasionIco, hide_zero=True)
+    + _campaign_line("Automatons", "High-Priority", "High-Priority", HighPriorityIco)
+    + _campaign_line("Automatons", "Attrition", "Attrition", AttritionIco, hide_zero=True)
+    + _campaign_line("Automatons", "Battle for Super Earth", "Battle for Super Earth", InvasionIco, hide_zero=True)
+    + _campaign_line("Automatons", "Recon", "Recon", ReconIco)
+    + _campaign_line("Automatons", "Battle for Cyberstan", "Battle for Cyberstan", LiberationIco)
+)
+
+illuminate_campaign_lines = (
+    _campaign_line("Illuminate", "Liberation", "Liberations", LiberationIco)
+    + _campaign_line("Illuminate", "Defense", "Defenses", DefenceIco)
+    + _campaign_line("Illuminate", "Invasion", "Invasion", InvasionIco)
+    + _campaign_line("Illuminate", "High-Priority", "High-Priority", HighPriorityIco)
+    + _campaign_line("Illuminate", "Attrition", "Attrition", AttritionIco)
+    + _campaign_line("Illuminate", "Battle for Super Earth", "Battle for Super Earth", InvasionIco)
+    + _campaign_line("Illuminate", "Recon", "Recon", ReconIco)
+    + _campaign_line("Illuminate", "Battle for Cyberstan", "Battle for Cyberstan", LiberationIco, hide_zero=True)
+)
+
 # Create embed data
 embed_data = {
     "content": None,
@@ -432,27 +518,27 @@ embed_data = {
         {
             "title": "",  # Empty title, will be set below
             "description": f'**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df["Title"].iloc[-1], "")}**\n\n"{latest_note}"\n\n{FlairLeftIco}  {FlairSkullIco} Combat Statistics {FlairSkullIco} {FlairRightIco}\n'
-            + f"> Kills - {df['Kills'].sum()}\n"
-            + f"> Deaths - {df['Deaths'].sum()}\n"
-            + f"> KDR - {(df['Kills'].sum() / df['Deaths'].sum()):.2f}\n"
-            + f"> Highest Kills in Mission - {df['Kills'].max()}\n"
+            + f"> Kills - {_fmt_number(kills_series.sum())}\n"
+            + f"> Deaths - {_fmt_number(deaths_series.sum())}\n"
+            + f"> KDR - {_safe_div(kills_series.sum(), deaths_series.sum()):.2f}\n"
+            + f"> Highest Kills in Mission - {_fmt_number(kills_series.max())}\n"
             + f"\n{FlairLeftIco}  {FlairSEIco} Mission Statistics {FlairSEIco} {FlairRightIco}\n"
             + f"> Deployments - {len(df)}\n"
-            + f"> Major Order Deployments - {df['Major Order'].astype(int).sum()}\n"
-            + f"> DSS Deployments - {df['DSS Active'].astype(int).sum()}\n"
+            + f"> Major Order Deployments - {major_order_series.sum()}\n"
+            + f"> DSS Deployments - {dss_series.sum()}\n"
             + f"> Mega Structure Deployments - {mega_city_count}\n"
-            + f"> First Deployment - {get_first_deployment(df, df['Enemy Type'].mode().iloc[0])}\n"
+            + f"> First Deployment - {get_first_deployment(df, enemy_type_key.mode().iloc[0] if not enemy_type_key.empty else 'Unknown')}\n"
             + f"\n{FlairLeftIco}  {FlairGSSkullIco} Performance Statistics {FlairGSSkullIco} {FlairRightIco}\n"
             + f"> Rating - {Rating} | {int(Rating_Percentage)}%\n"
             + f"> Highest Streak - {highest_streak} Missions\n"
             + f"\n{FlairLeftIco}  {GoldStarIco} Favourites {GoldStarIco} {FlairRightIco}\n"
-            + f"> Mission - {df['Mission Type'].mode().iloc[0]} {MISSION_ICONS.get(df['Mission Type'].mode().iloc[0], '')} (x{MissionCount})\n"
-            + f"> Campaign - {df['Mission Category'].mode().iloc[0]} {CAMPAIGN_ICONS.get(df['Mission Category'].mode().iloc[0], '')} (x{CampaignCount})\n"
-            + f"> Faction - {df['Enemy Type'].mode().iloc[0]} {ENEMY_ICONS.get(df['Enemy Type'].mode().iloc[0], '')} (x{FactionCount})\n"
-            + f"> Subfaction - {df['Enemy Subfaction'].mode().iloc[0]} {SUBFACTION_ICONS.get(df['Enemy Subfaction'].mode().iloc[0], '')} (x{SubfactionCount})\n"
-            f"> Difficulty - {df['Difficulty'].mode().iloc[0]} {DIFFICULTY_ICONS.get(df['Difficulty'].mode().iloc[0], '')} (x{DifficultyCount})\n"
-            + f"> Planet - {df['Planet'].mode().iloc[0]} {PLANET_ICONS.get(df['Planet'].mode().iloc[0], '')} (x{PlanetCount})\n"
-            + f"> Sector - {df['Sector'].mode().iloc[0]} (x{SectorCount})\n",
+            + f"> Mission - {search_mission} {MISSION_ICONS.get(search_mission, '')} (x{MissionCount})\n"
+            + f"> Campaign - {search_campaign} {CAMPAIGN_ICONS.get(search_campaign, '')} (x{CampaignCount})\n"
+            + f"> Faction - {search_faction} {ENEMY_ICONS.get(search_faction, '')} (x{FactionCount})\n"
+            + f"> Subfaction - {search_subfaction} {SUBFACTION_ICONS.get(search_subfaction, '')} (x{SubfactionCount})\n"
+            f"> Difficulty - {search_difficulty} {DIFFICULTY_ICONS.get(search_difficulty, '')} (x{DifficultyCount})\n"
+            + f"> Planet - {search_planet} {PLANET_ICONS.get(search_planet, '')} (x{PlanetCount})\n"
+            + f"> Sector - {search_sector} (x{SectorCount})\n",
             "color": 7257043,
             "author": {
                 "name": f"SEAF Faction Record\nDate: {date}",
@@ -462,29 +548,22 @@ embed_data = {
                 "text": f"{discord_data['discord_uid']}   v{VERSION}{DEV_RELEASE}",
                 "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&",
             },
-            "image": {"url": f"{BIOME_BANNERS.get(df['Planet'].mode().iloc[0], '')}"},
+            "image": {"url": f"{BIOME_BANNERS.get(search_planet, '')}"},
             "thumbnail": {"url": f"{profile_picture}"},
         },
         {
             "title": "Terminids Campaign Record",
             "description": f"{FlairLeftIco} {BugIco} Terminid Front Statistics {BugIco} {FlairRightIco}\n"
-            + f"> {KillIco} Kills - {df[df['Enemy Type'] == 'Terminids']['Kills'].sum()}\n"
-            + f"> {DeathIco} Deaths - {df[df['Enemy Type'] == 'Terminids']['Deaths'].sum()}\n"
-            + f"> {KDRIco} KDR - {(df[df['Enemy Type'] == 'Terminids']['Kills'].sum() / df[df['Enemy Type'] == 'Terminids']['Deaths'].sum()):.2f}\n"
-            + f"> {HighestKillIco} Highest Kills in Mission - {df[df['Enemy Type'] == 'Terminids']['Kills'].max()}\n\n"
-            + f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Terminids']['Enemy Type'].count().sum()}\n"
-            + f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Terminids']['Major Order'].astype(int).sum()}\n"
-            + f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Terminids']['DSS Active'].astype(int).sum()}\n"
+            + f"> {KillIco} Kills - {_fmt_number(terminid_kills)}\n"
+            + f"> {DeathIco} Deaths - {_fmt_number(terminid_deaths)}\n"
+            + f"> {KDRIco} KDR - {terminid_kdr:.2f}\n"
+            + f"> {HighestKillIco} Highest Kills in Mission - {_fmt_number(terminid_max_kills)}\n\n"
+            + f"> {DeployIco} Deployments - {terminid_deployments}\n"
+            + f"> {MODeployIco} Major Order Deployments - {terminid_major_orders}\n"
+            + f"> {DSSDeployIco} DSS Deployments - {terminid_dss}\n"
             + f"> {BugMCDeployIco} Mega Structure Deployments - {terminids_mega_city_count}\n"
             + f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Terminids')}\n\n"
-            + f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n"
-            + f"> {DefenceIco} Defenses - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Defense']['Mission Category'].count().sum()}\n"
-            + f"> {InvasionIco} Invasion - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Invasion']['Mission Category'].count().sum()}\n"
-            + f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n"
-            + f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n"
-            + f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n"
-            + f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n"
-            + f"> {LiberationIco} Battle for Cyberstan - {df[df['Enemy Type'] == 'Terminids'][df['Mission Category'] == 'Battle for Cyberstan']['Mission Category'].count().sum()}\n\n",
+            + f"{terminid_campaign_lines}\n",
             "color": 16761088,
             "image": {
                 "url": "https://cdn.discordapp.com/attachments/1340508329977446484/1370786767128760420/terminidBanner.png?ex=6820c429&is=681f72a9&hm=3ca1e122e8063426a3dd1963791aca33ba6343a7a946b06287d344ce6c0f93a0&"
@@ -494,23 +573,16 @@ embed_data = {
         {
             "title": "Automaton Campaign Record",
             "description": f"{FlairLeftIco} {BotIco} Automaton Front Statistics {BotIco} {FlairRightIco}\n"
-            + f"> {KillIco} Kills - {df[df['Enemy Type'] == 'Automatons']['Kills'].sum()}\n"
-            + f"> {DeathIco} Deaths - {df[df['Enemy Type'] == 'Automatons']['Deaths'].sum()}\n"
-            + f"> {KDRIco} KDR - {(df[df['Enemy Type'] == 'Automatons']['Kills'].sum() / df[df['Enemy Type'] == 'Automatons']['Deaths'].sum()):.2f}\n"
-            + f"> {HighestKillIco} Highest Kills in Mission - {df[df['Enemy Type'] == 'Automatons']['Kills'].max()}\n\n"
-            + f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Automatons']['Enemy Type'].count().sum()}\n"
-            + f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Automatons']['Major Order'].astype(int).sum()}\n"
-            + f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Automatons']['DSS Active'].astype(int).sum()}\n"
+            + f"> {KillIco} Kills - {_fmt_number(automaton_kills)}\n"
+            + f"> {DeathIco} Deaths - {_fmt_number(automaton_deaths)}\n"
+            + f"> {KDRIco} KDR - {automaton_kdr:.2f}\n"
+            + f"> {HighestKillIco} Highest Kills in Mission - {_fmt_number(automaton_max_kills)}\n\n"
+            + f"> {DeployIco} Deployments - {automaton_deployments}\n"
+            + f"> {MODeployIco} Major Order Deployments - {automaton_major_orders}\n"
+            + f"> {DSSDeployIco} DSS Deployments - {automaton_dss}\n"
             + f"> {BotMCDeployIco} Mega Structure Deployments - {automatons_mega_city_count}\n"
             + f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Automatons')}\n\n"
-            + f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n"
-            + f"> {DefenceIco} Defenses - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Defense']['Mission Category'].count().sum()}\n"
-            + f"> {InvasionIco} Invasion - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Invasion']['Mission Category'].count().sum()}\n"
-            + f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n"
-            + f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n"
-            + f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n"
-            + f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n"
-            + f"> {LiberationIco} Battle for Cyberstan - {df[df['Enemy Type'] == 'Automatons'][df['Mission Category'] == 'Battle for Cyberstan']['Mission Category'].count().sum()}\n\n",
+            + f"{automaton_campaign_lines}\n",
             "color": 16739693,
             "image": {
                 "url": "https://cdn.discordapp.com/attachments/1340508329977446484/1370786778465964193/automatonBanner.png?ex=6820c42b&is=681f72ab&hm=63213a37d29cfc25661737c7d20867ebea272fffc9e830116c32ef7df3cf1a24&"
@@ -520,23 +592,16 @@ embed_data = {
         {
             "title": "Illuminate Campaign Record",
             "description": f"{FlairLeftIco} {SquidIco} Illuminate Cult Statistics {SquidIco} {FlairRightIco}\n"
-            + f"> {KillIco} Kills - {df[df['Enemy Type'] == 'Illuminate']['Kills'].sum()}\n"
-            + f"> {DeathIco} Deaths - {df[df['Enemy Type'] == 'Illuminate']['Deaths'].sum()}\n"
-            + f"> {KDRIco} KDR - {(df[df['Enemy Type'] == 'Illuminate']['Kills'].sum() / df[df['Enemy Type'] == 'Illuminate']['Deaths'].sum()):.2f}\n"
-            + f"> {HighestKillIco} Highest Kills in Mission - {df[df['Enemy Type'] == 'Illuminate']['Kills'].max()}\n\n"
-            + f"> {DeployIco} Deployments - {df[df['Enemy Type'] == 'Illuminate']['Enemy Type'].count().sum()}\n"
-            + f"> {MODeployIco} Major Order Deployments - {df[df['Enemy Type'] == 'Illuminate']['Major Order'].astype(int).sum()}\n"
-            + f"> {DSSDeployIco} DSS Deployments - {df[df['Enemy Type'] == 'Illuminate']['DSS Active'].astype(int).sum()}\n"
+            + f"> {KillIco} Kills - {_fmt_number(illuminate_kills)}\n"
+            + f"> {DeathIco} Deaths - {_fmt_number(illuminate_deaths)}\n"
+            + f"> {KDRIco} KDR - {illuminate_kdr:.2f}\n"
+            + f"> {HighestKillIco} Highest Kills in Mission - {_fmt_number(illuminate_max_kills)}\n\n"
+            + f"> {DeployIco} Deployments - {illuminate_deployments}\n"
+            + f"> {MODeployIco} Major Order Deployments - {illuminate_major_orders}\n"
+            + f"> {DSSDeployIco} DSS Deployments - {illuminate_dss}\n"
             + f"> {SquidMCDeployIco} Mega Structure Deployments - {illuminate_mega_city_count}\n"
             + f"> {LastDeployIco} Last Deployment - {get_last_deployment(df, 'Illuminate')}\n\n"
-            + f"> {LiberationIco} Liberations - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Liberation']['Mission Category'].count().sum()}\n"
-            + f"> {DefenceIco} Defenses - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Defense']['Mission Category'].count().sum()}\n"
-            + f"> {InvasionIco} Invasion - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Invasion']['Mission Category'].count().sum()}\n"
-            + f"> {HighPriorityIco} High-Priority - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'High-Priority']['Mission Category'].count().sum()}\n"
-            + f"> {AttritionIco} Attrition - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Attrition']['Mission Category'].count().sum()}\n"
-            + f"> {InvasionIco} Battle for Super Earth - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Battle for Super Earth']['Mission Category'].count().sum()}\n"
-            + f"> {ReconIco} Recon - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Recon']['Mission Category'].count().sum()}\n"
-            + f"> {LiberationIco} Battle for Cyberstan - {df[df['Enemy Type'] == 'Illuminate'][df['Mission Category'] == 'Battle for Cyberstan']['Mission Category'].count().sum()}\n\n",
+            + f"{illuminate_campaign_lines}\n",
             "color": 9003210,
             "image": {
                 "url": "https://cdn.discordapp.com/attachments/1340508329977446484/1370786787441774632/illuminateBanner.png?ex=6820c42e&is=681f72ae&hm=bc4d9e9f89bcae58521b9af1558816ecb0c336bee108862725663b87e5bb6079&"
@@ -595,18 +660,21 @@ for enemy_type in enemy_types:
             "planets": faction_data["Planet"].unique().tolist(),
         }
 
-if DEBUG:
-    webhook_urls = [config["Webhooks"]["TEST"]]  # Use the webhook URL from the config for debugging
-else:
-    # Load webhook URLs from DCord.json
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        discord_data = json.load(f)
+        webhook_urls = discord_data.get("discord_webhooks_export", [])
+except (FileNotFoundError, json.JSONDecodeError):
     with open(app_path("JSON", "DCord.json"), "r") as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get("discord_webhooks_export", [])
-        webhook_urls = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in webhook_urls
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+
+webhook_urls = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in webhook_urls
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 # Send data to each webhook
 for webhook_url in webhook_urls:

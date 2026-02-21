@@ -98,9 +98,9 @@ from core.utils import (
 )
 
 # Manual Configuration
-GWDay = "Day: 734"
-GWDate = "Date: 11/02/2026"
-VERSION = "1.7.019"
+GWDay = "Day: 744"
+GWDate = "Date: 21/02/2026"
+VERSION = "1.7.020"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
@@ -120,17 +120,38 @@ except OSError:
     pass
 DISCORD_CLIENT_ID = config.get("Discord", "DISCORD_CLIENT_ID", fallback="0")
 
-DEBUG = config.getboolean("DEBUGGING", "DEBUG", fallback=False)
+# Try both uppercase and lowercase for compatibility
+DEBUG = config.getboolean("DEBUGGING", "DEBUG", fallback=None)
+if DEBUG is None:
+    DEBUG = config.getboolean("DEBUGGING", "debug", fallback=False)
 setup_logging(DEBUG)
 
 # File paths
 if DEBUG:
     SETTINGS_FILE = app_path("JSON", "settings-dev.json")
     PERSISTENCE_FILE = app_path("JSON", "persistent-dev.json")
+    DCORD_FILE = app_path("JSON", "DCord-dev.json")
     streak_file = app_path("JSON", "streak_data-dev.json")
+    
+    # Ensure dev settings files exist by copying from production if needed
+    import shutil
+    for src_name, dest_path in [
+        ("settings.json", SETTINGS_FILE),
+        ("persistent.json", PERSISTENCE_FILE),
+        ("DCord.json", DCORD_FILE),
+        ("streak_data.json", streak_file),
+    ]:
+        src_path = app_path("JSON", src_name)
+        if os.path.exists(src_path) and not os.path.exists(dest_path):
+            try:
+                shutil.copy2(src_path, dest_path)
+                logging.info(f"Created {dest_path} from {src_path}")
+            except Exception as e:
+                logging.error(f"Failed to copy {src_name} to dev version: {e}")
 else:
     SETTINGS_FILE = app_path("JSON", "settings.json")
     PERSISTENCE_FILE = app_path("JSON", "persistent.json")
+    DCORD_FILE = app_path("JSON", "DCord.json")
     streak_file = app_path("JSON", "streak_data.json")
 
 # Set up application data paths
@@ -708,7 +729,7 @@ class MissionLogGUI:
     # Validates and submits mission report to Excel/Discord; affects data/logging
     def submit_data(self) -> None:
         # Load Discord settings and flair
-        with open(app_path("JSON", "DCord.json"), "r") as f:
+        with open(DCORD_FILE, "r") as f:
             discord_data = json.load(f)
             global Platform
             Platform = discord_data.get("platform", "Not Selected")
@@ -726,10 +747,9 @@ class MissionLogGUI:
         except Exception:
             pass
         try:
-            # Highest streak from streak_data.json
-            streak_path = app_path("JSON", "streak_data.json")
-            if os.path.exists(streak_path):
-                with open(streak_path, "r") as sf:
+            # Highest streak from streak_data file
+            if os.path.exists(streak_file):
+                with open(streak_file, "r") as sf:
                     streak_data = json.load(sf)
                 user = "Helldiver"
                 highest_streak = streak_data.get(user, {}).get("highest_streak", 0)
@@ -750,9 +770,9 @@ class MissionLogGUI:
             self._show_error(
                 f"You attempted to use a locked flair ('{flair_colour}'). It has been reverted to 'Default'."
             )
-            # Update DCord.json to revert flair
+            # Update DCord file to revert flair
             discord_data["flair_colour"] = "Default"
-            with open(app_path("JSON", "DCord.json"), "w", encoding="utf-8") as f:
+            with open(DCORD_FILE, "w", encoding="utf-8") as f:
                 json.dump(discord_data, f, indent=4)
             flair_colour = "Default"
 
@@ -1034,7 +1054,7 @@ class MissionLogGUI:
 
         return {
             "Super Destroyer": self.shipname1_default + " " + self.shipname2_default,
-            "Helldivers": self.helldiver_default,
+            "Helldivers": self.Helldivers.get().strip() or self.helldiver_default,
             "Level": self.level.get(),
             "Title": self.title.get(),
             "Sector": self.sector.get(),

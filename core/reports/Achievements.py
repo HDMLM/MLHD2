@@ -15,6 +15,7 @@ from core.icon import TITLE_ICONS, get_badge_icons
 from core.infrastructure.logging_config import setup_logging
 from core.infrastructure.runtime_paths import app_path
 from core.integrations.webhook import post_webhook
+from core.config.settings_shared import get_extra_webhook_urls
 
 # Read configuration from config.config
 config = configparser.ConfigParser()
@@ -1402,29 +1403,21 @@ embed_data_2 = {
 # Logging already configured via setup_logging in import section.
 
 # Determine ACTIVE_WEBHOOK list based on DEBUG flag
-if DEBUG:
-    # Use TEST webhooks from config (support comma-separated list)
-    ACTIVE_WEBHOOK = [w.strip() for w in config["Webhooks"]["TEST"].split(",") if w.strip()]
-    logging.info("DEBUG mode: using TEST webhook(s)")
-else:
-    # Load production webhooks from external JSON
-    try:
-        with open(app_path("JSON", "DCord.json"), "r") as f:
-            dcord_data = json.load(f)
-        ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks_export", [])
-        ACTIVE_WEBHOOK = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in ACTIVE_WEBHOOK
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
-        if not ACTIVE_WEBHOOK:
-            logging.error("No production webhooks found in DCord.json (key: discord_webhooks_export).")
-    except FileNotFoundError:
-        logging.error("DCord.json not found. Cannot load production webhooks.")
-        ACTIVE_WEBHOOK = []
-    except json.JSONDecodeError as e:
-        logging.error(f"Failed to parse DCord.json: {e}")
-        ACTIVE_WEBHOOK = []
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        dcord_data = json.load(f)
+    ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks_export", [])
+except (FileNotFoundError, json.JSONDecodeError):
+    with open(app_path("JSON", "DCord.json"), "r") as f:
+        dcord_data = json.load(f)
+    ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks_export", [])
+
+ACTIVE_WEBHOOK = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in ACTIVE_WEBHOOK
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 
 def sanitize_and_send_payload(url, source_payload, payload_label):

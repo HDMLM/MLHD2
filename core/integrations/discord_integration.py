@@ -37,6 +37,7 @@ from core.icon import (
 )
 from core.infrastructure.runtime_paths import app_path
 from core.integrations.webhook import append_wait_query, post_webhook
+from core.config.settings_shared import get_extra_webhook_urls
 
 # Load config
 iconconfig = configparser.ConfigParser()
@@ -517,21 +518,31 @@ def send_to_discord(
             "attachments": [],
         }
 
-        if debug:
-            ACTIVE_WEBHOOK = (
-                [configparser.ConfigParser().read_dict({}).get("Webhooks", {}).get("TEST", "")] if False else []
-            )
-            # Keep behavior simple in debug: allow main to pass a suitable webhook list if needed
-            ACTIVE_WEBHOOK = []
-        else:
-            with open(app_path("JSON", "DCord.json"), "r") as f:
+        # Load webhooks from the appropriate file based on debug mode
+        dcord_file = app_path("JSON", "DCord-dev.json") if debug else app_path("JSON", "DCord.json")
+        try:
+            with open(dcord_file, "r") as f:
                 dcord_data = json.load(f)
                 ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks_logging", [])
-                ACTIVE_WEBHOOK = [
-                    (w.get("url") if isinstance(w, dict) else str(w)).strip()
-                    for w in ACTIVE_WEBHOOK
-                    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-                ]
+        except (FileNotFoundError, json.JSONDecodeError):
+            # Fallback to production file if dev file doesn't exist
+            try:
+                with open(app_path("JSON", "DCord.json"), "r") as f:
+                    dcord_data = json.load(f)
+                    ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks_logging", [])
+            except (FileNotFoundError, json.JSONDecodeError):
+                ACTIVE_WEBHOOK = []
+
+        # Normalize webhook URLs (handle both string and dict formats)
+        ACTIVE_WEBHOOK = [
+            (w.get("url") if isinstance(w, dict) else str(w)).strip()
+            for w in ACTIVE_WEBHOOK
+            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+        ]
+
+        extra_logging = get_extra_webhook_urls("logging")
+        if extra_logging:
+            ACTIVE_WEBHOOK = list(dict.fromkeys(ACTIVE_WEBHOOK + extra_logging))
 
         successes = []
         for url in ACTIVE_WEBHOOK:

@@ -123,6 +123,8 @@ MISSION_ICONS = {
     "Launch ICBM": iconconfig["MissionIcons"]["Launch ICBM"],
     "Retrieve Valuable Data": iconconfig["MissionIcons"]["Retrieve Valuable Data"],
     "Blitz: Search and Destroy": iconconfig["MissionIcons"]["Blitz Search and Destroy"],
+    "Blitz: Search and Destroy - Terminids": iconconfig["MissionIcons"]["Blitz Search and Destroy - Terminids"],
+    "Blitz: Search and Destroy - Automatons": iconconfig["MissionIcons"]["Blitz Search and Destroy - Automatons"],
     "Emergency Evacuation": iconconfig["MissionIcons"]["Emergency Evacuation"],
     "Retrieve Essential Personnel": iconconfig["MissionIcons"]["Retrieve Essential Personnel"],
     "Evacuate High-Value Assets": iconconfig["MissionIcons"]["Evacuate High-Value Assets"],
@@ -327,7 +329,7 @@ BIOME_BANNERS = {
     "Choepessa IV": iconconfig["BiomeBanners"]["Boneyard"],
     "Martyr's Bay": iconconfig["BiomeBanners"]["Boneyard"],
     "Lesath": iconconfig["BiomeBanners"]["Boneyard"],
-    "Cyberstan": iconconfig["BiomeBanners"]["Boneyard"],
+    "Cyberstan": iconconfig["BiomeBanners"]["Cyberstan"],
     "Deneb Secundus": iconconfig["BiomeBanners"]["Boneyard"],
     "Acrux IX": iconconfig["BiomeBanners"]["Boneyard"],
     "Inari": iconconfig["BiomeBanners"]["Boneyard"],
@@ -524,6 +526,7 @@ DSS_ICONS = {
     "Orbital Blockade": iconconfig["MiscIcon"]["Orbital Blockade"],
     "Heavy Ordnance Distribution": iconconfig["MiscIcon"]["Heavy Ordnance Distribution"],
     "Eagle Blockade": iconconfig["MiscIcon"]["Eagle Blockade"],
+    "Planetary Bombardment": iconconfig["MiscIcon"]["Planetary Bombardment"],
 }
 
 TITLE_ICONS = {
@@ -820,7 +823,7 @@ PLANET_PROFILES = {
     "Choepessa IV": iconconfig["PlanetProfile"]["Boneyard"],
     "Martyr's Bay": iconconfig["PlanetProfile"]["Boneyard"],
     "Lesath": iconconfig["PlanetProfile"]["Boneyard"],
-    "Cyberstan": iconconfig["PlanetProfile"]["Boneyard"],
+    "Cyberstan": iconconfig["PlanetProfile"]["Cyberstan"],
     "Deneb Secundus": iconconfig["PlanetProfile"]["Boneyard"],
     "Acrux IX": iconconfig["PlanetProfile"]["Boneyard"],
     "Inari": iconconfig["PlanetProfile"]["Boneyard"],
@@ -1092,7 +1095,7 @@ PLANET_PROFILES = {
     "Choepessa IV": iconconfig["BiomePlanets"]["Boneyard"],
     "Martyr's Bay": iconconfig["BiomePlanets"]["Boneyard"],
     "Lesath": iconconfig["BiomePlanets"]["Boneyard"],
-    "Cyberstan": iconconfig["BiomePlanets"]["Boneyard"],
+    "Cyberstan": iconconfig["BiomePlanets"]["Cyberstan"],
     "Deneb Secundus": iconconfig["BiomePlanets"]["Boneyard"],
     "Acrux IX": iconconfig["BiomePlanets"]["Boneyard"],
     "Inari": iconconfig["BiomePlanets"]["Boneyard"],

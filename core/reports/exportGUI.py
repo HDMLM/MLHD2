@@ -14,6 +14,7 @@ from core.infrastructure.logging_config import setup_logging
 from core.infrastructure.runtime_paths import app_path, resource_path
 from core.ui.ui_sound import init_ui_sounds, play_button_click, play_button_hover, register_global_click_binding
 from core.integrations.webhook import classify_webhook_error, format_webhook_failure_line, post_webhook
+from core.config.settings_shared import get_extra_webhook_urls
 
 try:
     # After refactor these constants live in app_core
@@ -394,6 +395,10 @@ def main():
             # Fallback: generic webhooks key if export-specific is missing
             if not urls and isinstance(data.get("discord_webhooks"), list):
                 urls.extend(u for u in data["discord_webhooks"] if isinstance(u, str) and u.strip())
+
+            extra_export = get_extra_webhook_urls("export")
+            if extra_export:
+                urls = list(dict.fromkeys(urls + extra_export))
             return urls
         except Exception as e:
             logging.error(f"Failed to read export webhooks: {e}")

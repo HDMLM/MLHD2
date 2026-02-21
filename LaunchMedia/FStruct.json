@@ -371,6 +371,10 @@
             {
               "name": "Orbital_Blockade.png",
               "type": "image"
+            },
+            {
+              "name": "Planetary_Bombardment.png",
+              "type": "image"
             }
           ]
         },

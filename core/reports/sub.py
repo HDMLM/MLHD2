@@ -24,6 +24,7 @@ from core.infrastructure.logging_config import setup_logging
 from core.schema.mission import get_mega_structure_series, normalize_mission_dataframe
 from core.infrastructure.runtime_paths import app_path
 from core.integrations.webhook import post_webhook
+from core.config.settings_shared import get_extra_webhook_urls
 
 # Set up application data paths
 APP_DATA = ensure_app_data_dir()
@@ -359,20 +360,21 @@ def _build_deployments_30d_chart_html(events):
 deployments_30d_chart_html = _build_deployments_30d_chart_html(deployments_30d_events)
 
 # Discord webhook configuration
-if DEBUG:
-    # Use TEST webhook from config if in debug mode
-    dcord_data = {}
-    ACTIVE_WEBHOOK = [config["Webhooks"]["TEST"]]
-else:
-    # Use PROD webhook in production mode
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        dcord_data = json.load(f)
+        ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks", [])
+except (FileNotFoundError, json.JSONDecodeError):
     with open(app_path("JSON", "DCord.json"), "r") as f:
         dcord_data = json.load(f)
         ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks", [])
-        ACTIVE_WEBHOOK = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in ACTIVE_WEBHOOK
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+
+ACTIVE_WEBHOOK = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in ACTIVE_WEBHOOK
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 # Get latest note
 non_blank_notes = df["Note"].dropna()
@@ -665,18 +667,26 @@ for enemy_type, planet_list in enemy_planets.items():
         }
     )
 
-if DEBUG:
-    webhook_urls = [config["Webhooks"]["TEST"]]  # Use the webhook URL from the config for debugging
-else:
-    # Load webhook URLs from DCord.json
+
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        discord_data = json.load(f)
+        webhook_urls = discord_data.get("discord_webhooks_export", [])
+except (FileNotFoundError, json.JSONDecodeError):
     with open(app_path("JSON", "DCord.json"), "r") as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get("discord_webhooks_export", [])
-        webhook_urls = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in webhook_urls
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+
+webhook_urls = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in webhook_urls
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
+extra_export = get_extra_webhook_urls("export")
+if extra_export:
+    webhook_urls = list(dict.fromkeys(webhook_urls + extra_export))
+
 
 
 # Heuristically checks Discord payload size; triggers HTML fallback decision

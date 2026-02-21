@@ -9,7 +9,7 @@ import pandas as pd
 # Ensure we can import from the project root when running directly
 if __name__ == "__main__":
     # Add the project root to the Python path
-    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
     if project_root not in sys.path:
         sys.path.insert(0, project_root)
 
@@ -119,19 +119,27 @@ else:
     current_planet = df["Planet"].iloc[-1] if "Planet" in df.columns else "Unknown"
 planet_thumbnail = get_planet_image(current_planet)
 
-if DEBUG:
-    webhook_urls = [config["Webhooks"]["TEST"]]  # Use the webhook URL from the config for debugging
-else:
-    # Load webhook URLs from DCord.json
-    with open(app_path("JSON", "DCord.json"), "r") as f:
+# Load webhook URLs from the appropriate DCord file based on debug mode
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get("discord_webhooks", [])
-        # Normalize possible dict entries and filter invalid/empty
-        webhook_urls = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in webhook_urls
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+except (FileNotFoundError, json.JSONDecodeError):
+    # Fallback to production file if dev file doesn't exist
+    try:
+        with open(app_path("JSON", "DCord.json"), "r") as f:
+            discord_data = json.load(f)
+            webhook_urls = discord_data.get("discord_webhooks", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        webhook_urls = []
+
+# Normalize possible dict entries and filter invalid/empty
+webhook_urls = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in webhook_urls
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 if Rating_Percentage >= 90:
     Rating = "Outstanding Patriotism"
@@ -291,19 +299,26 @@ planet_stats_df = pd.DataFrame(
 )
 
 # Discord webhook configuration
-if DEBUG:
-    # Use TEST webhook from config if in debug mode
-    ACTIVE_WEBHOOK = [config["Webhooks"]["TEST"]]
-else:
-    # Use PROD webhook in production mode
-    with open(app_path("JSON", "DCord.json"), "r") as f:
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
         dcord_data = json.load(f)
         ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks", [])
-        ACTIVE_WEBHOOK = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in ACTIVE_WEBHOOK
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+except (FileNotFoundError, json.JSONDecodeError):
+    # Fallback to production file if dev file doesn't exist
+    try:
+        with open(app_path("JSON", "DCord.json"), "r") as f:
+            dcord_data = json.load(f)
+            ACTIVE_WEBHOOK = dcord_data.get("discord_webhooks", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        ACTIVE_WEBHOOK = []
+
+# Normalize webhook URLs (handle both string and dict formats)
+ACTIVE_WEBHOOK = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in ACTIVE_WEBHOOK
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 # Get latest note
 non_blank_notes = df["Note"].dropna()
@@ -691,7 +706,22 @@ elif current_planet == "Penta":
         + "> Please await further orders from Super Earth High Command, Helldiver.\n\n"
     )
 else:
+    # Helper function to resolve faction-specific mission icons
+    def get_mission_icon_with_faction(mission_name: str, faction: str) -> str:
+        """
+        Resolve mission icon, handling faction-specific variants like "Blitz: Search and Destroy".
+        For faction-specific missions, try faction variant first, then fallback to base name.
+        """
+        if mission_name == "Blitz: Search and Destroy" and faction in ["Terminids", "Automatons"]:
+            faction_specific_name = f"{mission_name} - {faction}"
+            icon = MISSION_ICONS.get(faction_specific_name, "")
+            if icon:
+                return icon
+        # Fallback to regular mission name if faction-specific not found
+        return MISSION_ICONS.get(mission_name, "")
+
     # Normal planet statistics for deployed planets
+    mission_icon = get_mission_icon_with_faction(planet_most_common_mission, planet_most_common_faction)
     embed_description = (
         f"**Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}**\n\n{FlairLeftIco} {SEIco} **Galactic Intel** {SEIco} {FlairRightIco}\n"
         + f"> Planet - {current_planet} {PLANET_ICONS.get(current_planet, '')}\n"
@@ -706,7 +736,7 @@ else:
         + f"> Highest Kills in Mission - {planet_highest_kills}\n"
         + faction_kill_lines
         + f"{FlairLeftIco} {GoldStarIco} **Priority Intel** {GoldStarIco} {FlairRightIco}\n"
-        + f"> Mission - {planet_most_common_mission} {MISSION_ICONS.get(planet_most_common_mission, '')} (x{planet_mission_count})\n"
+        + f"> Mission - {planet_most_common_mission} {mission_icon} (x{planet_mission_count})\n"
         + f"> Campaign - {planet_most_common_category} {CAMPAIGN_ICONS.get(planet_most_common_category, '')} (x{planet_category_count})\n"
         + f"> Faction - {planet_most_common_faction} {ENEMY_ICONS.get(planet_most_common_faction, '')} (x{planet_faction_count})\n"
         + f"> Subfaction - {planet_most_common_subfaction} {SUBFACTION_ICONS.get(planet_most_common_subfaction, '')} (x{planet_subfaction_count})\n"
@@ -752,19 +782,27 @@ for enemy_type in enemy_types:
             "planets": faction_data["Planet"].unique().tolist(),
         }
 
-if DEBUG:
-    webhook_urls = [config["Webhooks"]["TEST"]]  # Use the webhook URL from the config for debugging
-else:
-    # Load webhook URLs from DCord.json
-    with open(app_path("JSON", "DCord.json"), "r") as f:
+# Load webhook URLs from the appropriate DCord file based on debug mode
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get("discord_webhooks", [])
-        # Normalize possible dict entries and filter invalid/empty
-        webhook_urls = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in webhook_urls
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+except (FileNotFoundError, json.JSONDecodeError):
+    # Fallback to production file if dev file doesn't exist
+    try:
+        with open(app_path("JSON", "DCord.json"), "r") as f:
+            discord_data = json.load(f)
+            webhook_urls = discord_data.get("discord_webhooks", [])
+    except (FileNotFoundError, json.JSONDecodeError):
+        webhook_urls = []
+
+# Normalize possible dict entries and filter invalid/empty
+webhook_urls = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in webhook_urls
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 _sanitize_embed = sanitize_embed
 

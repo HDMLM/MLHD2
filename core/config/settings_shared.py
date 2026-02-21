@@ -1,16 +1,32 @@
 from __future__ import annotations
 
+import configparser
+import json
 import os
 from typing import Any
 
 from core.infrastructure.runtime_paths import app_path
 
+# Check DEBUG mode from config.config
+config = configparser.ConfigParser()
+config.read(app_path("orphan", "config.config"))
+# Try both uppercase and lowercase for compatibility
+DEBUG = config.getboolean("DEBUGGING", "DEBUG", fallback=None)
+if DEBUG is None:
+    DEBUG = config.getboolean("DEBUGGING", "debug", fallback=False)
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 JSON_DIR = app_path("JSON")
-SETTINGS_PATH = app_path("JSON", "settings.json")
-DCORD_PATH = app_path("JSON", "DCord.json")
-PERSISTENT_PATH = app_path("JSON", "persistent.json")
+SETTINGS_PATH = app_path("JSON", "settings-dev.json" if DEBUG else "settings.json")
+DCORD_PATH = app_path("JSON", "DCord-dev.json" if DEBUG else "DCord.json")
+PERSISTENT_PATH = app_path("JSON", "persistent-dev.json" if DEBUG else "persistent.json")
 FORCED_WEBHOOK_ENV_VAR = "MLHD2_FORCED_WEBHOOK_URL"
+FORCED_WEBHOOKS_ENV_VAR = "MLHD2_FORCED_WEBHOOK_URLS"
+LOGGING_WEBHOOKS_ENV_VAR = "MLHD2_WEBHOOKS_LOGGING"
+EXPORT_WEBHOOKS_ENV_VAR = "MLHD2_WEBHOOKS_EXPORT"
+BOOSTER_WEBHOOKS_FILENAME = "booster_webhooks.json"
+DOTENV_PATH = app_path(".env")
+BOOSTER_WEBHOOKS_PATH = app_path(BOOSTER_WEBHOOKS_FILENAME)
 
 MEDIA_DIR = app_path("media")
 MISC_ITEMS_DIR = app_path("media", "MiscItems")
@@ -26,18 +42,138 @@ def norm(value: str) -> str:
     return " ".join(normalized.strip().split()).casefold()
 
 
+def _load_dotenv(path: str) -> None:
+    if not path or not os.path.isfile(path):
+        return
+    try:
+        with open(path, "r", encoding="utf-8") as fh:
+            for raw in fh:
+                line = raw.strip()
+                if not line or line.startswith("#") or "=" not in line:
+                    continue
+                key, value = line.split("=", 1)
+                key = key.strip()
+                value = value.strip().strip("'").strip('"')
+                if key and key not in os.environ:
+                    os.environ[key] = value
+    except OSError:
+        return
+
+
+def _is_valid_webhook_url(url: str) -> bool:
+    return bool(url) and url.lower().startswith(("http://", "https://"))
+
+
+def _parse_webhook_list(raw: str) -> list[str]:
+    if not raw:
+        return []
+    urls = [u.strip() for u in raw.split(",") if u.strip()]
+    return [u for u in urls if _is_valid_webhook_url(u)]
+
+
+_load_dotenv(DOTENV_PATH)
+
+
 def get_forced_webhook_url() -> str:
     url = os.getenv(FORCED_WEBHOOK_ENV_VAR, "").strip()
-    if url.lower().startswith(("http://", "https://")):
+    if _is_valid_webhook_url(url):
         return url
     return ""
 
 
+def _get_env_webhook_urls(kind: str) -> list[str]:
+    urls: list[str] = []
+    forced_single = get_forced_webhook_url()
+    if forced_single:
+        urls.append(forced_single)
+    urls.extend(_parse_webhook_list(os.getenv(FORCED_WEBHOOKS_ENV_VAR, "")))
+
+    if kind == "logging":
+        urls.extend(_parse_webhook_list(os.getenv(LOGGING_WEBHOOKS_ENV_VAR, "")))
+    elif kind == "export":
+        urls.extend(_parse_webhook_list(os.getenv(EXPORT_WEBHOOKS_ENV_VAR, "")))
+
+    return urls
+
+
+def _get_booster_webhook_urls(kind: str) -> list[str]:
+    if not BOOSTER_WEBHOOKS_PATH or not os.path.isfile(BOOSTER_WEBHOOKS_PATH):
+        return []
+    try:
+        with open(BOOSTER_WEBHOOKS_PATH, "r", encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, json.JSONDecodeError):
+        return []
+
+    urls: list[str] = []
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, str) and _is_valid_webhook_url(item):
+                urls.append(item)
+        return urls
+
+    if not isinstance(data, dict):
+        return []
+
+    def _extend_from_key(key: str) -> None:
+        entries = data.get(key, [])
+        if isinstance(entries, list):
+            for item in entries:
+                if isinstance(item, str) and _is_valid_webhook_url(item):
+                    urls.append(item)
+                elif isinstance(item, dict):
+                    url = str(item.get("url", "")).strip()
+                    if _is_valid_webhook_url(url):
+                        urls.append(url)
+
+    if kind == "logging":
+        _extend_from_key("logging")
+        _extend_from_key("logs")
+        _extend_from_key("discord_webhooks_logging")
+    elif kind == "export":
+        _extend_from_key("export")
+        _extend_from_key("exports")
+        _extend_from_key("discord_webhooks_export")
+
+    webhook_items = data.get("webhooks", [])
+    if isinstance(webhook_items, list):
+        for item in webhook_items:
+            if isinstance(item, dict):
+                item_kind = str(item.get("type", item.get("kind", ""))).strip().lower()
+                url = str(item.get("url", "")).strip()
+                if item_kind and item_kind != kind:
+                    continue
+                if _is_valid_webhook_url(url):
+                    urls.append(url)
+            elif isinstance(item, str) and _is_valid_webhook_url(item):
+                urls.append(item)
+
+    return urls
+
+
+def get_extra_webhook_urls(kind: str) -> list[str]:
+    urls: list[str] = []
+    urls.extend(_get_env_webhook_urls(kind))
+    urls.extend(_get_booster_webhook_urls(kind))
+    # De-dupe while preserving order
+    seen = set()
+    deduped = []
+    for url in urls:
+        if url in seen:
+            continue
+        seen.add(url)
+        deduped.append(url)
+    return deduped
+
+
 def get_forced_webhooks_labeled() -> list[dict[str, str]]:
     forced_url = get_forced_webhook_url()
+    labeled: list[dict[str, str]] = []
     if forced_url:
-        return [{"label": "Forced", "url": forced_url}]
-    return []
+        labeled.append({"label": "Forced", "url": forced_url})
+    for idx, url in enumerate(_parse_webhook_list(os.getenv(FORCED_WEBHOOKS_ENV_VAR, "")), start=1):
+        labeled.append({"label": f"Forced {idx}", "url": url})
+    return labeled
 
 
 def make_theme(

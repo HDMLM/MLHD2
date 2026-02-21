@@ -1,7 +1,6 @@
-from core.reports.Achievements import *
-from core.reports.exportGUI import *
-from core.reports.expWeek import *
-from core.reports.faction import *
-from core.reports.favourites import *
-from core.reports.observation import *
-from core.reports.sub import *
+"""Report package.
+
+Keep this file import-light to avoid executing report modules on package import.
+"""
+
+__all__ = []

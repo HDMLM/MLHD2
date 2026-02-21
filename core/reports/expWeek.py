@@ -22,6 +22,7 @@ from core.icon import (
 # --- Config and Logging Setup ---
 from core.infrastructure.runtime_paths import app_path
 from core.integrations.webhook import post_webhook
+from core.config.settings_shared import get_extra_webhook_urls
 
 config = configparser.ConfigParser()
 config.read(app_path("orphan", "config.config"))
@@ -135,19 +136,22 @@ SectorCount = (
     recent_df["Sector"].value_counts().iloc[0] if "Sector" in recent_df.columns and not recent_df["Sector"].empty else 0
 )
 
-if DEBUG:
-    webhook_urls = [config["Webhooks"]["TEST"]]  # Use the webhook URL from the config for debugging
-else:
-    # Load webhook URLs from DCord.json
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        discord_data = json.load(f)
+        webhook_urls = discord_data.get("discord_webhooks", [])
+except (FileNotFoundError, json.JSONDecodeError):
     with open(app_path("JSON", "DCord.json"), "r") as f:
         discord_data = json.load(f)
         webhook_urls = discord_data.get("discord_webhooks", [])
-        # Normalize possible dict entries and filter invalid/empty
-        webhook_urls = [
-            (w.get("url") if isinstance(w, dict) else str(w)).strip()
-            for w in webhook_urls
-            if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
-        ]
+
+# Normalize possible dict entries and filter invalid/empty
+webhook_urls = [
+    (w.get("url") if isinstance(w, dict) else str(w)).strip()
+    for w in webhook_urls
+    if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
+]
 
 # Get user info
 helldiver_ses = recent_df["Super Destroyer"].iloc[-1] if "Super Destroyer" in recent_df.columns else "Unknown"
@@ -307,14 +311,23 @@ embed_data = {
 }
 
 # --- Send to Discord Webhook ---
-with open(app_path("JSON", "DCord.json"), "r") as f:
-    discord_data = json.load(f)
+dcord_file = app_path("JSON", "DCord-dev.json") if DEBUG else app_path("JSON", "DCord.json")
+try:
+    with open(dcord_file, "r") as f:
+        discord_data = json.load(f)
+except (FileNotFoundError, json.JSONDecodeError):
+    with open(app_path("JSON", "DCord.json"), "r") as f:
+        discord_data = json.load(f)
+
 webhook_urls = discord_data.get("discord_webhooks_export", [])
 webhook_urls = [
     (w.get("url") if isinstance(w, dict) else str(w)).strip()
     for w in webhook_urls
     if (isinstance(w, dict) and str(w.get("url", "")).strip()) or (isinstance(w, str) and w.strip())
 ]
+extra_export = get_extra_webhook_urls("export")
+if extra_export:
+    webhook_urls = list(dict.fromkeys(webhook_urls + extra_export))
 
 for webhook_url in webhook_urls:
     try:

@@ -7,6 +7,7 @@ import threading
 import tkinter as tk
 import tkinter.font as tkfont
 import traceback
+import configparser
 from tkinter import messagebox, ttk
 
 from PIL import Image, ImageTk
@@ -37,6 +38,33 @@ from core.integrations.webhook import classify_webhook_error, format_webhook_fai
 
 # ---------- Settings Page ----------
 class SettingsPage(tk.Tk):
+    # Helper to get current DEBUG-aware paths
+    @staticmethod
+    def _get_current_paths():
+        """Read current DEBUG state and return appropriate file paths."""
+        import configparser
+        from pathlib import Path
+        cfg = configparser.ConfigParser()
+        cfg_path = app_path("orphan", "config.config")
+        cfg.read(cfg_path)
+        # Try both uppercase and lowercase for compatibility
+        is_debug = cfg.getboolean("DEBUGGING", "DEBUG", fallback=None)
+        if is_debug is None:
+            is_debug = cfg.getboolean("DEBUGGING", "debug", fallback=False)
+        
+        # Build paths explicitly to the root JSON directory (not nested core/infrastructure/JSON)
+        # Get the install directory and build absolute paths
+        install_dir = Path(app_path("orphan", "config.config")).parent.parent
+        json_dir = install_dir / "JSON"
+        
+        settings_path = str(json_dir / ("settings-dev.json" if is_debug else "settings.json"))
+        dcord_path = str(json_dir / ("DCord-dev.json" if is_debug else "DCord.json"))
+        persistent_path = str(json_dir / ("persistent-dev.json" if is_debug else "persistent.json"))
+        
+        logging.debug(f"[Settings._get_current_paths] Config file: {cfg_path}, DEBUG={is_debug}, json_dir={json_dir}, dcord_path={dcord_path}")
+        
+        return settings_path, dcord_path, persistent_path, is_debug
+    
     # Loads and previews a profile image; affects preview in Profile tab
     def load_preview_image(self, image_path):
         """Load and display a preview image in the profile tab."""
@@ -52,6 +80,35 @@ class SettingsPage(tk.Tk):
     # Initializes settings window, state, and widgets; affects settings UI
     def __init__(self):
         logging.debug("[settings] SettingsPage.__init__ start")
+        
+        # Log which mode we're in
+        settings_path, dcord_path, persistent_path, is_debug = self._get_current_paths()
+        logging.info(f"[Settings] Opening settings window in {'DEBUG' if is_debug else 'NORMAL'} mode")
+        logging.info(f"[Settings] Will use DCord file: {dcord_path}")
+        
+        # If in DEBUG mode, ensure dev files exist by copying from production if needed
+        if is_debug:
+            import shutil
+            prod_settings = app_path("JSON", "settings.json")
+            prod_dcord = app_path("JSON", "DCord.json")
+            prod_persistent = app_path("JSON", "persistent.json")
+            
+            for src_path, dest_path, name in [
+                (prod_settings, settings_path, "settings-dev.json"),
+                (prod_dcord, dcord_path, "DCord-dev.json"),
+                (prod_persistent, persistent_path, "persistent-dev.json"),
+            ]:
+                if os.path.exists(dest_path):
+                    logging.info(f"[Settings] {name} already exists, not copying")
+                elif os.path.exists(src_path):
+                    try:
+                        shutil.copy2(src_path, dest_path)
+                        logging.info(f"[Settings] Created {name} from production file")
+                    except Exception as e:
+                        logging.error(f"[Settings] Failed to copy {name}: {e}")
+                else:
+                    logging.warning(f"[Settings] Production file {src_path} doesn't exist, cannot create {name}")
+        
         super().__init__()
         self.title("Discord Settings")
         # Compute a larger fixed window size and center it, then disable resizing
@@ -92,8 +149,10 @@ class SettingsPage(tk.Tk):
         self.discord_uid_var = tk.StringVar(value="")
         self.platform_var = tk.StringVar(value="Not Selected")
         self.dont_send_to_discord_var = tk.BooleanVar(value=False)
+        self.debug_mode_var = tk.BooleanVar(value=False)
         self.onboarding_completed = False
         self._onboarding_mode = "--onboarding" in [str(a).lower() for a in sys.argv]
+        self._debug_file_exists = os.path.exists(app_path(".debug"))
 
         # Labeled webhook items: list of {label, url}
         self.webhooks_logging = []
@@ -168,6 +227,41 @@ class SettingsPage(tk.Tk):
         notebook = ttk.Notebook(main_frame)
         notebook.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
         self.notebook = notebook
+
+        # Debug Mode checkbox and status (positioned to the right of tabs, only if .debug file exists)
+        if self._debug_file_exists:
+            # Check current DEBUG state from config.config
+            import configparser
+            cfg = configparser.ConfigParser()
+            cfg.read(app_path("orphan", "config.config"))
+            current_debug = cfg.getboolean("DEBUGGING", "DEBUG", fallback=False)
+            
+            # Mode indicator label
+            mode_text = "[DEV MODE]" if current_debug else ""
+            mode_color = "#FFA500" if current_debug else "#00FF00"
+            self.mode_label = ttk.Label(
+                main_frame,
+                text=mode_text,
+                font=("Arial", 9, "bold"),
+                foreground=mode_color
+            )
+            self.mode_label.place(relx=1.0, x=-180, y=24, anchor=tk.NE)
+            
+            self.debug_checkbox = ttk.Checkbutton(
+                main_frame,
+                text="Enable Debug Mode",
+                variable=self.debug_mode_var,
+                command=self.on_debug_toggle,
+            )
+            # Position at the same level as the tabs, aligned to the right
+            self.debug_checkbox.place(relx=1.0, x=-20, y=22, anchor=tk.NE)
+
+            # Load current debug state from config.config
+            try:
+                self.debug_mode_var.set(self._read_debug_state())
+            except Exception as e:
+                logging.error(f"Failed to read debug state: {e}")
+                self.debug_mode_var.set(False)
 
         # Profile tab (Username + Ship Name)
         profile_frame = ttk.Frame(notebook, padding="10")
@@ -561,10 +655,11 @@ class SettingsPage(tk.Tk):
         # Store the badge UI components for later attachment to profile_frame
         self._badge_toggle_callback = _on_badge_toggle
 
-        # If DCord.json already exists, load saved badge display order/state now
+        # If DCord file already exists, load saved badge display order/state now
         try:
-            if os.path.exists(DCORD_PATH):
-                with open(DCORD_PATH, "r", encoding="utf-8") as f:
+            _, dcord_path, _, _ = self._get_current_paths()
+            if os.path.exists(dcord_path):
+                with open(dcord_path, "r", encoding="utf-8") as f:
                     _d = json.load(f)
                 _saved = _d.get("display_badges") or []
                 if isinstance(_saved, list):
@@ -595,8 +690,9 @@ class SettingsPage(tk.Tk):
         # Load saved homeworld if it exists
         saved_homeworld = None
         try:
-            if os.path.exists(SETTINGS_PATH):
-                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            settings_path, _, _, _ = self._get_current_paths()
+            if os.path.exists(settings_path):
+                with open(settings_path, "r", encoding="utf-8") as f:
                     sdata = json.load(f)
                 saved_homeworld = sdata.get("Player Homeworld")
         except Exception:
@@ -717,18 +813,21 @@ class SettingsPage(tk.Tk):
 
             # Save to settings.json
             try:
+                # Get current settings path
+                settings_path, _, _, _ = self._get_current_paths()
+                
                 # Ensure directory exists
-                settings_dir = os.path.dirname(SETTINGS_PATH)
+                settings_dir = os.path.dirname(settings_path)
                 os.makedirs(settings_dir, exist_ok=True)
 
                 settings_data = {}
-                if os.path.exists(SETTINGS_PATH):
-                    with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                if os.path.exists(settings_path):
+                    with open(settings_path, "r", encoding="utf-8") as f:
                         settings_data = json.load(f)
 
                 settings_data["Player Homeworld"] = homeworld_value
 
-                with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+                with open(settings_path, "w", encoding="utf-8") as f:
                     json.dump(settings_data, f, indent=4)
 
                 # Disable the controls after saving
@@ -1497,10 +1596,11 @@ class SettingsPage(tk.Tk):
         # Flair Colour Section (moved below Show URLs)
         flair_label = ttk.Label(hooks_lf, text="Flair Colour", font=("Arial", 10, "bold"))
         flair_label.grid(row=11, column=0, sticky=tk.W, pady=(10, 2))
-        # Load flair colour from DCord.json if available
+        # Load flair colour from DCord file if available
         flair_default = "Default"
         try:
-            with open(DCORD_PATH, "r") as f:
+            _, dcord_path, _, _ = self._get_current_paths()
+            with open(dcord_path, "r") as f:
                 dcord_data = json.load(f)
             flair_from_json = dcord_data.get("flair_colour", "").capitalize()
             if flair_from_json in ["Default", "Gold", "Blue", "Red"]:
@@ -1831,13 +1931,16 @@ class SettingsPage(tk.Tk):
     # Generates and saves the player banner PNG; affects preview/export
     def on_generate_banner(self):
         try:
-            # Load values from settings.json
+            # Get current paths
+            settings_path, dcord_path, persistent_path, _ = self._get_current_paths()
+            
+            # Load values from settings file
             name_val = None
             ship1_val = None
             ship2_val = None
-            if os.path.exists(SETTINGS_PATH):
+            if os.path.exists(settings_path):
                 try:
-                    with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+                    with open(settings_path, "r", encoding="utf-8") as f:
                         sdata = json.load(f)
                     name_val = (sdata.get("username") or "").strip() or None
                     ship1_val = (sdata.get("shipName1") or "").strip() or None
@@ -1845,7 +1948,7 @@ class SettingsPage(tk.Tk):
                 except Exception:
                     pass
 
-            # Load values from persistent.json
+            # Load values from persistent file
             profile_val = None
             title_val = ""
             level_val = 0
@@ -1934,8 +2037,12 @@ class SettingsPage(tk.Tk):
     # Loads settings and webhooks from disk; initializes UI state
     def safe_load_settings(self):
         try:
-            if os.path.exists(SETTINGS_PATH):
-                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            # Get current paths based on DEBUG state
+            settings_path, dcord_path, persistent_path, is_debug = self._get_current_paths()
+            
+            logging.info(f"[Settings] Loading from settings file: {settings_path} (DEBUG={is_debug})")
+            if os.path.exists(settings_path):
+                with open(settings_path, "r", encoding="utf-8") as f:
                     data = json.load(f)
                 ship1 = str(data.get("shipName1", self.shipName1_var.get())).strip()
                 ship2 = str(data.get("shipName2", self.shipName2_var.get())).strip()
@@ -1943,8 +2050,9 @@ class SettingsPage(tk.Tk):
                 self.shipName1_var.set(ship1)
                 self.shipName2_var.set(ship2)
                 self.Helldivers.set(user)
-            if os.path.exists(DCORD_PATH):
-                with open(DCORD_PATH, "r", encoding="utf-8") as f:
+            logging.info(f"[Settings] Loading webhooks from DCord file: {dcord_path}")
+            if os.path.exists(dcord_path):
+                with open(dcord_path, "r", encoding="utf-8") as f:
                     d = json.load(f)
                 self.discord_uid_var.set(str(d.get("discord_uid", "")))
                 self.platform_var.set(d.get("platform", "Not Selected") or "Not Selected")
@@ -1974,6 +2082,9 @@ class SettingsPage(tk.Tk):
 
                 self.webhooks_logging = _clean(logging_urls)
                 self.webhooks_export = _clean(export_urls)
+                
+                logging.info(f"[Settings] Loaded {len(self.webhooks_logging)} logging webhooks and {len(self.webhooks_export)} export webhooks")
+                
                 # Load badge display preferences from DCord.json if present
                 display_badges = d.get("display_badges", None)
                 # badge_vars may not exist yet if called before UI is built; guard access
@@ -2024,21 +2135,26 @@ class SettingsPage(tk.Tk):
         if not _validate(self.webhooks_logging) or not _validate(self.webhooks_export):
             return
 
-        # Ensure directory exists
+        # Get current paths based on DEBUG state
+        settings_path, dcord_path, persistent_path, is_debug = self._get_current_paths()
+
+        # Ensure directories exist for both settings and DCord files
         try:
-            settings_dir = os.path.dirname(SETTINGS_PATH)
+            settings_dir = os.path.dirname(settings_path)
+            dcord_dir = os.path.dirname(dcord_path)
             os.makedirs(settings_dir, exist_ok=True)
+            os.makedirs(dcord_dir, exist_ok=True)
         except Exception as e:
-            logging.error(f"Failed to create settings directory: {e}")
-            messagebox.showerror("Error", f"Could not create settings directory: {e}")
+            logging.error(f"Failed to create settings directories: {e}")
+            messagebox.showerror("Error", f"Could not create settings directories: {e}")
             return
 
         # Write settings.json
         # Load existing settings to preserve Player Homeworld if it exists
         existing_homeworld = None
         try:
-            if os.path.exists(SETTINGS_PATH):
-                with open(SETTINGS_PATH, "r", encoding="utf-8") as f:
+            if os.path.exists(settings_path):
+                with open(settings_path, "r", encoding="utf-8") as f:
                     existing_data = json.load(f)
                     existing_homeworld = existing_data.get("Player Homeworld")
         except Exception:
@@ -2047,8 +2163,8 @@ class SettingsPage(tk.Tk):
         # --- Flair Colour Change Detection ---
         flair_changed = False
         try:
-            if os.path.exists(DCORD_PATH):
-                with open(DCORD_PATH, "r", encoding="utf-8") as f:
+            if os.path.exists(dcord_path):
+                with open(dcord_path, "r", encoding="utf-8") as f:
                     dcord_data = json.load(f)
                 prev_flair = dcord_data.get("flair_colour", "Default").capitalize()
                 curr_flair = self.flair_colour_var.get().capitalize()
@@ -2067,10 +2183,10 @@ class SettingsPage(tk.Tk):
             if not ok:
                 messagebox.showinfo("Locked", msg)
                 self.flair_colour_var.set("Default")
-            # Recompute flair_changed using stored DCord.json value
+            # Recompute flair_changed using stored DCord file value
             try:
-                if os.path.exists(DCORD_PATH):
-                    with open(DCORD_PATH, "r", encoding="utf-8") as f:
+                if os.path.exists(dcord_path):
+                    with open(dcord_path, "r", encoding="utf-8") as f:
                         dcord_data = json.load(f)
                     prev_flair = dcord_data.get("flair_colour", "Default").capitalize()
                 else:
@@ -2148,10 +2264,16 @@ class SettingsPage(tk.Tk):
                 "display_badges": display_badges,
             }
         try:
-            with open(SETTINGS_PATH, "w", encoding="utf-8") as f:
+            logging.info(f"[Settings] Saving to settings file: {settings_path} (DEBUG={is_debug})")
+            logging.debug(f"[Settings] Settings file exists before save: {os.path.exists(settings_path)}")
+            logging.debug(f"[Settings] DCord file exists before save: {os.path.exists(dcord_path)}")
+            with open(settings_path, "w", encoding="utf-8") as f:
                 json.dump(settings_data, f, indent=4)
-            with open(DCORD_PATH, "w", encoding="utf-8") as f:
+            logging.info(f"[Settings] Saving webhooks to DCord file: {dcord_path}")
+            logging.info(f"[Settings] Webhooks being saved: logging={len(self.webhooks_logging)}, export={len(self.webhooks_export)}")
+            with open(dcord_path, "w", encoding="utf-8") as f:
                 json.dump(dcord, f, indent=4)
+            logging.debug(f"[Settings] DCord file exists after save: {os.path.exists(dcord_path)}")
             msg = (
                 "Settings saved successfully!" if "-ML" in sys.argv else "Settings saved! Please run MLHD2-Launcher.exe"
             )
@@ -2168,6 +2290,8 @@ class SettingsPage(tk.Tk):
     # ----- Webhooks -----
     # Refreshes listbox items for webhooks; affects displayed lists
     def refresh_webhook_listboxes(self):
+        logging.debug(f"[Settings] Refreshing webhook listboxes: {len(self.webhooks_logging)} logging, {len(self.webhooks_export)} export")
+        
         def _display(w):
             return w.get("url") if self.show_urls_var.get() or not w.get("label") else w.get("label")
 
@@ -2244,10 +2368,13 @@ class SettingsPage(tk.Tk):
             marker = "✓" if ok else "✗"
             lines.append(f"{marker} {message}")
 
+        # Get current paths based on DEBUG state
+        settings_path, dcord_path, persistent_path, is_debug = self._get_current_paths()
+        
         json_targets = [
-            ("settings", SETTINGS_PATH),
-            ("discord", DCORD_PATH),
-            ("persistent", PERSISTENT_PATH),
+            ("settings", settings_path),
+            ("discord", dcord_path),
+            ("persistent", persistent_path),
         ]
         for label, path in json_targets:
             if not os.path.exists(path):
@@ -2405,6 +2532,92 @@ class SettingsPage(tk.Tk):
 
         ttk.Button(row2, text="Save & Finish Onboarding", command=finish_onboarding).pack(side=tk.LEFT, padx=(8, 0))
         ttk.Button(row2, text="Close", command=win.destroy).pack(side=tk.RIGHT)
+
+    # ----- Debug Mode -----
+    # Reads current DEBUG state from config.config
+    def _read_debug_state(self) -> bool:
+        """Read the DEBUG value from config.config."""
+        try:
+            config = configparser.ConfigParser()
+            config.read(app_path("orphan", "config.config"))
+            # Try both uppercase and lowercase for compatibility
+            result = config.getboolean("DEBUGGING", "DEBUG", fallback=None)
+            if result is None:
+                result = config.getboolean("DEBUGGING", "debug", fallback=False)
+            return result
+        except Exception as e:
+            logging.error(f"Error reading debug state: {e}")
+            return False
+
+    # Writes DEBUG state to config.config
+    def _write_debug_state(self, enabled: bool):
+        """Write the DEBUG value to config.config."""
+        try:
+            config = configparser.ConfigParser()
+            config_path = app_path("orphan", "config.config")
+            config.read(config_path)
+            
+            if "DEBUGGING" not in config:
+                config.add_section("DEBUGGING")
+            
+            # Write in lowercase to match existing config format
+            config.set("DEBUGGING", "debug", str(enabled))
+            
+            with open(config_path, "w") as configfile:
+                config.write(configfile)
+            
+            logging.info(f"Debug mode set to: {enabled}")
+        except Exception as e:
+            logging.error(f"Error writing debug state: {e}")
+            messagebox.showerror("Error", f"Failed to update debug mode: {e}")
+
+    # Toggles debug mode and updates config.config
+    def on_debug_toggle(self):
+        """Handle debug mode checkbox toggle."""
+        if not self._debug_file_exists:
+            return
+        
+        enabled = self.debug_mode_var.get()
+        self._write_debug_state(enabled)
+        
+        # If enabling debug mode, ensure dev settings files exist
+        if enabled:
+            self._ensure_dev_settings_exist()
+        
+        status = "enabled" if enabled else "disabled"
+        messagebox.showinfo(
+            "Debug Mode",
+            f"Debug mode has been {status}.\n\nRestart the application for changes to take full effect."
+        )
+    
+    def _ensure_dev_settings_exist(self):
+        """Copy normal settings to dev settings if they don't exist."""
+        import shutil
+        
+        normal_settings = app_path("JSON", "settings.json")
+        dev_settings = app_path("JSON", "settings-dev.json")
+        normal_persistent = app_path("JSON", "persistent.json")
+        dev_persistent = app_path("JSON", "persistent-dev.json")
+        normal_dcord = app_path("JSON", "DCord.json")
+        dev_dcord = app_path("JSON", "DCord-dev.json")
+        
+        try:
+            # Copy settings.json to settings-dev.json if it doesn't exist
+            if os.path.exists(normal_settings) and not os.path.exists(dev_settings):
+                shutil.copy2(normal_settings, dev_settings)
+                logging.info(f"Created {dev_settings} from {normal_settings}")
+            
+            # Copy persistent.json to persistent-dev.json if it doesn't exist
+            if os.path.exists(normal_persistent) and not os.path.exists(dev_persistent):
+                shutil.copy2(normal_persistent, dev_persistent)
+                logging.info(f"Created {dev_persistent} from {normal_persistent}")
+            
+            # Copy DCord.json to DCord-dev.json if it doesn't exist
+            if os.path.exists(normal_dcord) and not os.path.exists(dev_dcord):
+                shutil.copy2(normal_dcord, dev_dcord)
+                logging.info(f"Created {dev_dcord} from {normal_dcord}")
+        except Exception as e:
+            logging.error(f"Failed to copy dev settings files: {e}")
 
     # ----- Misc -----
     # Resets settings to defaults; clears lists and restores baseline values
