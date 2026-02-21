@@ -100,7 +100,7 @@ from core.utils import (
 # Manual Configuration
 GWDay = "Day: 744"
 GWDate = "Date: 21/02/2026"
-VERSION = "1.7.020"
+VERSION = "1.7.021"
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"

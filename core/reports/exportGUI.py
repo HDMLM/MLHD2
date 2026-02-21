@@ -1,15 +1,17 @@
 import configparser
 import json
 import logging
+import os
 import threading
 import tkinter as tk
+from datetime import datetime
 from tkinter import font as tkfont
 from tkinter import messagebox, ttk
 
 import pandas as pd
 
 from core.data.data_manager import get_mission_data_service
-from core.icon import BIOME_BANNERS, CAMPAIGN_ICONS, DIFFICULTY_ICONS, ENEMY_ICONS, MISSION_ICONS, PLANET_ICONS
+from core.icon import BIOME_BANNERS, CAMPAIGN_ICONS, DIFFICULTY_ICONS, ENEMY_ICONS, MISSION_ICONS, PLANET_ICONS, SUBFACTION_ICONS, TITLE_ICONS, get_badge_icons, get_planet_image
 from core.infrastructure.logging_config import setup_logging
 from core.infrastructure.runtime_paths import app_path, resource_path
 from core.ui.ui_sound import init_ui_sounds, play_button_click, play_button_hover, register_global_click_binding
@@ -250,8 +252,31 @@ def main():
         font=(fs_sinclair_font.actual("family"), 10, "bold"),
     )
     style.map("Treeview", background=[("selected", "#4C4C4C")], foreground=[("selected", "#FFFFFF")])
-    table = ttk.Treeview(table_lf, show="headings", selectmode="extended", style="Treeview")
-    table.pack(fill=tk.BOTH, expand=True)
+    
+    # Create scrollbars for the table
+    vsb = ttk.Scrollbar(table_lf, orient="vertical")
+    hsb = ttk.Scrollbar(table_lf, orient="horizontal")
+    
+    table = ttk.Treeview(
+        table_lf, 
+        show="headings", 
+        selectmode="extended", 
+        style="Treeview",
+        yscrollcommand=vsb.set,
+        xscrollcommand=hsb.set
+    )
+    
+    vsb.config(command=table.yview)
+    hsb.config(command=table.xview)
+    
+    # Grid layout for table and scrollbars
+    table.grid(row=0, column=0, sticky="nsew")
+    vsb.grid(row=0, column=1, sticky="ns")
+    hsb.grid(row=1, column=0, sticky="ew")
+    
+    # Configure grid weights so table expands
+    table_lf.grid_rowconfigure(0, weight=1)
+    table_lf.grid_columnconfigure(0, weight=1)
 
     # Button section (bottom of window)
     button_frame = ttk.Frame(root)
@@ -378,7 +403,678 @@ def main():
 
     # Removed Preview Embed feature as requested
 
-    # Export to Discord (selected or visible rows)
+    # Post to Discord helper
+    def post_discord(webhook_url: str, payload: dict, timeout: int = 10):
+        success, _, err = post_webhook(
+            webhook_url,
+            json_payload=payload,
+            timeout=timeout,
+            retries=2,
+        )
+        return success, err
+
+    # Submit a single mission as a revision/resubmission
+    def submit_mission_revision():
+        # Format selected mission(s) and send to Discord
+        # Single selection: detailed revision report
+        # Multiple selections: aggregated summary report
+        selected_ids = list(table.selection())
+        
+        # Validate at least one row is selected
+        if len(selected_ids) == 0:
+            messagebox.showwarning(
+                "Export Submission",
+                "Please select at least one mission to export."
+            )
+            return
+        
+        # Branch based on selection count
+        if len(selected_ids) == 1:
+            # Single mission: Use detailed revision format
+            submit_single_mission_revision(selected_ids[0])
+        else:
+            # Multiple missions: Use aggregated summary format
+            submit_multiple_missions_export(selected_ids)
+    
+    def submit_single_mission_revision(row_id):
+        # Original single-mission revision logic
+        columns = list(table["columns"]) if table["columns"] else []
+        row_values = tuple(table.item(row_id, "values"))
+        
+        if not columns or not row_values:
+            messagebox.showerror("Revision Submission", "Unable to read selected mission data.")
+            return
+        
+        # Build data dict from row
+        data_dict = {c: v for c, v in zip(columns, row_values)}
+        
+        # Get the row index from the treeview directly (more reliable than matching back to Excel)
+        all_items = table.get_children()
+        matched_row_index = all_items.index(row_id) if row_id in all_items else -1
+        logging.info(f"DEBUG: Selected row_id={row_id}, matched_row_index={matched_row_index}, total items={len(all_items)}")
+        
+        # Load webhooks for revision submission (use export webhooks, not mission webhooks)
+        webhooks = []
+        dcord_data = {}
+        try:
+            dcord_path = app_path("JSON", "DCord.json")
+            with open(dcord_path, "r", encoding="utf-8") as f:
+                dcord_data = json.load(f)
+            
+            # Use export webhooks for revision submissions
+            if isinstance(dcord_data.get("discord_webhooks_export"), list):
+                webhooks = [u for u in dcord_data["discord_webhooks_export"] if isinstance(u, str) and u.strip()]
+            
+            if not webhooks and isinstance(dcord_data.get("discord_webhooks_export_labeled"), list):
+                for item in dcord_data["discord_webhooks_export_labeled"]:
+                    if isinstance(item, dict) and item.get("url"):
+                        webhooks.append(item["url"])
+            
+            # Fallback to regular webhooks if no export-specific ones configured
+            if not webhooks and isinstance(dcord_data.get("discord_webhooks"), list):
+                webhooks = [u for u in dcord_data["discord_webhooks"] if isinstance(u, str) and u.strip()]
+            
+            # Add extra export webhooks if configured
+            extra_export = get_extra_webhook_urls("export")
+            if extra_export:
+                webhooks = list(dict.fromkeys(webhooks + extra_export))
+        except Exception as e:
+            logging.warning(f"Failed to load export webhooks for revision: {e}")
+        
+        if not webhooks:
+            messagebox.showerror("Revision Submission", "No Discord webhooks configured for revisions.")
+            return
+        
+        # Get Discord UID
+        uid = dcord_data.get("discord_uid", "0")
+        
+        # Get mission number from the treeview row index
+        mission_number = matched_row_index + 1  # Convert to 1-based mission number
+        logging.info(f"DEBUG: mission_number={mission_number}, will compare with index {matched_row_index - 1}")
+        
+        # Extract mission data fields
+        kills = str(data_dict.get("Kills", "0")) or "0"
+        deaths = str(data_dict.get("Deaths", "1")) or "1"
+        try:
+            kdr = f"{(int(kills) / max(1, int(deaths))):.2f}"
+        except (ValueError, ZeroDivisionError):
+            kdr = "-"
+        
+        # Load badge icons (similar to send_to_discord logic)
+        badge_string = ""
+        try:
+            app_data_path = os.path.dirname(excel_file) if excel_file else os.path.join(os.getenv("LOCALAPPDATA"), "MLHD2")
+            from core.icon import get_badge_icons
+            badge_data = get_badge_icons(DEBUG, app_data_path, "%d-%m-%Y %H:%M:%S")
+            
+            # Build badge string: always-on badges first
+            always_on_order = ["bicon", "ticon", "yearico", "PIco"]
+            badge_items = []
+            for k in always_on_order:
+                if badge_data.get(k):
+                    badge_items.append(badge_data[k])
+            
+            # Load user's badge display preference from DCord.json if available
+            try:
+                if os.path.exists(app_path("JSON", "DCord.json")):
+                    with open(app_path("JSON", "DCord.json"), "r", encoding="utf-8") as f:
+                        dcord_badge_data = json.load(f)
+                else:
+                    dcord_badge_data = {}
+            except Exception:
+                dcord_badge_data = {}
+            
+            display_pref = dcord_badge_data.get("display_badges", None)
+            
+            # Add user-selected badges (up to 4)
+            selected_count = 0
+            if isinstance(display_pref, list) and display_pref:
+                for k in display_pref:
+                    if selected_count >= 4:
+                        break
+                    if badge_data.get(k):
+                        badge_items.append(badge_data[k])
+                        selected_count += 1
+            
+            badge_string = "".join(badge_items)
+        except Exception as e:
+            logging.warning(f"Error loading badges: {e}")
+        
+        # Load icon config for flair and other icons (match discord_integration.py)
+        import configparser as cp
+        iconconfig = cp.ConfigParser()
+        iconconfig.read(app_path("icon.config"))
+        try:
+            orphan_icon_conf = app_path("orphan", "icon.config")
+            if os.path.exists(orphan_icon_conf):
+                iconconfig.read(orphan_icon_conf)
+        except OSError:
+            pass
+        
+        # Get flair icons and Super Earth icon
+        FlairLeftIco = iconconfig["MiscIcon"].get("Flair Left", "") if "MiscIcon" in iconconfig else ""
+        FlairRightIco = iconconfig["MiscIcon"].get("Flair Right", "") if "MiscIcon" in iconconfig else ""
+        SEIco = iconconfig["MiscIcon"].get("Super Earth Icon", "") if "MiscIcon" in iconconfig else ""
+        
+        # Get icon references
+        title_icon = TITLE_ICONS.get(data_dict.get('Title', ''), '')
+        planet_icon = PLANET_ICONS.get(data_dict.get('Planet', ''), '')
+        if not planet_icon:
+            planet_icon = SEIco
+        enemy_icon = ENEMY_ICONS.get(data_dict.get('Enemy Type', ''), '')
+        subfaction_icon = SUBFACTION_ICONS.get(data_dict.get('Enemy Subfaction', ''), '')
+        campaign_icon = CAMPAIGN_ICONS.get(data_dict.get('Mission Category', ''), '')
+        mission_icon = MISSION_ICONS.get(data_dict.get('Mission Type', ''), '')
+        diff_icon = DIFFICULTY_ICONS.get(data_dict.get('Difficulty', ''), '')
+        
+        # Get system color based on enemy type
+        try:
+            from core.icon import SYSTEM_COLORS
+            system_color = int(SYSTEM_COLORS.get(data_dict.get('Enemy Type', ''), "7257043"))
+        except (TypeError, ValueError):
+            system_color = 7257043
+        
+        # Get rating stars
+        GoldStar = iconconfig["Stars"].get("GoldStar", "") if "Stars" in iconconfig else ""
+        GreyStar = iconconfig["Stars"].get("GreyStar", "") if "Stars" in iconconfig else ""
+        rating_stars = {
+            "Gallantry Beyond Measure": 5,
+            "Outstanding Patriotism": 5,
+            "Truly Exceptional Heroism": 4,
+            "Superior Valour": 4,
+            "Costly Failure": 4,
+            "Honourable Duty": 3,
+            "Unremarkable Performance": 2,
+            "Disappointing Service": 1,
+            "Disgraceful Conduct": 0,
+        }
+        gold_count = rating_stars.get(data_dict.get('Rating', ''), 0)
+        Stars = GoldStar * gold_count + GreyStar * (5 - gold_count)
+        
+        # Get performance icons (killico, deathico) - compare against the previous mission chronologically
+        killico = ""
+        deathico = ""
+        logging.info(f"DEBUG: matched_row_index={matched_row_index}, excel_file exists={os.path.exists(excel_file)}")
+        try:
+            if os.path.exists(excel_file) and matched_row_index > 0:
+                # Load the file again to get previous mission
+                df = pd.read_excel(excel_file)
+                logging.info(f"DEBUG: loaded {len(df)} rows from Excel")
+                if len(df) > matched_row_index:
+                    # Get the mission immediately before the selected one
+                    prev_mission = df.iloc[matched_row_index - 1]
+                    prev_kills = int(prev_mission["Kills"])
+                    prev_deaths = int(prev_mission["Deaths"])
+                    current_kills = int(kills)
+                    current_deaths = int(deaths)
+                    logging.info(f"DEBUG: Comparing kills {current_kills} vs {prev_kills}, deaths {current_deaths} vs {prev_deaths}")
+                    
+                    # Compare kills: positive if more, negative if less, neutral if same
+                    if current_kills > prev_kills:
+                        killico = iconconfig["MiscIcon"].get("Positive", "") if "MiscIcon" in iconconfig else ""
+                    elif current_kills < prev_kills:
+                        killico = iconconfig["MiscIcon"].get("Negative", "") if "MiscIcon" in iconconfig else ""
+                    else:
+                        killico = iconconfig["MiscIcon"].get("Neutral", "") if "MiscIcon" in iconconfig else ""
+                    
+                    # Compare deaths: positive if fewer (lower is better), negative if more, neutral if same
+                    if current_deaths < prev_deaths:
+                        deathico = iconconfig["MiscIcon"].get("PositiveDeaths", "") if "MiscIcon" in iconconfig else ""
+                    elif current_deaths > prev_deaths:
+                        deathico = iconconfig["MiscIcon"].get("NegativeDeaths", "") if "MiscIcon" in iconconfig else ""
+                    else:
+                        deathico = iconconfig["MiscIcon"].get("Neutral", "") if "MiscIcon" in iconconfig else ""
+                    
+                    logging.info(f"DEBUG: killico='{killico}', deathico='{deathico}'")
+            else:
+                logging.info(f"DEBUG: Skipped performance icons - matched_row_index={matched_row_index}, file exists={os.path.exists(excel_file)}")
+        except Exception as e:
+            logging.warning(f"Error calculating performance icons: {e}", exc_info=True)
+        
+        # Get MO and DSS labels
+        # Check if Major Order is active (handle both boolean False and string "False")
+        mo_value = data_dict.get("Major Order", "False")
+        mo_is_active = mo_value not in [False, "False", "No", "", None]
+        mo_label = str(mo_value)
+        if mo_is_active and "MiscIcon" in iconconfig:
+            mo_ico = iconconfig["MiscIcon"].get("MO", "")
+            mo_label = f"{mo_label} {mo_ico}"
+        
+        # Check if DSS is active (handle both boolean False and string "False")
+        dss_value = data_dict.get("DSS Active", "False")
+        dss_is_active = dss_value not in [False, "False", "No", "", None]
+        dss_label = str(dss_value)
+        if dss_is_active and "MiscIcon" in iconconfig:
+            dss_ico = iconconfig["MiscIcon"].get("DSS", "")
+            dss_label = f"{dss_label} {dss_ico}"
+        
+        dss_mod_label = str(data_dict.get("DSS Modifier", "Inactive"))
+        dss_mod_ico = ""  # Can add DSS modifier icon lookup here if needed
+        
+        # Get mega label (Mega Factory for Cyberstan, Mega City for others)
+        mega_label = "Mega Factory" if str(data_dict.get("Planet", "")).strip().lower() == "cyberstan" else "Mega City"
+        
+        # Build the revision embed (matching discord_integration.py structure exactly)
+        date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        embed = {
+            "title": f"{data_dict.get('Super Destroyer', 'Unknown')}\nDeployed {data_dict.get('Helldivers', 'Helldiver')}\n{badge_string}",
+            "description": (
+                f"**Level {data_dict.get('Level', 'N/A')} | {data_dict.get('Title', 'N/A')} {title_icon}\n"
+                f"Mission: {mission_number} [REVISION]**\n\n"
+                f"{FlairLeftIco} {SEIco} **Galactic Intel** {planet_icon} {FlairRightIco}\n"
+                f"> Sector: {data_dict.get('Sector', 'N/A')}\n"
+                f"> Planet: {data_dict.get('Planet', 'N/A')}\n"
+                f"> {mega_label}: {data_dict.get('Mega Structure', data_dict.get('Mega City', 'N/A'))}\n"
+                f"> Major Order: {mo_label}\n"
+                f"> DSS Active: {dss_label}\n"
+                f"> DSS Modifier: {dss_mod_label} {dss_mod_ico}\n\n"
+            ),
+            "color": system_color,
+            "fields": [
+                {
+                    "name": f"{FlairLeftIco} {enemy_icon} **Enemy Intel** {subfaction_icon} {FlairRightIco}",
+                    "value": (
+                        f"> Faction: {data_dict.get('Enemy Type', 'N/A')}\n"
+                        f"> Subfaction: {data_dict.get('Enemy Subfaction', 'N/A')}\n"
+                        f"> Campaign: {data_dict.get('Mission Category', 'N/A')}\n\n"
+                        f"{FlairLeftIco} {campaign_icon} **Mission Intel** {mission_icon} {FlairRightIco}\n"
+                        f"> Mission: {data_dict.get('Mission Type', 'N/A')}\n"
+                        f"> Difficulty: {data_dict.get('Difficulty', 'N/A')} {diff_icon}\n"
+                        f"> Kills: {kills} {killico}\n"
+                        f"> Deaths: {deaths} {deathico}\n"
+                        f"> KDR: {kdr}\n"
+                        f"> Rating: {data_dict.get('Rating', 'N/A')}\n\n"
+                        f"{Stars}\n"
+                    ),
+                }
+            ],
+            "author": {
+                "name": f"Super Earth Mission Report - Revision\nDate: {date}",
+                "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&",
+            },
+            "footer": {
+                "text": f"{uid}",
+                "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&",
+            },
+            "image": {"url": BIOME_BANNERS.get(data_dict.get("Planet", ""), "")},
+            "thumbnail": {"url": get_planet_image(data_dict.get("Planet", ""))},
+        }
+        
+        # Show progress window
+        progress_win = tk.Toplevel(root)
+        progress_win.title("Revision Progress")
+        progress_win.transient(root)
+        progress_win.grab_set()
+        progress_win.resizable(False, False)
+        progress_win.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
+        ttk.Label(progress_win, text="Submitting mission revision...").pack(anchor=tk.W, padx=12, pady=(12, 6))
+        progress_var = tk.StringVar(value=f"0/{len(webhooks)} submitted")
+        ttk.Label(progress_win, textvariable=progress_var).pack(anchor=tk.W, padx=12)
+        progress_bar = ttk.Progressbar(
+            progress_win, orient=tk.HORIZONTAL, mode="determinate", maximum=len(webhooks), value=0, length=380
+        )
+        progress_bar.pack(fill=tk.X, padx=12, pady=(6, 8))
+        status_box = tk.Text(progress_win, width=60, height=6, state=tk.DISABLED, wrap=tk.WORD)
+        status_box.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+        
+        def _append_status(line: str):
+            status_box.configure(state=tk.NORMAL)
+            status_box.insert(tk.END, f"{line}\n")
+            status_box.see(tk.END)
+            status_box.configure(state=tk.DISABLED)
+        
+        def worker():
+            ok = 0
+            fail = 0
+            failures = []
+            
+            for i, webhook_url in enumerate(webhooks):
+                success, err = post_discord(webhook_url, {"embeds": [embed]})
+                if success:
+                    ok += 1
+                    line = f"✓ Webhook {i+1}: revision submitted"
+                else:
+                    fail += 1
+                    failures.append((webhook_url, err))
+                    short_reason, _ = classify_webhook_error(err)
+                    line = f"✗ Webhook {i+1}: failed ({short_reason})"
+                
+                try:
+                    root.after(
+                        0,
+                        lambda s=i+1, o=ok, f=fail: (
+                            progress_bar.configure(value=s),
+                            progress_var.set(f"{s}/{len(webhooks)} completed"),
+                        ),
+                    )
+                    root.after(0, lambda l=line: _append_status(l))
+                except Exception:
+                    pass
+            
+            def finish_ui():
+                try:
+                    progress_win.destroy()
+                except Exception:
+                    pass
+                
+                if fail:
+                    detail_lines = [format_webhook_failure_line(url, err) for url, err in failures[:3]]
+                    suffix = "\n- ..." if len(failures) > 3 else ""
+                    messagebox.showinfo(
+                        "Revision Submission",
+                        f"Revision submitted to {ok}/{ok + fail} webhook(s).\n\n"
+                        f"Details:\n{chr(10).join(detail_lines)}{suffix}",
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Revision Submission",
+                        f"Mission revision successfully submitted to {ok} webhook(s)!",
+                    )
+            
+            root.after(0, finish_ui)
+        
+        threading.Thread(target=worker, daemon=True).start()
+    
+    def submit_multiple_missions_export(selected_ids):
+        # Aggregate multiple selected missions into a summary export (observation-style)
+        columns = list(table["columns"]) if table["columns"] else []
+        
+        # Collect all selected rows into a list of dicts
+        selected_missions = []
+        for row_id in selected_ids:
+            row_values = tuple(table.item(row_id, "values"))
+            if columns and row_values:
+                selected_missions.append({c: v for c, v in zip(columns, row_values)})
+        
+        if not selected_missions:
+            messagebox.showerror("Export Submission", "Unable to read selected mission data.")
+            return
+        
+        # Convert to DataFrame for easier analysis
+        selected_df = pd.DataFrame(selected_missions)
+        
+        # Convert numeric columns from strings to integers
+        numeric_columns = ["Kills", "Deaths", "Level"]
+        for col in numeric_columns:
+            if col in selected_df.columns:
+                selected_df[col] = pd.to_numeric(selected_df[col], errors='coerce').fillna(0).astype(int)
+        
+        # Load webhooks for export
+        webhooks = []
+        dcord_data = {}
+        try:
+            dcord_path = app_path("JSON", "DCord.json")
+            with open(dcord_path, "r", encoding="utf-8") as f:
+                dcord_data = json.load(f)
+            
+            # Use export webhooks
+            if isinstance(dcord_data.get("discord_webhooks_export"), list):
+                webhooks = [u for u in dcord_data["discord_webhooks_export"] if isinstance(u, str) and u.strip()]
+            
+            if not webhooks and isinstance(dcord_data.get("discord_webhooks_export_labeled"), list):
+                for item in dcord_data["discord_webhooks_export_labeled"]:
+                    if isinstance(item, dict) and item.get("url"):
+                        webhooks.append(item["url"])
+            
+            if not webhooks and isinstance(dcord_data.get("discord_webhooks"), list):
+                webhooks = [u for u in dcord_data["discord_webhooks"] if isinstance(u, str) and u.strip()]
+            
+            # Add extra export webhooks
+            extra_export = get_extra_webhook_urls("export")
+            if extra_export:
+                webhooks = list(dict.fromkeys(webhooks + extra_export))
+        except Exception as e:
+            logging.error(f"Failed to load export webhooks: {e}")
+        
+        if not webhooks:
+            messagebox.showerror("Export Submission", "No export webhooks configured.")
+            return
+        
+        uid = dcord_data.get("discord_uid", "0")
+        
+        # Calculate aggregate statistics
+        total_missions = len(selected_df)
+        total_kills = int(selected_df["Kills"].sum()) if "Kills" in selected_df.columns else 0
+        total_deaths = int(selected_df["Deaths"].sum()) if "Deaths" in selected_df.columns else 0
+        kdr = f"{(total_kills / max(1, total_deaths)):.2f}"
+        
+        # Calculate success/failure rates
+        failed_missions = len(selected_df[selected_df["Rating"] == "Disgraceful Conduct"]) if "Rating" in selected_df.columns else 0
+        success_missions = total_missions - failed_missions
+        success_percentage = (success_missions / total_missions * 100) if total_missions > 0 else 0
+        failure_percentage = (failed_missions / total_missions * 100) if total_missions > 0 else 0
+        
+        # Get most common values
+        most_common_planet = selected_df["Planet"].mode().iloc[0] if "Planet" in selected_df.columns and not selected_df["Planet"].mode().empty else "Various"
+        most_common_sector = selected_df["Sector"].mode().iloc[0] if "Sector" in selected_df.columns and not selected_df["Sector"].mode().empty else "Various"
+        most_common_enemy = selected_df["Enemy Type"].mode().iloc[0] if "Enemy Type" in selected_df.columns and not selected_df["Enemy Type"].mode().empty else "Various"
+        most_common_subfaction = selected_df["Enemy Subfaction"].mode().iloc[0] if "Enemy Subfaction" in selected_df.columns and not selected_df["Enemy Subfaction"].mode().empty else "Various"
+        most_common_category = selected_df["Mission Category"].mode().iloc[0] if "Mission Category" in selected_df.columns and not selected_df["Mission Category"].mode().empty else "Various"
+        most_common_mission = selected_df["Mission Type"].mode().iloc[0] if "Mission Type" in selected_df.columns and not selected_df["Mission Type"].mode().empty else "Various"
+        most_common_difficulty = selected_df["Difficulty"].mode().iloc[0] if "Difficulty" in selected_df.columns and not selected_df["Difficulty"].mode().empty else "Various"
+        
+        # Count occurrences
+        planet_count = len(selected_df[selected_df["Planet"] == most_common_planet]) if most_common_planet != "Various" else 0
+        enemy_count = len(selected_df[selected_df["Enemy Type"] == most_common_enemy]) if most_common_enemy != "Various" else 0
+        subfaction_count = len(selected_df[selected_df["Enemy Subfaction"] == most_common_subfaction]) if most_common_subfaction != "Various" else 0
+        category_count = len(selected_df[selected_df["Mission Category"] == most_common_category]) if most_common_category != "Various" else 0
+        mission_count = len(selected_df[selected_df["Mission Type"] == most_common_mission]) if most_common_mission != "Various" else 0
+        difficulty_count = len(selected_df[selected_df["Difficulty"] == most_common_difficulty]) if most_common_difficulty != "Various" else 0
+        
+        # Get user info from most recent selected mission
+        helldiver_ses = selected_df["Super Destroyer"].iloc[-1] if "Super Destroyer" in selected_df.columns else "Unknown"
+        helldiver_name = selected_df["Helldivers"].iloc[-1] if "Helldivers" in selected_df.columns else "Unknown"
+        helldiver_level = selected_df["Level"].iloc[-1] if "Level" in selected_df.columns else 0
+        helldiver_title = selected_df["Title"].iloc[-1] if "Title" in selected_df.columns else "Unknown"
+        
+        # Load badge icons
+        badge_string = ""
+        try:
+            app_data_path = os.path.dirname(excel_file) if excel_file else os.path.join(os.getenv("LOCALAPPDATA"), "MLHD2")
+            badge_data = get_badge_icons(DEBUG, app_data_path, "%d-%m-%Y %H:%M:%S")
+            
+            always_on_order = ["bicon", "ticon", "yearico", "PIco"]
+            badge_items = []
+            for k in always_on_order:
+                if badge_data.get(k):
+                    badge_items.append(badge_data[k])
+            
+            try:
+                if os.path.exists(app_path("JSON", "DCord.json")):
+                    with open(app_path("JSON", "DCord.json"), "r", encoding="utf-8") as f:
+                        dcord_badge_data = json.load(f)
+                else:
+                    dcord_badge_data = {}
+            except Exception:
+                dcord_badge_data = {}
+            
+            display_pref = dcord_badge_data.get("display_badges", None)
+            selected_count = 0
+            if isinstance(display_pref, list) and display_pref:
+                for k in display_pref:
+                    if selected_count >= 4:
+                        break
+                    if badge_data.get(k):
+                        badge_items.append(badge_data[k])
+                        selected_count += 1
+            
+            badge_string = "".join(badge_items)
+        except Exception as e:
+            logging.warning(f"Error loading badges: {e}")
+        
+        # Load icon config
+        import configparser as cp
+        iconconfig = cp.ConfigParser()
+        iconconfig.read(app_path("icon.config"))
+        try:
+            orphan_icon_conf = app_path("orphan", "icon.config")
+            if os.path.exists(orphan_icon_conf):
+                iconconfig.read(orphan_icon_conf)
+        except OSError:
+            pass
+        
+        # Get flair icons
+        from core.utils import get_effective_flair
+        flair_colour = get_effective_flair()
+        if flair_colour.lower() == "gold":
+            FlairLeftIco = iconconfig["MiscIcon"].get("Gold Flair Left", iconconfig["MiscIcon"]["Flair Left"])
+            FlairRightIco = iconconfig["MiscIcon"].get("Gold Flair Right", iconconfig["MiscIcon"]["Flair Right"])
+        elif flair_colour.lower() == "blue":
+            FlairLeftIco = iconconfig["MiscIcon"].get("Blue Flair Left", iconconfig["MiscIcon"]["Flair Left"])
+            FlairRightIco = iconconfig["MiscIcon"].get("Blue Flair Right", iconconfig["MiscIcon"]["Flair Right"])
+        elif flair_colour.lower() == "red":
+            FlairLeftIco = iconconfig["MiscIcon"].get("Red Flair Left", iconconfig["MiscIcon"]["Flair Left"])
+            FlairRightIco = iconconfig["MiscIcon"].get("Red Flair Right", iconconfig["MiscIcon"]["Flair Right"])
+        else:
+            FlairLeftIco = iconconfig["MiscIcon"].get("Flair Left", "")
+            FlairRightIco = iconconfig["MiscIcon"].get("Flair Right", "")
+        
+        SEIco = iconconfig["MiscIcon"].get("Super Earth Icon", "") if "MiscIcon" in iconconfig else ""
+        KillIco = iconconfig["MiscIcon"].get("Kills", "") if "MiscIcon" in iconconfig else ""
+        DeathIco = iconconfig["MiscIcon"].get("Deaths", "") if "MiscIcon" in iconconfig else ""
+        KDRIco = iconconfig["MiscIcon"].get("KDR", "") if "MiscIcon" in iconconfig else ""
+        GoldStarIco = iconconfig["Stars"].get("GoldStar", "") if "Stars" in iconconfig else ""
+        
+        # Get icons
+        title_icon = TITLE_ICONS.get(helldiver_title, '')
+        planet_icon = PLANET_ICONS.get(most_common_planet, '') if most_common_planet != "Various" else SEIco
+        enemy_icon = ENEMY_ICONS.get(most_common_enemy, '') if most_common_enemy != "Various" else ""
+        subfaction_icon = SUBFACTION_ICONS.get(most_common_subfaction, '') if most_common_subfaction != "Various" else ""
+        category_icon = CAMPAIGN_ICONS.get(most_common_category, '') if most_common_category != "Various" else ""
+        mission_icon = MISSION_ICONS.get(most_common_mission, '') if most_common_mission != "Various" else ""
+        diff_icon = DIFFICULTY_ICONS.get(most_common_difficulty, '') if most_common_difficulty != "Various" else ""
+        
+        # Calculate faction-specific kills
+        faction_kill_lines = ""
+        for faction in ["Automatons", "Terminids", "Illuminate"]:
+            faction_data = selected_df[selected_df["Enemy Type"] == faction] if "Enemy Type" in selected_df.columns else pd.DataFrame()
+            if not faction_data.empty:
+                faction_kills = int(faction_data["Kills"].sum()) if "Kills" in faction_data.columns else 0
+                if faction_kills > 0:
+                    faction_icon = ENEMY_ICONS.get(faction, "")
+                    faction_kill_lines += f"> Dead {faction} - {faction_kills} {faction_icon}\n"
+        
+        if total_deaths > 0:
+            faction_kill_lines += f"> Dead Helldivers - {total_deaths} {DeathIco}\n\n"
+        
+        # Get system color based on most common enemy
+        try:
+            from core.icon import SYSTEM_COLORS
+            system_color = int(SYSTEM_COLORS.get(most_common_enemy, "7257043")) if most_common_enemy != "Various" else 7257043
+        except (TypeError, ValueError):
+            system_color = 7257043
+        
+        # Build the aggregated embed
+        date = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+        embed = {
+            "title": f"{helldiver_ses}\nHelldiver: {helldiver_name}\n{badge_string}",
+            "description": (
+                f"**Level {helldiver_level} | {helldiver_title} {title_icon}**\n\n"
+                f"{FlairLeftIco} {SEIco} **Mission Export Summary** {SEIco} {FlairRightIco}\n"
+                f"> Total Missions - {total_missions}\n"
+                f"> Missions Completed - {success_missions} ({success_percentage:.1f}%)\n"
+                f"> Missions Failed - {failed_missions} ({failure_percentage:.1f}%)\n"
+                f"> Most Common Sector - {most_common_sector}\n"
+                f"> Most Common Planet - {most_common_planet} {planet_icon}" + (f" (x{planet_count})" if planet_count > 0 else "") + "\n\n"
+                f"{FlairLeftIco} {KillIco} **Combat Intel** {KDRIco} {FlairRightIco}\n"
+                f"> Kill to Death Ratio - {total_kills} : {total_deaths}\n"
+                f"> KDR - {kdr}\n"
+                + faction_kill_lines +
+                f"{FlairLeftIco} {GoldStarIco} **Priority Intel** {GoldStarIco} {FlairRightIco}\n"
+                f"> Mission - {most_common_mission} {mission_icon}" + (f" (x{mission_count})" if mission_count > 0 else "") + "\n"
+                f"> Campaign - {most_common_category} {category_icon}" + (f" (x{category_count})" if category_count > 0 else "") + "\n"
+                f"> Faction - {most_common_enemy} {enemy_icon}" + (f" (x{enemy_count})" if enemy_count > 0 else "") + "\n"
+                f"> Subfaction - {most_common_subfaction} {subfaction_icon}" + (f" (x{subfaction_count})" if subfaction_count > 0 else "") + "\n"
+                f"> Difficulty - {most_common_difficulty} {diff_icon}" + (f" (x{difficulty_count})" if difficulty_count > 0 else "") + "\n\n"
+            ),
+            "color": system_color,
+            "author": {
+                "name": f"SEAF Mission Export Summary\nDate: {date}",
+                "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&",
+            },
+            "footer": {
+                "text": f"{uid}",
+                "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356025859319926784/5cwgI15.png?ex=67eb10fe&is=67e9bf7e&hm=ab6326a9da1e76125238bf3668acac8ad1e43b24947fc6d878d7b94c8a60ab28&",
+            },
+            "image": {"url": BIOME_BANNERS.get(most_common_planet, "") if most_common_planet != "Various" else ""},
+            "thumbnail": {"url": get_planet_image(most_common_planet) if most_common_planet != "Various" else ""},
+        }
+        
+        # Show progress window
+        progress_win = tk.Toplevel(root)
+        progress_win.title("Export Progress")
+        progress_win.transient(root)
+        progress_win.grab_set()
+        progress_win.resizable(False, False)
+        progress_win.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
+        ttk.Label(progress_win, text=f"Exporting {total_missions} missions...").pack(anchor=tk.W, padx=12, pady=(12, 6))
+        progress_var = tk.StringVar(value=f"0/{len(webhooks)} submitted")
+        ttk.Label(progress_win, textvariable=progress_var).pack(anchor=tk.W, padx=12)
+        progress_bar = ttk.Progressbar(
+            progress_win, orient=tk.HORIZONTAL, mode="determinate", maximum=len(webhooks), value=0, length=380
+        )
+        progress_bar.pack(fill=tk.X, padx=12, pady=(6, 8))
+        status_box = tk.Text(progress_win, width=60, height=6, state=tk.DISABLED, wrap=tk.WORD)
+        status_box.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
+        
+        def _append_status(line: str):
+            status_box.configure(state=tk.NORMAL)
+            status_box.insert(tk.END, f"{line}\n")
+            status_box.see(tk.END)
+            status_box.configure(state=tk.DISABLED)
+        
+        def worker():
+            ok = 0
+            fail = 0
+            failures = []
+            
+            for i, webhook_url in enumerate(webhooks):
+                success, err = post_discord(webhook_url, {"embeds": [embed]})
+                if success:
+                    ok += 1
+                    line = f"✓ Webhook {i+1}: export submitted"
+                else:
+                    fail += 1
+                    failures.append((webhook_url, err))
+                    short_reason, _ = classify_webhook_error(err)
+                    line = f"✗ Webhook {i+1}: failed ({short_reason})"
+                
+                try:
+                    root.after(
+                        0,
+                        lambda s=i+1, o=ok, f=fail: (
+                            progress_bar.configure(value=s),
+                            progress_var.set(f"{s}/{len(webhooks)} completed"),
+                        ),
+                    )
+                    root.after(0, lambda l=line: _append_status(l))
+                except Exception:
+                    pass
+            
+            def finish_ui():
+                try:
+                    progress_win.destroy()
+                except Exception:
+                    pass
+                
+                if fail:
+                    detail_lines = [format_webhook_failure_line(url, err) for url, err in failures[:3]]
+                    suffix = "\n- ..." if len(failures) > 3 else ""
+                    messagebox.showinfo(
+                        "Export Submission",
+                        f"Export submitted to {ok}/{ok + fail} webhook(s).\n\n"
+                        f"Details:\n{chr(10).join(detail_lines)}{suffix}",
+                    )
+                else:
+                    messagebox.showinfo(
+                        "Export Submission",
+                        f"Mission export successfully submitted to {ok} webhook(s)!",
+                    )
+            
+            root.after(0, finish_ui)
+        
+        threading.Thread(target=worker, daemon=True).start()
+
     def load_export_webhooks():
         # Read export webhook URLs from JSON/DCord.json; used for Discord export
         try:
@@ -575,139 +1271,13 @@ def main():
         # Ensure we don't exceed 10 embeds per message; caller sends one embed per message
         return all_embeds
 
-    def export_to_discord():
-        # Prepare selected/visible rows and send as embeds to Discord webhooks
-        selected_ids = list(table.selection())
-        use_rows = []
-        columns = list(table["columns"]) if table["columns"] else []
-        if selected_ids:
-            for iid in selected_ids:
-                use_rows.append(tuple(table.item(iid, "values")))
-        else:
-            # If no selection, ask to export all visible rows
-            if not messagebox.askyesno("Export to Discord", "No rows selected. Export all visible rows?"):
-                return
-            # Use last filtered dataframe values in table column order
-            if columns and last_filtered_df is not None:
-                try:
-                    for _, r in last_filtered_df.iterrows():
-                        use_rows.append(tuple(str(r.get(c, "")) if pd.notna(r.get(c, "")) else "" for c in columns))
-                except Exception:
-                    # Fallback to reading from Treeview if DF path fails
-                    for iid in table.get_children():
-                        use_rows.append(tuple(table.item(iid, "values")))
-            else:
-                for iid in table.get_children():
-                    use_rows.append(tuple(table.item(iid, "values")))
+    # Load Revision button images
+    revision_btn_img = load_button_image(app_path("media", "Exportsys", "ExtractToDiscordButton.png"))
+    revision_btn_img_hover = load_button_image(app_path("media", "Exportsys", "ExtractToDiscordButtonHover.png"))
 
-        if not use_rows:
-            messagebox.showinfo("Export to Discord", "Nothing to export.")
-            return
-
-        webhooks = load_export_webhooks()
-        if not webhooks:
-            messagebox.showerror("Export to Discord", "No export webhooks found in JSON/DCord.json")
-            return
-
-        embeds_list = format_embeds_for_rows(use_rows, columns)
-
-        total_messages = max(1, len(webhooks) * len(embeds_list))
-        progress_win = tk.Toplevel(root)
-        progress_win.title("Export Progress")
-        progress_win.transient(root)
-        progress_win.grab_set()
-        progress_win.resizable(False, False)
-        progress_win.configure(bg=DEFAULT_THEME["."]["configure"]["background"])
-        ttk.Label(progress_win, text="Exporting Discord messages...").pack(anchor=tk.W, padx=12, pady=(12, 6))
-        progress_var = tk.StringVar(value=f"0/{total_messages} complete")
-        ttk.Label(progress_win, textvariable=progress_var).pack(anchor=tk.W, padx=12)
-        progress_bar = ttk.Progressbar(
-            progress_win, orient=tk.HORIZONTAL, mode="determinate", maximum=total_messages, value=0, length=430
-        )
-        progress_bar.pack(fill=tk.X, padx=12, pady=(6, 8))
-        status_box = tk.Text(progress_win, width=72, height=8, state=tk.DISABLED, wrap=tk.WORD)
-        status_box.pack(fill=tk.BOTH, expand=True, padx=12, pady=(0, 12))
-
-        def _append_status(line: str):
-            status_box.configure(state=tk.NORMAL)
-            status_box.insert(tk.END, f"{line}\n")
-            status_box.see(tk.END)
-            status_box.configure(state=tk.DISABLED)
-
-        def worker():
-            ok = 0
-            fail = 0
-            failures = []
-            sent = 0
-
-            for webhook_url in webhooks:
-                webhook_ok = 0
-                webhook_fail = 0
-                last_err = None
-
-                for emb in embeds_list:
-                    success, err = post_discord(webhook_url, {"embeds": [emb]})
-                    if success:
-                        ok += 1
-                        webhook_ok += 1
-                    else:
-                        fail += 1
-                        webhook_fail += 1
-                        last_err = err
-                    sent += 1
-
-                    try:
-                        root.after(
-                            0,
-                            lambda s=sent: (
-                                progress_bar.configure(value=s),
-                                progress_var.set(f"{s}/{total_messages} complete"),
-                            ),
-                        )
-                    except Exception:
-                        pass
-
-                if webhook_fail > 0:
-                    short_reason, _ = classify_webhook_error(last_err)
-                    line = f"✗ {webhook_url} - {webhook_ok} sent, {webhook_fail} failed ({short_reason})"
-                    failures.append((webhook_url, last_err))
-                else:
-                    line = f"✓ {webhook_url} - {webhook_ok} sent"
-
-                try:
-                    root.after(0, lambda l=line: _append_status(l))
-                except Exception:
-                    pass
-
-            def finish_ui():
-                try:
-                    progress_win.destroy()
-                except Exception:
-                    pass
-
-                if fail:
-                    detail_lines = [format_webhook_failure_line(url, err) for url, err in failures[:6]]
-                    suffix = "\n- ..." if len(failures) > 6 else ""
-                    messagebox.showerror(
-                        "Export to Discord",
-                        f"Sent {ok}/{ok + fail} message(s).\n\nFailures:\n{chr(10).join(detail_lines)}{suffix}",
-                    )
-                else:
-                    messagebox.showinfo(
-                        "Export to Discord", f"Export complete. Sent {ok} message(s) across {len(webhooks)} webhook(s)."
-                    )
-
-            root.after(0, finish_ui)
-
-        threading.Thread(target=worker, daemon=True).start()
-
-    # Load Export to Discord button images
-    extract_btn_img = load_button_image(app_path("media", "Exportsys", "ExtractToDiscordButton.png"))
-    extract_btn_img_hover = load_button_image(app_path("media", "Exportsys", "ExtractToDiscordButtonHover.png"))
-
-    export_btn = tk.Label(
+    revision_btn = tk.Label(
         button_frame,
-        image=extract_btn_img,
+        image=revision_btn_img,
         cursor="hand2",
         bd=0,
         highlightthickness=0,
@@ -715,31 +1285,31 @@ def main():
         relief="flat",
         background=DEFAULT_THEME["."]["configure"]["background"],
     )
-    export_btn.image = extract_btn_img  # Prevent garbage collection
-    export_btn.pack(side=tk.LEFT, padx=5)
+    revision_btn.image = revision_btn_img  # Prevent garbage collection
+    revision_btn.pack(side=tk.LEFT, padx=5)
 
-    def on_export_enter(event):
-        # Hover handler for Export button; updates image and plays sound
-        export_btn.configure(image=extract_btn_img_hover)
-        export_btn.image = extract_btn_img_hover
+    def on_revision_enter(event):
+        # Hover handler for Revision button; updates image and plays sound
+        revision_btn.configure(image=revision_btn_img_hover)
+        revision_btn.image = revision_btn_img_hover
         try:
             play_button_hover()
         except Exception:
             pass
 
-    def on_export_leave(event):
-        # Mouse leave handler for Export button; restores default image
-        export_btn.configure(image=extract_btn_img)
-        export_btn.image = extract_btn_img
+    def on_revision_leave(event):
+        # Mouse leave handler for Revision button; restores default image
+        revision_btn.configure(image=revision_btn_img)
+        revision_btn.image = revision_btn_img
 
-    def on_export_click(event):
-        # Click handler for Export button; sends selected/visible rows to Discord
+    def on_revision_click(event):
+        # Click handler for Revision button; formats and sends a single selected mission
         play_button_click()
-        export_to_discord()
+        submit_mission_revision()
 
-    export_btn.bind("<Enter>", on_export_enter)
-    export_btn.bind("<Leave>", on_export_leave)
-    export_btn.bind("<Button-1>", on_export_click)
+    revision_btn.bind("<Enter>", on_revision_enter)
+    revision_btn.bind("<Leave>", on_revision_leave)
+    revision_btn.bind("<Button-1>", on_revision_click)
 
     # Exit button as image button (styled like other image buttons)
     exit_btn_img = load_button_image(app_path("media", "Exportsys", "ExitButton.png"))

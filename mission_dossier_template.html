@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width,initial-scale=1" />
+	<meta name="color-scheme" content="dark light" />
+	<title>Helldiver Dossier</title>
+	<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;600;700&family=Saira+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
+	<style>
+		@font-face {
+			font-family: 'Insignia';
+			src: url('LaunchMedia/Insignia.ttf') format('truetype');
+			font-display: swap;
+		}
+
+		:root {
+			--bg: #070c0f;
+			--bg-2: #0a1216;
+			--panel: #0e171c;
+			--panel-2: #121d22;
+			--text: #e7f2f8;
+			--text-soft: #9fb2bf;
+			--accent: #e11d23;
+			--accent-2: #e3b341;
+			--accent-3: #24b36b;
+			--line: rgba(255, 255, 255, 0.08);
+			--line-soft: rgba(255, 255, 255, 0.04);
+			--shadow: 0 8px 24px rgba(2, 6, 10, 0.6);
+			--radius: 14px;
+			--radius-sm: 8px;
+			--font-head: 'Insignia', 'Saira Condensed', sans-serif;
+			--font-body: 'Rajdhani', sans-serif;
+			--mono: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+		}
+
+		* {
+			box-sizing: border-box;
+		}
+
+		body {
+			margin: 0;
+			font-family: var(--font-body);
+			background:
+				repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 48px),
+				repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.02) 0 1px, transparent 1px 48px),
+				radial-gradient(circle at 20% 20%, rgba(225, 29, 35, 0.14), transparent 40%),
+				linear-gradient(180deg, var(--bg), var(--bg-2));
+			color: var(--text);
+			line-height: 1.35;
+		}
+
+		h1,
+		h2,
+		h3 {
+			font-family: var(--font-head);
+			letter-spacing: 1.2px;
+			text-transform: uppercase;
+			margin: 0 0 0.6rem;
+		}
+
+		h1 {
+			font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2.4rem);
+		}
+
+		h2 {
+			font-size: 1.05rem;
+			color: var(--accent-2);
+		}
+
+		h3 {
+			font-size: 0.85rem;
+			color: var(--text-soft);
+		}
+
+		.container {
+			max-width: 1100px;
+			margin: 0 auto;
+			padding: 1.6rem 1.2rem 3rem;
+		}
+
+		.header {
+			display: grid;
+			grid-template-columns: 1.2fr 1fr;
+			gap: 1rem;
+			align-items: center;
+			padding: 1.2rem;
+			border: 1px solid var(--line);
+			border-radius: var(--radius);
+			background: linear-gradient(135deg, rgba(225, 29, 35, 0.15), rgba(9, 15, 19, 0.9));
+			box-shadow: var(--shadow);
+			position: relative;
+		}
+
+		.header::after {
+			content: "CLASSIFIED";
+			position: absolute;
+			right: 1rem;
+			top: 1rem;
+			font-family: var(--font-head);
+			font-size: 0.7rem;
+			letter-spacing: 3px;
+			color: rgba(255, 255, 255, 0.35);
+			border: 1px solid rgba(255, 255, 255, 0.2);
+			padding: 0.25rem 0.5rem;
+			border-radius: 999px;
+		}
+
+		.header-banner {
+			width: 100%;
+			height: 230px;
+			object-fit: cover;
+			border-radius: var(--radius-sm);
+			border: 1px solid var(--line-soft);
+		}
+
+		.meta {
+			display: flex;
+			gap: 0.8rem;
+			flex-wrap: wrap;
+			font-size: 0.7rem;
+			letter-spacing: 1px;
+			text-transform: uppercase;
+			color: var(--text-soft);
+		}
+
+		.badges {
+			display: flex;
+			gap: 0.4rem;
+			flex-wrap: wrap;
+			margin-top: 0.5rem;
+			font-size: 0.7rem;
+		}
+
+		.badge {
+			border: 1px solid var(--line);
+			padding: 0.25rem 0.5rem;
+			border-radius: 999px;
+			background: rgba(255, 255, 255, 0.03);
+		}
+
+		.brief {
+			margin-top: 0.7rem;
+			padding: 0.6rem 0.75rem;
+			border: 1px solid var(--line-soft);
+			border-radius: var(--radius-sm);
+			background: rgba(255, 255, 255, 0.02);
+		}
+
+		.brief-title {
+			font-size: 0.7rem;
+			letter-spacing: 2px;
+			text-transform: uppercase;
+			color: var(--accent-2);
+			margin-bottom: 0.35rem;
+		}
+
+		.brief p {
+			margin: 0.35rem 0;
+			color: var(--text-soft);
+			font-size: 0.85rem;
+			white-space: pre-line;
+		}
+
+		.brief .note {
+			color: var(--text);
+			font-style: italic;
+		}
+
+		.grid {
+			display: grid;
+			grid-template-columns: repeat(12, 1fr);
+			gap: 1rem;
+			margin-top: 1.4rem;
+		}
+
+		.card {
+			background: linear-gradient(180deg, var(--panel), var(--panel-2));
+			border: 1px solid var(--line);
+			border-radius: var(--radius);
+			padding: 1rem 1.1rem;
+			box-shadow: var(--shadow);
+			position: relative;
+			overflow: hidden;
+		}
+
+		.card::before {
+			content: "";
+			position: absolute;
+			left: 0;
+			top: 0;
+			width: 100%;
+			height: 4px;
+			background: linear-gradient(90deg, var(--accent), var(--accent-2));
+			opacity: 0.8;
+		}
+
+		.card small {
+			color: var(--text-soft);
+		}
+
+		.identity {
+			grid-column: span 7;
+		}
+
+		.ops {
+			grid-column: span 5;
+		}
+
+		.stats {
+			grid-column: span 12;
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+			gap: 0.8rem;
+		}
+
+		.stat {
+			background: rgba(255, 255, 255, 0.02);
+			border: 1px solid var(--line-soft);
+			border-radius: var(--radius-sm);
+			padding: 0.6rem 0.8rem;
+		}
+
+		.stat strong {
+			display: block;
+			font-size: 1.05rem;
+		}
+
+		.section-title {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			gap: 0.6rem;
+			margin-bottom: 0.4rem;
+		}
+
+		.intel-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+			gap: 0.8rem;
+		}
+
+		.intel-card {
+			border: 1px solid var(--line-soft);
+			border-radius: var(--radius-sm);
+			padding: 0.6rem;
+			background: rgba(255, 255, 255, 0.02);
+			display: grid;
+			grid-template-columns: 72px 1fr;
+			gap: 0.6rem;
+			align-items: center;
+		}
+
+		.intel-card img {
+			width: 72px;
+			height: 72px;
+			object-fit: cover;
+			border-radius: 10px;
+			border: 1px solid var(--line-soft);
+			background: #0b1216;
+		}
+
+		.milestone-card {
+			border: 1px solid var(--line-soft);
+			border-radius: var(--radius-sm);
+			overflow: hidden;
+			background: rgba(255, 255, 255, 0.02);
+			display: flex;
+			flex-direction: column;
+			min-height: 100%;
+		}
+
+		.banner-with-badge {
+			position: relative;
+			width: 100%;
+		}
+
+		.milestone-banner {
+			width: 100%;
+			height: 96px;
+			object-fit: cover;
+			border-bottom: 1px solid var(--line-soft);
+		}
+
+		.banner-with-badge .battle-badge {
+			position: absolute;
+			top: 50%;
+			right: 12px;
+			transform: translateY(-50%);
+			width: 48px;
+			height: 48px;
+			border-radius: 6px;
+			border: 2px solid var(--panel);
+			background: rgba(14, 23, 28, 0.9);
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+		}
+
+		.milestone-banner {
+			width: 100%;
+			height: 96px;
+			object-fit: cover;
+			border-bottom: 1px solid var(--line-soft);
+		}
+
+		.milestone-body {
+			display: grid;
+			grid-template-columns: 64px 1fr;
+			gap: 0.6rem;
+			padding: 0.6rem;
+			align-items: center;
+		}
+
+		.milestone-body img {
+			width: 64px;
+			height: 64px;
+			object-fit: cover;
+			border-radius: 10px;
+			border: 1px solid var(--line-soft);
+			background: #0b1216;
+		}
+
+		.milestone-title {
+			font-weight: 700;
+			letter-spacing: 1px;
+			text-transform: uppercase;
+			font-size: 0.75rem;
+			color: var(--accent-2);
+		}
+
+		.milestone-meta {
+			color: var(--text-soft);
+			font-size: 0.78rem;
+		}
+
+		.milestone-stats {
+			padding: 0 0.6rem 0.8rem;
+			font-size: 0.78rem;
+			color: var(--text-soft);
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+			gap: 0.35rem 0.6rem;
+			flex: 1;
+		}
+
+		.milestone-stats span {
+			color: var(--text);
+			font-weight: 600;
+		}
+
+		.milestone-footer {
+			padding: 0 0.6rem 0.6rem;
+			border-top: 1px solid var(--line-soft);
+			margin-top: auto;
+		}
+
+		.milestone-footer img {
+			width: 100%;
+			height: 96px;
+			object-fit: cover;
+			border-radius: 8px;
+			border: 1px solid var(--line-soft);
+			background: #0b1216;
+		}
+
+		.iconic-unvisited {
+			opacity: 0.4;
+			position: relative;
+		}
+
+		.iconic-unvisited img {
+			filter: grayscale(100%) brightness(0.5);
+		}
+
+		.iconic-unvisited .milestone-body strong {
+			color: var(--text-soft);
+		}
+
+		.table-wrap {
+			overflow: auto;
+			border: 1px solid var(--line);
+			border-radius: var(--radius-sm);
+			max-height: 540px;
+		}
+
+		table {
+			border-collapse: collapse;
+			width: 100%;
+			font-size: 0.85rem;
+		}
+
+		thead th {
+			position: sticky;
+			top: 0;
+			background: rgba(15, 22, 28, 0.98);
+			text-align: left;
+			padding: 0.55rem 0.6rem;
+			border-bottom: 1px solid var(--line);
+			z-index: 1;
+		}
+
+		tbody td {
+			padding: 0.45rem 0.6rem;
+			border-bottom: 1px solid var(--line-soft);
+			color: var(--text-soft);
+		}
+
+		.stamp {
+			font-family: var(--font-head);
+			letter-spacing: 4px;
+			text-transform: uppercase;
+			font-size: 0.9rem;
+			padding: 0.35rem 0.7rem;
+			border: 1px dashed rgba(227, 179, 65, 0.6);
+			color: rgba(227, 179, 65, 0.8);
+			display: inline-block;
+			transform: rotate(-2deg);
+			margin-top: 0.6rem;
+		}
+
+		@media (max-width: 900px) {
+			.header {
+				grid-template-columns: 1fr;
+			}
+
+			.identity,
+			.ops {
+				grid-column: span 12;
+			}
+		}
+	</style>
+</head>
+
+<body>
+	<div class="container">
+		<section class="header">
+			<div>
+				<h1>SEAF OPERATIVE DOSSIER</h1>
+				<div class="meta">
+					<span>Generated: {{GENERATED_AT}}</span>
+					<span>Records: {{ROW_COUNT}}</span>
+					<span>Version: {{VERSION}}</span>
+					<span>UID: {{DISCORD_UID}}</span>
+				</div>
+				<div class="brief">
+					<div class="brief-title">Record Brief</div>
+					<p>{{DOSSIER_SUMMARY}}</p>
+					<p class="note">"{{LATEST_NOTE}}"</p>
+				</div>
+				<div class="stamp">Mission Archive</div>
+			</div>
+			<img class="header-banner" src="{{PLACARD_BANNER}}" alt="Placard banner" />
+		</section>
+
+		<section class="grid">
+			<div class="card" style="grid-column: span 12;">
+				<div class="section-title">
+					<h2>Operational Overview</h2>
+					<small>Combat Metrics & Deployment Intelligence</small>
+				</div>
+				<div class="stats">
+					<div class="stat">
+						<small>Total Deployments</small>
+						<strong>{{TOTAL_DEPLOYMENTS}}</strong>
+					</div>
+					<div class="stat">
+						<small>Confirmed Kills</small>
+						<strong>{{TOTAL_KILLS}}</strong>
+					</div>
+					<div class="stat">
+						<small>Deaths</small>
+						<strong>{{TOTAL_DEATHS}}</strong>
+					</div>
+					<div class="stat">
+						<small>Operational KDR</small>
+						<strong>{{KDR}}</strong>
+					</div>
+					<div class="stat">
+						<small>Success Rate</small>
+						<strong>{{SUCCESS_RATE}}</strong>
+					</div>
+					<div class="stat">
+						<small>Failure Rate</small>
+						<strong>{{FAILURE_RATE}}</strong>
+					</div>
+				</div>
+				<h3 style="margin-top: 1.2rem; margin-bottom: 0.6rem;">Deployment Profile</h3>
+				<div class="intel-grid">
+					<div class="intel-card">
+						<img src="{{FACTION_BANNER}}" alt="Faction" />
+						<div>
+							<div><strong>{{MOST_COMMON_ENEMY}}</strong></div>
+							<small>Primary Adversary</small>
+						</div>
+					</div>
+					<div class="intel-card">
+						<img src="{{SUBFACTION_ICON}}" alt="Subfaction" />
+						<div>
+							<div><strong>{{MOST_COMMON_SUBFACTION}}</strong></div>
+							<small>Secondary Adversary</small>
+						</div>
+					</div>
+					<div class="intel-card">
+						<img src="{{MISSION_ICON}}" alt="Mission" />
+						<div>
+							<div><strong>{{MOST_COMMON_MISSION}}</strong></div>
+							<small>Top Mission Type</small>
+						</div>
+					</div>
+					<div class="intel-card">
+						<img src="{{DIFFICULTY_ICON}}" alt="Difficulty" />
+						<div>
+							<div><strong>{{MOST_COMMON_DIFFICULTY}}</strong></div>
+							<small>Preferred Difficulty</small>
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<div class="card" style="grid-column: span 12;">
+				<div class="section-title">
+					<h2>Helldiver Milestones</h2>
+					<small>Dynamic Planet Records</small>
+				</div>
+				<div class="intel-grid">
+					{{DYNAMIC_PLANET_CARDS}}
+				</div>
+			</div>
+
+			<div class="card" style="grid-column: span 12;">
+				<div class="section-title">
+					<h2>Iconic Battles</h2>
+					<small>Legendary Battlegrounds of The Galactic War</small>
+				</div>
+				<div class="intel-grid">
+					{{ICONIC_BATTLES_CARDS}}
+				</div>
+			</div>
+		</section>
+	</div>
+</body>
+
+</html>

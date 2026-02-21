@@ -2,6 +2,7 @@ import html as html_lib
 import json
 import logging
 import os
+from pathlib import Path
 from datetime import datetime
 
 import pandas as pd
@@ -722,7 +723,7 @@ def _embeds_exceed_limits(e_data: dict) -> bool:
 # Builds the HTML export document (template or fallback); used for contingency
 def _generate_html_export(df: pd.DataFrame) -> str:
     """Generate an HTML export using optional user template or fallback."""
-    template_path = "mission_export_template.html"
+    template_path = "mission_dossier_template.html"
     if os.path.exists(template_path):
         try:
             with open(template_path, "r", encoding="utf-8") as f:
@@ -797,11 +798,42 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         )
     data_table_html = f"<table><thead><tr>{header_html}</tr></thead><tbody>{''.join(data_rows)}</tbody></table>"
 
+    biome_map = {}
+    try:
+        with open(app_path("JSON", "BiomePlanets.json"), "r", encoding="utf-8") as f:
+            biome_map = json.load(f)
+    except (OSError, ValueError, TypeError):
+        biome_map = {}
+
     def _safe_text(value) -> str:
         return html_lib.escape("" if value is None else str(value))
 
+    def _to_file_uri(path: str) -> str:
+        if not path:
+            return ""
+        try:
+            file_path = Path(path)
+            if not file_path.exists():
+                return ""
+            return file_path.resolve().as_uri()
+        except Exception:
+            return ""
+
     def _safe_url(value) -> str:
         return html_lib.escape("" if value is None else str(value))
+
+    def _resolve_biome_name(planet: str) -> str:
+        if not planet:
+            return "Super Earth"
+        return str(biome_map.get(planet, planet))
+
+    def _biome_banner_path(planet: str) -> str:
+        biome = _resolve_biome_name(planet)
+        return app_path("media", "biome_banners", f"{biome}.png")
+
+    def _biome_planet_path(planet: str) -> str:
+        biome = _resolve_biome_name(planet)
+        return app_path("media", "planets", f"{biome}.png")
 
     def _parse_deploy_times(planet_data: pd.DataFrame) -> tuple[str, str]:
         if planet_data.empty or "Time" not in planet_data.columns:
@@ -829,6 +861,30 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         if series is None or series.empty or value == "Unknown":
             return 0
         return int((series.astype(str) == str(value)).sum())
+
+    def _get_planet_public_info(planet: str) -> dict:
+        """Get public planet information (sector and index) from static JSON files."""
+        sector = "Unknown"
+        planet_index = 0
+        
+        # Get sector from PlanetSectors.json
+        try:
+            with open(app_path("JSON", "PlanetSectors.json"), "r", encoding="utf-8") as f:
+                sectors_data = json.load(f)
+                for sector_name, sector_info in sectors_data.items():
+                    if planet in sector_info.get("planets", []):
+                        sector = sector_name
+                        break
+        except Exception as e:
+            logging.warning(f"Could not load sector data: {e}")
+        
+        # Get planet index from planets list
+        planet_index = planets.index(planet) + 1 if planet in planets else 0
+        
+        return {
+            "sector": sector,
+            "planet_index": planet_index
+        }
 
     def _get_planet_stats(planet: str) -> dict:
         planet_data = df[df["Planet"] == planet] if "Planet" in df.columns else pd.DataFrame()
@@ -920,22 +976,28 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         if not campaign or campaign == "Unknown":
             return ""
         filename = str(campaign).replace(" ", "_")
-        return f"media/campaigns/{filename}.png"
+        return app_path("media", "campaigns", f"{filename}.png")
 
     def _subfaction_banner_path(subfaction: str) -> str:
         if not subfaction or subfaction == "Unknown":
             return ""
         filename = str(subfaction).replace(" ", "_")
-        return f"media/subfaction_banner/{filename}.png"
+        return app_path("media", "subfaction_banner", f"{filename}.png")
+
+    def _subfaction_icon_path(subfaction: str) -> str:
+        if not subfaction or subfaction == "Unknown":
+            return ""
+        filename = str(subfaction).replace(" ", "_")
+        return app_path("media", "subfactions", f"{filename}.png")
 
     def _mission_icon_path(mission: str, faction: str) -> str:
         if not mission or mission == "Unknown":
             return ""
         if mission == "Blitz: Search and Destroy" and faction in ["Terminids", "Automatons"]:
             mission_key = f"Blitz Search and Destroy_{faction}"
-            return f"media/missions/{mission_key}.png"
+            return app_path("media", "missions", f"{mission_key}.png")
         mission_key = str(mission).replace(":", "").replace("/", "-")
-        return f"media/missions/{mission_key}.png"
+        return app_path("media", "missions", f"{mission_key}.png")
 
     def _difficulty_icon_path(difficulty: str) -> str:
         if not difficulty or difficulty == "Unknown":
@@ -945,19 +1007,25 @@ def _generate_html_export(df: pd.DataFrame) -> str:
             name = name.split(" - ", 1)[1].title()
         else:
             name = name.title()
-        return f"media/difficulties/{name}.png"
+        return app_path("media", "difficulties", f"{name}.png")
 
     def _faction_banner_path(faction: str) -> str:
         if not faction or faction == "Unknown":
             return ""
-        return f"media/factions/{faction}.png"
+        return app_path("media", "factions", f"{faction}.png")
 
     def _render_milestone_card(label: str, planet: str) -> str:
         if not planet:
             return ""
         stats = _get_planet_stats(planet)
-        banner_url = BIOME_BANNERS.get(planet, iconconfig["BiomeBanners"].get("Super Earth", ""))
-        planet_img = get_planet_image(planet)
+        banner_url = _to_file_uri(_biome_banner_path(planet))
+        planet_img = _to_file_uri(_biome_planet_path(planet))
+        subfaction_banner = _to_file_uri(_subfaction_banner_path(stats["subfaction"]))
+        subfaction_footer = (
+            f"<div class=\"milestone-footer\"><img src=\"{_safe_url(subfaction_banner)}\" alt=\"Subfaction banner\" /></div>"
+            if subfaction_banner
+            else ""
+        )
         return (
             "<div class=\"milestone-card\">"
             f"<img class=\"milestone-banner\" src=\"{_safe_url(banner_url)}\" alt=\"Biome banner\" />"
@@ -966,7 +1034,7 @@ def _generate_html_export(df: pd.DataFrame) -> str:
             "<div>"
             f"<div class=\"milestone-title\">{_safe_text(label)}</div>"
             f"<div><strong>{_safe_text(planet)}</strong></div>"
-            f"<div class=\"milestone-meta\">Sector: {_safe_text(stats['sector'])} | Index: {stats['planet_index']}</div>"
+            f"<div class=\"milestone-meta\">Sector: {_safe_text(stats['sector'])}<br>Index: {stats['planet_index']}</div>"
             "</div>"
             "</div>"
             "<div class=\"milestone-stats\">"
@@ -985,10 +1053,131 @@ def _generate_html_export(df: pd.DataFrame) -> str:
             f"<div><span>Top Subfaction</span> {_safe_text(stats['subfaction'])} (x{stats['subfaction_count']})</div>"
             f"<div><span>Top Difficulty</span> {_safe_text(stats['difficulty'])} (x{stats['difficulty_count']})</div>"
             "</div>"
+            f"{subfaction_footer}"
+            "</div>"
+        )
+
+    def _render_iconic_battle_card(planet: str, badge_filename: str, has_data: bool, default_subfaction: str = "", is_redacted: bool = False) -> str:
+        """Render an iconic battle card with badge, graying out if player hasn't visited."""
+        banner_url = _to_file_uri(_biome_banner_path(planet))
+        planet_img = _to_file_uri(_biome_planet_path(planet))
+        badge_url = _to_file_uri(app_path("media", "badges", badge_filename))
+        
+        if is_redacted:
+            # REDACTED version for special UIDs (e.g., Calypso veterans before logger existed)
+            # Get public planet information (sector is public data, but personal deployment index is not)
+            public_info = _get_planet_public_info(planet)
+            subfaction_banner = _to_file_uri(_subfaction_banner_path(default_subfaction)) if default_subfaction else ""
+            subfaction_footer = (
+                f"<div class=\"milestone-footer\"><img src=\"{_safe_url(subfaction_banner)}\" alt=\"Subfaction banner\" /></div>"
+                if subfaction_banner
+                else ""
+            )
+            return (
+                "<div class=\"milestone-card\">"
+                "<div class=\"banner-with-badge\">"
+                f"<img class=\"milestone-banner\" src=\"{_safe_url(banner_url)}\" alt=\"Biome banner\" />"
+                f"<img class=\"battle-badge\" src=\"{_safe_url(badge_url)}\" alt=\"Battle badge\" />"
+                "</div>"
+                "<div class=\"milestone-body\">"
+                f"<img src=\"{_safe_url(planet_img)}\" alt=\"Planet\" />"
+                "<div>"
+                f"<div class=\"milestone-title\">{_safe_text(planet)}</div>"
+                f"<div><strong>{_safe_text(planet)}</strong></div>"
+                f"<div class=\"milestone-meta\">Sector: {_safe_text(public_info['sector'])}<br>Index: [REDACTED]</div>"
+                "</div>"
+                "</div>"
+                "<div class=\"milestone-stats\">"
+                "<div><span>Deployments</span> [REDACTED]</div>"
+                "<div><span>Success</span> [REDACTED]</div>"
+                "<div><span>Failure</span> [REDACTED]</div>"
+                "<div><span>First Contact</span> [REDACTED]</div>"
+                "<div><span>Last Deployment</span> [REDACTED]</div>"
+                "<div><span>Kills</span> [REDACTED]</div>"
+                "<div><span>Deaths</span> [REDACTED]</div>"
+                "<div><span>KDR</span> [REDACTED]</div>"
+                "<div><span>Highest Kills</span> [REDACTED]</div>"
+                "<div><span>Top Mission</span> [REDACTED]</div>"
+                "<div><span>Top Campaign</span> [REDACTED]</div>"
+                "<div><span>Top Faction</span> [REDACTED]</div>"
+                "<div><span>Top Subfaction</span> [REDACTED]</div>"
+                "<div><span>Top Difficulty</span> [REDACTED]</div>"
+                "</div>"
+                f"{subfaction_footer}"
+                "</div>"
+            )
+        
+        if not has_data:
+            # Gray out version for unvisited planets with placeholder subfaction banner
+            subfaction_banner = _to_file_uri(_subfaction_banner_path(default_subfaction)) if default_subfaction else ""
+            subfaction_footer = (
+                f"<div class=\"milestone-footer\"><img src=\"{_safe_url(subfaction_banner)}\" alt=\"Subfaction banner\" /></div>"
+                if subfaction_banner
+                else ""
+            )
+            return (
+                "<div class=\"milestone-card iconic-unvisited\">"
+                "<div class=\"banner-with-badge\">"
+                f"<img class=\"milestone-banner\" src=\"{_safe_url(banner_url)}\" alt=\"Biome banner\" />"
+                f"<img class=\"battle-badge\" src=\"{_safe_url(badge_url)}\" alt=\"Battle badge\" />"
+                "</div>"
+                "<div class=\"milestone-body\">"
+                f"<img src=\"{_safe_url(planet_img)}\" alt=\"Planet\" />"
+                "<div>"
+                f"<div class=\"milestone-title\">{_safe_text(planet)}</div>"
+                "<div><strong>Not Visited</strong></div>"
+                "<div class=\"milestone-meta\">Deploy here to unlock data</div>"
+                "</div>"
+                "</div>"
+                f"{subfaction_footer}"
+                "</div>"
+            )
+        
+        # Full data version for visited planets
+        stats = _get_planet_stats(planet)
+        subfaction_banner = _to_file_uri(_subfaction_banner_path(stats["subfaction"]))
+        subfaction_footer = (
+            f"<div class=\"milestone-footer\"><img src=\"{_safe_url(subfaction_banner)}\" alt=\"Subfaction banner\" /></div>"
+            if subfaction_banner
+            else ""
+        )
+        
+        return (
+            "<div class=\"milestone-card\">"
+            "<div class=\"banner-with-badge\">"
+            f"<img class=\"milestone-banner\" src=\"{_safe_url(banner_url)}\" alt=\"Biome banner\" />"
+            f"<img class=\"battle-badge\" src=\"{_safe_url(badge_url)}\" alt=\"Battle badge\" />"
+            "</div>"
+            "<div class=\"milestone-body\">"
+            f"<img src=\"{_safe_url(planet_img)}\" alt=\"Planet\" />"
+            "<div>"
+            f"<div class=\"milestone-title\">{_safe_text(planet)}</div>"
+            f"<div><strong>{_safe_text(planet)}</strong></div>"
+            f"<div class=\"milestone-meta\">Sector: {_safe_text(stats['sector'])}<br>Index: {stats['planet_index']}</div>"
+            "</div>"
+            "</div>"
+            "<div class=\"milestone-stats\">"
+            f"<div><span>Deployments</span> {stats['deployments']}</div>"
+            f"<div><span>Success</span> {stats['success']} ({stats['success_pct']:.1f}%)</div>"
+            f"<div><span>Failure</span> {stats['failure']} ({stats['failure_pct']:.1f}%)</div>"
+            f"<div><span>First Contact</span> {_safe_text(stats['first_deployment'])}</div>"
+            f"<div><span>Last Deployment</span> {_safe_text(stats['last_deployment'])}</div>"
+            f"<div><span>Kills</span> {int(stats['kills'])}</div>"
+            f"<div><span>Deaths</span> {int(stats['deaths'])}</div>"
+            f"<div><span>KDR</span> {stats['kdr']:.2f}</div>"
+            f"<div><span>Highest Kills</span> {stats['highest_kills']}</div>"
+            f"<div><span>Top Mission</span> {_safe_text(stats['mission'])} (x{stats['mission_count']})</div>"
+            f"<div><span>Top Campaign</span> {_safe_text(stats['category'])} (x{stats['category_count']})</div>"
+            f"<div><span>Top Faction</span> {_safe_text(stats['faction'])} (x{stats['faction_count']})</div>"
+            f"<div><span>Top Subfaction</span> {_safe_text(stats['subfaction'])} (x{stats['subfaction_count']})</div>"
+            f"<div><span>Top Difficulty</span> {_safe_text(stats['difficulty'])} (x{stats['difficulty_count']})</div>"
+            "</div>"
+            f"{subfaction_footer}"
             "</div>"
         )
 
     dynamic_planets = get_dynamic_planet_data()
+    most_recent_planet = df["Planet"].iloc[-1] if "Planet" in df.columns and len(df) > 0 else ""
     milestone_entries = [
         ("First Ingress", dynamic_planets.get("first_ingress", "")),
         ("100th Ingress", dynamic_planets.get("ingress_100", "")),
@@ -997,6 +1186,7 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         ("Player Homeworld", dynamic_planets.get("player_homeworld", "")),
         ("Highest Kills Planet", dynamic_planets.get("highest_kills_planet", "")),
         ("Highest Deaths Planet", dynamic_planets.get("highest_deaths_planet", "")),
+        ("Most Recent Ingress", most_recent_planet),
     ]
     milestone_cards = [
         _render_milestone_card(label, planet)
@@ -1010,6 +1200,42 @@ def _generate_html_export(df: pd.DataFrame) -> str:
             "<div class=\"milestone-body\"><div><strong>No dynamic planet data found.</strong></div></div>"
             "</div>"
         )
+
+    # Generate iconic battles cards with badges
+    # Hardcoded Calypso UIDs for veterans who served before the logger existed
+    CALYPSO_VETERAN_UIDS = ["695767541393653791", "850139032720900116"]
+    user_discord_uid = ""
+    try:
+        user_discord_uid = str(discord_data.get("discord_uid", ""))
+    except Exception:
+        user_discord_uid = ""
+    
+    iconic_battles_map = [
+        ("Malevelon Creek", "bmal.png", "Automaton Legion"),
+        ("Calypso", "bcal.png", "Illuminate Cult"),
+        ("Pöpli IX", "bpop.png", "Jet Brigade & Incineration Corps"),
+        ("Super Earth", "bsup.png", "The Great Host"),
+        ("Seyshel Beach", "bsey.png", "Illuminate Cult"),
+        ("Oshaune", "bosh.png", "Rupture Strain & Dragonroach"),
+        ("Cyberstan", "bcyb.png", "Cyborgs"),
+    ]
+    iconic_battles_cards = []
+    for planet, badge, subfaction in iconic_battles_map:
+        has_data = "Planet" in df.columns and planet in df["Planet"].values
+        # Special case: Calypso veterans with hardcoded UIDs get REDACTED card
+        is_redacted = planet == "Calypso" and user_discord_uid in CALYPSO_VETERAN_UIDS and not has_data
+        iconic_battles_cards.append(_render_iconic_battle_card(planet, badge, has_data, subfaction, is_redacted))
+    
+    # Add "Awaiting Liberty" placeholder card
+    iconic_battles_cards.append(
+        "<div class=\"milestone-card iconic-awaiting\" style=\"display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;\">"
+        "<div style=\"font-size: 36px; margin-bottom: 15px;\">⏳</div>"
+        "<div style=\"color: #ffd700; font-weight: bold; font-size: 18px; margin-bottom: 10px;\">AWAITING LIBERTY</div>"
+        "<div style=\"color: #888; font-size: 14px;\">Future Battleground</div>"
+        "</div>"
+    )
+    
+    iconic_battles_cards = "".join(iconic_battles_cards)
 
     total_deployments = len(df)
     total_kills = int(pd.to_numeric(df.get("Kills", pd.Series(dtype=float)), errors="coerce").fillna(0).sum())
@@ -1029,13 +1255,15 @@ def _generate_html_export(df: pd.DataFrame) -> str:
     most_common_difficulty = search_difficulty if "Difficulty" in df.columns else "Unknown"
     most_common_enemy = search_faction if "Enemy Type" in df.columns else "Unknown"
 
-    mission_overview = (
-        f"Primary planet: {most_common_planet} (x{PlanetCount}). "
-        f"Top mission: {most_common_mission} (x{MissionCount}). "
-        f"Top campaign: {most_common_campaign} (x{CampaignCount}). "
-        f"Top faction: {most_common_enemy} (x{FactionCount})."
-    )
     profile_summary = f"Rating: {Rating} ({int(Rating_Percentage)}%). Highest streak: {highest_streak}."
+    dossier_summary = (
+        f"Rating: {Rating} ({int(Rating_Percentage)}%)\n"
+        f"Deployments: {total_deployments}\n"
+        f"Kills: {total_kills}\n"
+        f"Deaths: {total_deaths}\n"
+        f"KDR: {total_kdr:.2f}\n"
+        f"Preferred Theater: {most_common_planet}"
+    )
 
     # ensure server-side chart html is available (compute on-demand if needed)
     try:
@@ -1049,14 +1277,17 @@ def _generate_html_export(df: pd.DataFrame) -> str:
     except Exception:
         discord_uid = ""
 
+    placard_banner_uri = _to_file_uri(app_path("media", "MiscItems", "GeneratedBanner.png"))
+
     rendered = (
-        template.replace("{{VERSION}}", "1.0")
+        template.replace("{{VERSION}}", f"{VERSION}{DEV_RELEASE}")
         .replace("{{GENERATED_AT}}", datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
         .replace("{{ROW_COUNT}}", str(len(df)))
         .replace("{{DISCORD_UID}}", _safe_text(discord_uid))
-        .replace("{{BADGE_STRING}}", _safe_text(badge_string))
-        .replace("{{PRIMARY_DESCRIPTION}}", html_lib.escape(primary_description))
-        .replace("{{BIOME_BANNER}}", _safe_url(BIOME_BANNERS.get(most_common_planet, "")))
+        .replace("{{DOSSIER_SUMMARY}}", _safe_text(dossier_summary))
+        .replace("{{LATEST_NOTE}}", _safe_text(latest_note))
+        .replace("{{PLACARD_BANNER}}", _safe_url(placard_banner_uri))
+        .replace("{{BIOME_BANNER}}", _safe_url(_to_file_uri(_biome_banner_path(most_common_planet))))
         .replace("{{HELLDIVER_SES}}", _safe_text(helldiver_ses))
         .replace("{{HELLDIVER_NAME}}", _safe_text(helldiver_name))
         .replace("{{HELLDIVER_LEVEL}}", _safe_text(helldiver_level))
@@ -1065,7 +1296,7 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         .replace("{{PROFILE_PICTURE}}", _safe_url(profile_picture))
         .replace("{{SERVICE_BRANCH}}", _safe_text(dcord_data.get("platform", "Unknown")))
         .replace("{{TITLE_ICON}}", _safe_url(profile_picture))
-        .replace("{{FACTION_BANNER}}", _safe_url(_faction_banner_path(most_common_enemy)))
+        .replace("{{FACTION_BANNER}}", _safe_url(_to_file_uri(_faction_banner_path(most_common_enemy))))
         .replace("{{MOST_COMMON_ENEMY}}", _safe_text(most_common_enemy))
         .replace("{{TOTAL_DEPLOYMENTS}}", _safe_text(total_deployments))
         .replace("{{TOTAL_KILLS}}", _safe_text(total_kills))
@@ -1073,21 +1304,17 @@ def _generate_html_export(df: pd.DataFrame) -> str:
         .replace("{{KDR}}", _safe_text(f"{total_kdr:.2f}"))
         .replace("{{SUCCESS_RATE}}", _safe_text(f"{success_rate:.1f}%"))
         .replace("{{FAILURE_RATE}}", _safe_text(f"{failure_rate:.1f}%"))
-        .replace("{{MISSION_OVERVIEW}}", _safe_text(mission_overview))
-        .replace("{{PLANET_IMAGE}}", _safe_url(get_planet_image(most_common_planet)))
-        .replace("{{MOST_COMMON_PLANET}}", _safe_text(most_common_planet))
-        .replace("{{MOST_COMMON_SECTOR}}", _safe_text(most_common_sector))
-        .replace("{{CAMPAIGN_BANNER}}", _safe_url(_campaign_banner_path(most_common_campaign)))
-        .replace("{{MOST_COMMON_CAMPAIGN}}", _safe_text(most_common_campaign))
-        .replace("{{SUBFACTION_BANNER}}", _safe_url(_subfaction_banner_path(most_common_subfaction)))
+        .replace("{{SUBFACTION_ICON}}", _safe_url(_to_file_uri(_subfaction_icon_path(most_common_subfaction))))
+        .replace("{{SUBFACTION_BANNER}}", _safe_url(_to_file_uri(_subfaction_banner_path(most_common_subfaction))))
         .replace("{{MOST_COMMON_SUBFACTION}}", _safe_text(most_common_subfaction))
-        .replace("{{MISSION_ICON}}", _safe_url(_mission_icon_path(most_common_mission, most_common_enemy)))
+        .replace("{{MISSION_ICON}}", _safe_url(_to_file_uri(_mission_icon_path(most_common_mission, most_common_enemy))))
         .replace("{{MOST_COMMON_MISSION}}", _safe_text(most_common_mission))
-        .replace("{{DIFFICULTY_ICON}}", _safe_url(_difficulty_icon_path(most_common_difficulty)))
+        .replace("{{DIFFICULTY_ICON}}", _safe_url(_to_file_uri(_difficulty_icon_path(most_common_difficulty))))
         .replace("{{MOST_COMMON_DIFFICULTY}}", _safe_text(most_common_difficulty))
-        .replace("{{MAJOR_ORDER_ICON}}", _safe_url("media/major_order/Major_Order_True.png"))
+        .replace("{{MAJOR_ORDER_ICON}}", _safe_url(_to_file_uri(app_path("media", "major_order", "Major_Order_True.png"))))
         .replace("{{MAJOR_ORDER_COUNT}}", _safe_text(major_order_count))
         .replace("{{DYNAMIC_PLANET_CARDS}}", dynamic_planet_cards)
+        .replace("{{ICONIC_BATTLES_CARDS}}", iconic_battles_cards)
         .replace("{{PLANET_TABLE}}", planet_table)
         .replace("{{ENEMY_SECTIONS}}", enemy_sections_html)
         .replace("{{DATA_TABLE}}", data_table_html)
@@ -1108,11 +1335,11 @@ embed_data_contingency = {
             "fields": [
                 {
                     "name": f"Level {helldiver_level} | {helldiver_title} {TITLE_ICONS.get(df['Title'].iloc[-1], '')}",
-                    "value": '\n\nINITIAL TRANSMISSION FAILURE - CONTINGENCY PROTOCOL ACTIVATED\n\nAttention Helldiver,\n\nYour SEAF Battle Record failed to reach your terminal via our Super Earth Command database through the standard uplink procedure, whether due to xeno interference, bureaucratic lag, the amount of data attempting to upload or simple operator inadequacy is irrelevant.\n\nAs per Protocol MLHD2-E2 "Compliance is Victory", a SHTML fallback file has been auto-generated to ensure your mission data is preserved and viewable.\n\nReview the document locally and stand by for reclassification procedures.\n\nFor Super Earth. For Democracy. Upload Again.\n\n- Ministry of Intelligence | Automated Systems Division\nSuper Earth Uplink Command',
+                    "value": '\n\nTRANSMISSION COMPLETE\n\nAttention Helldiver,\n\nYour request for access to your SEAF Operative Dossier has been received, reviewed, and evaluated by the uncompromising algorithms of Managed Democracy.\n\nAfter confirming your continued service to Super Earth, your acceptable casualty ratio, and your statistically inspiring devotion to Liberty, High Command has approved your request.\n\nAttached to this transmission, you will find your official SEAF Operative Dossier.\n\nPlease note: All data has been curated to reflect the glory of Super Earth. Any perceived discrepancies are the result of enemy misinformation or clerical treason.\n\nHigh Command commends your initiative in reviewing your accomplishments. Reflection strengthens resolve. Resolve strengthens Democracy. Democracy strengthens Super Earth.\n\nFor Super Earth. For Democracy. Upload Again.\n\n- Ministry of Intelligence | Automated Systems Division\nSuper Earth Uplink Command',
                 }
             ],
             "author": {
-                "name": f"SEAF Contingency Report\nDate: {date}",
+                "name": f"Message from High Command\nDate: {date}",
                 "icon_url": "https://cdn.discordapp.com/attachments/1340508329977446484/1356001307596427564/NwNzS9B.png?ex=67eafa21&is=67e9a8a1&hm=7e204265cbcdeaf96d7b244cd63992c4ef10dc18befbcf2ed39c3a269af14ec0&",
             },
             "footer": {
@@ -1146,12 +1373,12 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
 
     if not payload.get("embeds"):
         payload["embeds"] = [
-            {"title": "Mission Export", "description": "Contingency export attached.", "color": 5832548}
+            {"title": "Mission Export", "description": "SEAF Operative Dossier export attached.", "color": 5832548}
         ]
 
     try:
         first_embed = payload["embeds"][0]
-        note_text = f"SHTML fallback file attached: {helldiver_name}_Cont_Report.html"
+        note_text = f"SHTML file attached: {helldiver_name}_Dossier.html"
         added_note = False
 
         if "fields" in first_embed:
@@ -1183,7 +1410,7 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
                         fe["fields"].append(
                             {
                                 "name": "Attachment",
-                                "value": "SHTML fallback file will follow in next message",
+                                "value": "SHTML file will follow in next message",
                                 "inline": False,
                             }
                         )
@@ -1191,7 +1418,7 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
                     fe["fields"] = [
                         {
                             "name": "Attachment",
-                            "value": "SHTML fallback file will follow in next message",
+                            "value": "SHTML file will follow in next message",
                             "inline": False,
                         }
                     ]
@@ -1208,10 +1435,10 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
                     sanitized, changes = _sanitize_embed(embed_only_payload["embeds"][0])
                     embed_only_payload["embeds"][0] = sanitized
                     if changes:
-                        logging.info(f"Sanitized fallback embed before sending: {changes}")
+                        logging.info(f"Sanitized embed before sending: {changes}")
                 # If embed empty after sanitization, skip
                 if not embed_only_payload.get("embeds") or not embed_only_payload["embeds"][0]:
-                    logging.error(f"Skipping fallback embed send to {webhook_url}: embed empty after sanitization.")
+                    logging.error(f"Skipping embed send to {webhook_url}: embed empty after sanitization.")
                     _resp1 = None
                 else:
                     success1, _resp1, err1 = post_webhook(
@@ -1226,13 +1453,13 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
             if success1:
                 logging.info(f"Fallback embed sent (step 1/2) to {webhook_url}.")
             else:
-                logging.error(f"Failed to send fallback embed (step 1/2). {err1}")
+                logging.error(f"Failed to send embed (step 1/2). {err1}")
                 # If embed fails, still attempt file so user gets data, though if the embed fails to send it's likley so will the data... worth a shot tho
         except Exception as e:
             logging.error(f"Exception sending fallback embed (step 1/2): {e}")
 
         try:
-            export_filename = f"{helldiver_name}_Cont_Report.html" if helldiver_name else "mission_export.html"
+            export_filename = f"{helldiver_name}_Dossier.html" if helldiver_name else "dossier_export.html"
 
             file_payload = {"content": "", "attachments": [{"id": 0, "filename": export_filename}]}
             files = {"files[0]": (export_filename, data_bytes, "text/html")}
@@ -1244,11 +1471,11 @@ def _send_html_fallback(webhook_urls, df: pd.DataFrame):
                 retries=2,
             )
             if success2:
-                logging.info(f"Fallback HTML file sent (step 2/2) to {webhook_url}. Size: {size_mb:.2f} MB")
+                logging.info(f"HTML file sent (step 2/2) to {webhook_url}. Size: {size_mb:.2f} MB")
             else:
-                logging.error(f"Failed sending fallback file (step 2/2). {err2}")
+                logging.error(f"Failed sending file (step 2/2). {err2}")
         except Exception as e:
-            logging.error(f"Exception sending fallback file (step 2/2): {e}")
+            logging.error(f"Exception sending file (step 2/2): {e}")
 
 
 # Decide whether to fallback to HTML, based on embed expectations, row count is also a factor though i'd rather not use that in case

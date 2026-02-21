@@ -2,6 +2,7 @@ import json
 import logging
 import os
 import re
+import subprocess
 import sys
 import threading
 import tkinter as tk
@@ -113,7 +114,7 @@ class SettingsPage(tk.Tk):
         self.title("Discord Settings")
         # Compute a larger fixed window size and center it, then disable resizing
         try:
-            desired_w, desired_h = 775, 975
+            desired_w, desired_h = 775, 990
             screen_w = self.winfo_screenwidth()
             screen_h = self.winfo_screenheight()
             # Leave some margin for taskbar/titlebar
@@ -419,6 +420,19 @@ class SettingsPage(tk.Tk):
             self.export_banner_button.destroy()
         except Exception:
             pass
+        try:
+            self.dossier_button.destroy()
+        except Exception:
+            pass
+
+        # Configure grid columns for equal spacing: spacer, button1, spacer, button2, spacer, button3, spacer
+        banner_buttons_frame.grid_columnconfigure(0, weight=1)
+        banner_buttons_frame.grid_columnconfigure(1, weight=0, minsize=0)
+        banner_buttons_frame.grid_columnconfigure(2, weight=1)
+        banner_buttons_frame.grid_columnconfigure(3, weight=0, minsize=0)
+        banner_buttons_frame.grid_columnconfigure(4, weight=1)
+        banner_buttons_frame.grid_columnconfigure(5, weight=0, minsize=0)
+        banner_buttons_frame.grid_columnconfigure(6, weight=1)
 
         self.generate_banner_button = tk.Label(
             banner_buttons_frame,
@@ -429,10 +443,35 @@ class SettingsPage(tk.Tk):
             cursor="hand2",
         )
         self.generate_banner_button.image = generate_btn_img_tk
-        self.generate_banner_button.pack(side=tk.LEFT, padx=(20, 40), pady=18)
+        self.generate_banner_button.grid(row=0, column=1, pady=18)
         self.generate_banner_button.bind("<Enter>", on_generate_btn_enter)
         self.generate_banner_button.bind("<Leave>", on_generate_btn_leave)
         self.generate_banner_button.bind("<Button-1>", play_generate_click)
+
+        # Dossier export button in the center with image and hover effect
+        def load_dossier_btn_img(path):
+            pil_img = Image.open(path).convert("RGBA")
+            pil_img = pil_img.resize((pil_img.width // 2, pil_img.height // 2), Image.LANCZOS)
+            bg_color = (37, 37, 38, 255)
+            background = Image.new("RGBA", pil_img.size, bg_color)
+            pil_img = Image.alpha_composite(background, pil_img)
+            return ImageTk.PhotoImage(pil_img)
+
+        dossier_btn_img_tk = load_dossier_btn_img(app_path("media", "SettingsInt", "ExportDossierButton.png"))
+        dossier_btn_img_hover_tk = load_dossier_btn_img(
+            app_path("media", "SettingsInt", "ExportDossierButtonHover.png")
+        )
+
+        self.dossier_button = tk.Label(
+            banner_buttons_frame,
+            image=dossier_btn_img_tk,
+            bd=0,
+            highlightthickness=0,
+            bg=DEFAULT_THEME["."]["configure"]["background"],
+            cursor="hand2",
+        )
+        self.dossier_button.image = dossier_btn_img_tk
+        self.dossier_button.grid(row=0, column=3, pady=18)
 
         self.export_banner_button = tk.Label(
             banner_buttons_frame,
@@ -443,7 +482,31 @@ class SettingsPage(tk.Tk):
             cursor="hand2",
         )
         self.export_banner_button.image = export_btn_img_tk
-        self.export_banner_button.pack(side=tk.RIGHT, padx=(40, 20), pady=18)
+        self.export_banner_button.grid(row=0, column=5, pady=18)
+
+        def play_dossier_click(e=None):
+            play_button_click()
+            try:
+                subprocess.Popen([sys.executable, "-m", "core.reports.dossier"], shell=False)
+            except Exception:
+                try:
+                    dossier_path = app_path("core", "reports", "dossier.py")
+                except Exception:
+                    dossier_path = os.path.join(os.path.dirname(__file__), "..", "reports", "dossier.py")
+                subprocess.Popen([sys.executable, dossier_path], shell=False)
+
+        def on_dossier_btn_enter(e):
+            self.dossier_button.configure(image=dossier_btn_img_hover_tk)
+            self.dossier_button.image = dossier_btn_img_hover_tk
+            play_button_hover()
+
+        def on_dossier_btn_leave(e):
+            self.dossier_button.configure(image=dossier_btn_img_tk)
+            self.dossier_button.image = dossier_btn_img_tk
+
+        self.dossier_button.bind("<Enter>", on_dossier_btn_enter)
+        self.dossier_button.bind("<Leave>", on_dossier_btn_leave)
+        self.dossier_button.bind("<Button-1>", play_dossier_click)
 
         def play_export_click(e):
             play_button_click()
