@@ -2580,33 +2580,10 @@ class InstallerGUI(tk.Tk):
             self.update_btn.bind("<Enter>", lambda e: self.update_btn.config(image=self.update_photo_hover))
             self.update_btn.bind("<Leave>", lambda e: self.update_btn.config(image=self.update_photo))
 
-        # Uninstall button (optional image files under LaunchMedia)
-        uninstall_img_path = resource_path("LaunchMedia", "UninstallButton.png")
-        uninstall_hover_img_path = resource_path("LaunchMedia", "UninstallButtonHover.png")
-        try:
-            if os.path.exists(app_path("LaunchMedia", "UninstallButton.png")):
-                uninstall_img_path = app_path("LaunchMedia", "UninstallButton.png")
-            if os.path.exists(app_path("LaunchMedia", "UninstallButtonHover.png")):
-                uninstall_hover_img_path = app_path("LaunchMedia", "UninstallButtonHover.png")
-        except Exception:
-            pass
-        try:
-            from PIL import Image, ImageTk
-
-            resample_algo = getattr(Image, "LANCZOS", Image.ANTIALIAS)
-            uninstall_img = (
-                Image.open(uninstall_img_path).convert("RGBA").resize((button_w_wide, button_h_tall), resample_algo)
-            )
-            uninstall_img_hover = (
-                Image.open(uninstall_hover_img_path)
-                .convert("RGBA")
-                .resize((button_w_wide, button_h_tall), resample_algo)
-            )
-            self.uninstall_photo = ImageTk.PhotoImage(uninstall_img)
-            self.uninstall_photo_hover = ImageTk.PhotoImage(uninstall_img_hover)
-        except Exception:
-            self.uninstall_photo = None
-            self.uninstall_photo_hover = None
+        # Uninstall button images (use same loader/effect path as other row buttons)
+        self.uninstall_photo, self.uninstall_photo_hover = load_button_images(
+            "LaunchMedia", "UninstallButton.png", "UninstallButtonHover.png", button_img_size
+        )
 
         self.uninstall_btn = tk.Button(
             self.canvas,
