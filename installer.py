@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import configparser
 import io
+import hashlib
 import logging
 import os
 import re
@@ -81,6 +82,131 @@ def _hidden_subprocess_kwargs(hide_console: bool = True) -> Dict[str, Any]:
 
 def _is_frozen() -> bool:
     return getattr(sys, "frozen", False) is True
+
+
+def _verify_windows_executable_signature(
+    file_path: str, expected_publisher_substr: str = "Python Software Foundation"
+) -> Tuple[bool, str]:
+    if os.name != "nt":
+        return False, "Authenticode verification is only supported on Windows."
+    try:
+        quoted_path = file_path.replace("'", "''")
+        ps_cmd = (
+            "$ErrorActionPreference = 'Stop'; "
+            f"$sig = Get-AuthenticodeSignature -FilePath '{quoted_path}'; "
+            "$obj = [pscustomobject]@{ "
+            "Status = [string]$sig.Status; "
+            "Subject = [string]$sig.SignerCertificate.Subject "
+            "}; "
+            "$obj | ConvertTo-Json -Compress"
+        )
+        output = subprocess.check_output(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+            stderr=subprocess.DEVNULL,
+            text=True,
+        ).strip()
+        import json
+
+        payload = json.loads(output or "{}")
+        status = str(payload.get("Status", "")).strip()
+        subject = str(payload.get("Subject", "")).strip()
+        signer_matches = expected_publisher_substr.lower() in subject.lower()
+        if status.lower() != "valid":
+            # In some locked-down environments, Get-AuthenticodeSignature may return
+            # UnknownError despite a present, expected signer (e.g., revocation/chain
+            # lookup restrictions). Keep strict by default and require explicit opt-in
+            # to proceed in this case.
+            if status == "UnknownError" and signer_matches:
+                allow_unknown = os.environ.get("MLHD2_ALLOW_UNKNOWN_AUTHENTICODE", "").strip().lower() in {
+                    "1",
+                    "true",
+                    "yes",
+                }
+                if allow_unknown:
+                    return (
+                        True,
+                        "Authenticode status is UnknownError, but signer matches expected publisher and "
+                        "MLHD2_ALLOW_UNKNOWN_AUTHENTICODE is enabled.",
+                    )
+                return (
+                    False,
+                    "Invalid Authenticode status: UnknownError (signer matches expected publisher). "
+                    "Set MLHD2_ALLOW_UNKNOWN_AUTHENTICODE=1 to allow this environment-specific fallback.",
+                )
+            return False, f"Invalid Authenticode status: {status or 'Unknown'}; signer={subject or 'Unknown'}"
+        if not signer_matches:
+            return False, f"Unexpected signer: {subject or 'Unknown'}"
+        return True, "Signature is valid and signer matches expected publisher."
+    except Exception as e:
+        return False, f"Signature verification failed: {e}"
+
+
+def _download_file_via_requests(url: str, dest_path: str, timeout: int = 60) -> Tuple[bool, str]:
+    try:
+        with requests.get(url, stream=True, timeout=timeout) as response:
+            if response.status_code != 200:
+                return False, f"HTTP {response.status_code}"
+            with open(dest_path, "wb") as out_file:
+                for chunk in response.iter_content(chunk_size=1024 * 256):
+                    if chunk:
+                        out_file.write(chunk)
+        if not os.path.exists(dest_path) or os.path.getsize(dest_path) <= 0:
+            return False, "Downloaded file is missing or empty."
+        return True, "Downloaded via requests."
+    except Exception as e:
+        return False, f"requests download failed: {e}"
+
+
+def _download_file_via_powershell(url: str, dest_path: str, timeout_sec: int = 120) -> Tuple[bool, str]:
+    if os.name != "nt":
+        return False, "PowerShell downloader is only available on Windows."
+    try:
+        safe_url = url.replace("'", "''")
+        safe_dest = dest_path.replace("'", "''")
+        ps_cmd = (
+            "$ProgressPreference='SilentlyContinue'; "
+            "$ErrorActionPreference='Stop'; "
+            f"Invoke-WebRequest -Uri '{safe_url}' -OutFile '{safe_dest}' -TimeoutSec {int(timeout_sec)};"
+        )
+        run_kwargs = _hidden_subprocess_kwargs(hide_console=True)
+        proc = subprocess.run(
+            ["powershell", "-NoProfile", "-NonInteractive", "-Command", ps_cmd],
+            capture_output=True,
+            text=True,
+            timeout=max(timeout_sec + 30, 180),
+            check=False,
+            **run_kwargs,
+        )
+        if proc.returncode != 0:
+            details = (proc.stderr or proc.stdout or "").strip()
+            return False, f"PowerShell download failed (exit {proc.returncode}): {details}"
+        if not os.path.exists(dest_path) or os.path.getsize(dest_path) <= 0:
+            return False, "PowerShell reported success, but file is missing or empty."
+        return True, "Downloaded via PowerShell."
+    except Exception as e:
+        return False, f"PowerShell download failed: {e}"
+
+
+def _download_python_installer_secure(url: str, dest_path: str) -> Tuple[bool, str]:
+    attempts: List[Tuple[str, str]] = []
+
+    for attempt in range(1, 3):
+        ok, msg = _download_file_via_requests(url, dest_path, timeout=60)
+        if ok:
+            return True, msg
+        attempts.append((f"requests attempt {attempt}", msg))
+        try:
+            time.sleep(float(attempt))
+        except Exception:
+            pass
+
+    ok_ps, msg_ps = _download_file_via_powershell(url, dest_path, timeout_sec=180)
+    if ok_ps:
+        return True, msg_ps
+    attempts.append(("powershell fallback", msg_ps))
+
+    detail = "; ".join([f"{label}: {message}" for label, message in attempts])
+    return False, detail
 
 
 # Paths: distinguish between the real app folder (read/write) and bundled resources
@@ -374,11 +500,29 @@ def _run_python3106_silent_installer(status_callback: Optional[Callable[[str], N
 
     try:
         import tempfile
-        import urllib.request
 
         installer_path = os.path.join(tempfile.gettempdir(), "mlhd2-python-3.10.6-amd64.exe")
         status("Python 3.10.6 not found. Downloading official installer...")
-        urllib.request.urlretrieve(PYTHON_3106_INSTALLER_URL, installer_path)
+        ok_download, download_details = _download_python_installer_secure(PYTHON_3106_INSTALLER_URL, installer_path)
+        if not ok_download:
+            return (
+                False,
+                "Unable to download Python installer with trusted TLS. "
+                + download_details
+                + " If this machine is behind SSL inspection, ensure the enterprise CA is trusted by Windows."
+            )
+        status(f"Installer downloaded successfully ({download_details}).")
+
+        status("Verifying installer signature...")
+        sig_ok, sig_details = _verify_windows_executable_signature(installer_path)
+        if not sig_ok:
+            status(f"Warning: installer signature verification did not pass ({sig_details}). Proceeding anyway...")
+            try:
+                _append_debug_line(f"Installer signature warning: {sig_details}")
+            except Exception:
+                pass
+        else:
+            status("Installer signature verified.")
 
         args = [
             installer_path,
@@ -617,7 +761,7 @@ import getpass
 import platform
 import tkinter as tk
 import traceback
-from tkinter import filedialog, messagebox, scrolledtext, ttk
+from tkinter import filedialog, messagebox, scrolledtext, simpledialog, ttk
 
 import requests
 
@@ -630,6 +774,9 @@ BACKUP_DIR_ROOT = app_path("backup")
 
 REQUEST_TIMEOUT_RELEASES = CONFIG.request_timeout_releases
 REQUEST_TIMEOUT_ZIP = CONFIG.request_timeout_zip
+NETWORK_MAX_RETRIES = 3
+NETWORK_RETRY_BACKOFF_SECONDS = 1.0
+FILE_HASH_CHUNK_SIZE = 1024 * 1024
 
 # NEW: font install settings
 FONT_FAMILY_NAME = CONFIG.font_family_name
@@ -799,7 +946,7 @@ def _append_debug_line(line: str) -> None:
 
 
 # NEW: validate files/dirs against LaunchMedia/FStruct.json
-def _validate_files_against_fstruct() -> Tuple[int, int, int, List[str], List[str]]:
+def _validate_files_against_fstruct(root_dir: Optional[str] = None) -> Tuple[int, int, int, List[str], List[str]]:
     """
     Returns:
       total_expected (int): total expected entries (files+dirs, required only)
@@ -855,8 +1002,10 @@ def _validate_files_against_fstruct() -> Tuple[int, int, int, List[str], List[st
 
         walk(spec.get("children", []), "")
 
+        validation_root = os.path.normpath(root_dir or get_install_dir())
+
         def exists(entry_type: str, rel: str) -> bool:
-            full = os.path.join(str(APP_DIR), rel)
+            full = os.path.join(validation_root, rel)
             if entry_type == "dir":
                 return os.path.isdir(full)
             return os.path.isfile(full)
@@ -970,15 +1119,124 @@ def _github_headers() -> Dict[str, str]:
     return headers
 
 
+def _log_nonfatal(context: str, exc: Optional[BaseException] = None) -> None:
+    try:
+        if exc is None:
+            logging.warning("Non-fatal issue in %s", context)
+            detail = "No exception object provided."
+        else:
+            logging.warning("Non-fatal issue in %s: %s", context, exc, exc_info=True)
+            detail = "".join(traceback.format_exception(type(exc), exc, exc.__traceback__))
+        try:
+            _append_debug_line(f"[nonfatal] {context}\n{detail}")
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+
+def _compute_sha256_bytes(data: bytes) -> str:
+    hasher = hashlib.sha256()
+    hasher.update(data)
+    return hasher.hexdigest()
+
+
+def _compute_sha256_file(path: str, chunk_size: int = FILE_HASH_CHUNK_SIZE) -> Optional[str]:
+    try:
+        hasher = hashlib.sha256()
+        with open(path, "rb") as file_obj:
+            while True:
+                chunk = file_obj.read(chunk_size)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    except Exception as e:
+        _log_nonfatal(f"hash_file:{path}", e)
+        return None
+
+
+def _compute_sha256_zip_member(
+    archive: zipfile.ZipFile, member: str, chunk_size: int = FILE_HASH_CHUNK_SIZE
+) -> Optional[str]:
+    try:
+        hasher = hashlib.sha256()
+        with archive.open(member, "r") as zip_member:
+            while True:
+                chunk = zip_member.read(chunk_size)
+                if not chunk:
+                    break
+                hasher.update(chunk)
+        return hasher.hexdigest()
+    except Exception as e:
+        _log_nonfatal(f"hash_zip_member:{member}", e)
+        return None
+
+
+def _http_get_with_retry(
+    url: str,
+    *,
+    timeout: int,
+    headers: Optional[Dict[str, str]] = None,
+    max_retries: int = NETWORK_MAX_RETRIES,
+) -> Tuple[Optional[requests.Response], str]:
+    last_error = ""
+    for attempt in range(1, max_retries + 1):
+        try:
+            response = requests.get(url, headers=headers, timeout=timeout)
+            if response.status_code == 429:
+                retry_after = response.headers.get("Retry-After", "")
+                wait_seconds = 0.0
+                if retry_after:
+                    try:
+                        wait_seconds = float(retry_after)
+                    except Exception:
+                        wait_seconds = 0.0
+                if wait_seconds <= 0:
+                    wait_seconds = NETWORK_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1))
+                last_error = (
+                    f"Rate limited by GitHub (HTTP 429). Retry-After={retry_after or 'n/a'}, "
+                    f"attempt {attempt}/{max_retries}."
+                )
+                _append_debug_line(last_error)
+                if attempt < max_retries:
+                    time.sleep(wait_seconds)
+                    continue
+                return None, last_error
+            if 500 <= response.status_code < 600:
+                last_error = f"GitHub server error HTTP {response.status_code} (attempt {attempt}/{max_retries})."
+                _append_debug_line(last_error)
+                if attempt < max_retries:
+                    time.sleep(NETWORK_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+                    continue
+            return response, ""
+        except Exception as e:
+            last_error = f"Network request error on attempt {attempt}/{max_retries}: {e}"
+            _log_nonfatal(f"http_get:{url}", e)
+            if attempt < max_retries:
+                time.sleep(NETWORK_RETRY_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+                continue
+            return None, last_error
+    return None, last_error
+
+
 def _github_get(path: str, timeout: int = REQUEST_TIMEOUT_RELEASES) -> Optional[Any]:
     # Perform a GET to the GitHub API returning JSON or None on failure
     url = f"{GITHUB_API_BASE}/{path.lstrip('/')}"
     try:
-        r = requests.get(url, headers=_github_headers(), timeout=timeout)
+        r, diag = _http_get_with_retry(url, timeout=timeout, headers=_github_headers())
+        if not r:
+            if diag:
+                _append_debug_line(f"GitHub API request failed: {diag}")
+            return None
         if r.status_code == 200:
             return r.json()
+        if r.status_code == 429:
+            _append_debug_line("GitHub API rate limit reached while fetching release metadata.")
+        else:
+            _append_debug_line(f"GitHub API request failed HTTP {r.status_code}: {url}")
     except Exception:
-        pass
+        _log_nonfatal(f"github_get:{path}")
     return None
 
 
@@ -1009,11 +1267,13 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
             # Try GitHub API zipball endpoint (returns default branch archive)
             api_zip = f"{GITHUB_API_BASE}/zipball"
             try:
-                r = requests.get(api_zip, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
+                r, diag = _http_get_with_retry(api_zip, timeout=REQUEST_TIMEOUT_ZIP, headers=_github_headers())
                 _append_debug_line(
                     f"HTTP GET {api_zip} -> {getattr(r, 'status_code', 'NO-RESP')} len={len(getattr(r, 'content', b''))}"
                 )
                 _append_debug_line(f"Response headers: {getattr(r, 'headers', {})}")
+                if diag:
+                    _append_debug_line(f"Retry diagnostics: {diag}")
             except Exception as e:
                 _append_debug_line(f"HTTP GET {api_zip} failed: {e}\n{traceback.format_exc()}")
                 r = None
@@ -1022,17 +1282,22 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
             # Fallback to the HTML archive link for the main branch
             html_zip = f"{GITHUB_REPO}/archive/refs/heads/main.zip"
             try:
-                r2 = requests.get(html_zip, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
+                r2, diag2 = _http_get_with_retry(html_zip, timeout=REQUEST_TIMEOUT_ZIP, headers=_github_headers())
                 _append_debug_line(
                     f"HTTP GET {html_zip} -> {getattr(r2, 'status_code', 'NO-RESP')} len={len(getattr(r2, 'content', b''))}"
                 )
                 _append_debug_line(f"Response headers: {getattr(r2, 'headers', {})}")
+                if diag2:
+                    _append_debug_line(f"Retry diagnostics: {diag2}")
             except Exception as e:
                 _append_debug_line(f"HTTP GET {html_zip} failed: {e}\n{traceback.format_exc()}")
                 r2 = None
             if r2 and r2.status_code == 200 and r2.content:
                 return "main", r2.content, ""
-            return None, None, "No release metadata available and failed to download default-branch archive"
+            rate_limit_hint = ""
+            if (r and getattr(r, "status_code", None) == 429) or (r2 and getattr(r2, "status_code", None) == 429):
+                rate_limit_hint = " GitHub API rate limit reached (HTTP 429); set GITHUB_TOKEN and retry."
+            return None, None, "No release metadata available and failed to download default-branch archive." + rate_limit_hint
         except Exception as e:
             _append_debug_line(f"download_release_zip fallback failed: {e}\n{traceback.format_exc()}")
             return None, None, f"No release metadata available and failed to download default-branch archive: {e}"
@@ -1041,11 +1306,23 @@ def download_release_zip(include_prerelease: bool) -> Tuple[Optional[str], Optio
     if not zip_url:
         return None, None, "Zip URL missing in release data"
     try:
-        r = requests.get(zip_url, headers=_github_headers(), timeout=REQUEST_TIMEOUT_ZIP)
+        r, diag = _http_get_with_retry(zip_url, timeout=REQUEST_TIMEOUT_ZIP, headers=_github_headers())
+        if not r:
+            return None, None, f"Download error: {diag or 'No response from GitHub.'}"
         if r.status_code != 200:
+            if r.status_code == 429:
+                retry_after = r.headers.get("Retry-After", "n/a")
+                return (
+                    None,
+                    None,
+                    f"Download failed HTTP 429 (rate limited). Retry-After={retry_after}. Consider setting GITHUB_TOKEN.",
+                )
             return None, None, f"Download failed HTTP {r.status_code}"
+        if diag:
+            _append_debug_line(f"Retry diagnostics: {diag}")
         return tag, r.content, ""
     except Exception as e:
+        _log_nonfatal("download_release_zip", e)
         return None, None, f"Download error: {e}"
 
 
@@ -1201,21 +1478,29 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
                     errors.append(f"{rel_path}: {e}")
                     continue
                 try:
+                    existing_hash: Optional[str] = None
+                    incoming_hash: Optional[str] = None
+                    # Decide if needs copy
+                    if os.path.exists(dest_path):
+                        try:
+                            existing_hash = _compute_sha256_file(dest_path)
+                            incoming_hash = _compute_sha256_zip_member(z, member)
+                            if existing_hash and incoming_hash and existing_hash == incoming_hash:
+                                skipped += 1
+                                continue
+                        except Exception as e:
+                            _log_nonfatal(f"compare_existing_file:{dest_path}", e)
+
                     try:
                         data = z.read(member)
                     except Exception as e:
                         _append_debug_line(f"Failed to read zip member {member}: {e}\n{traceback.format_exc()}")
                         errors.append(f"{rel_path}: failed to read zip member: {e}")
                         continue
-                    # Decide if needs copy
+                    if existing_hash and not incoming_hash:
+                        incoming_hash = _compute_sha256_bytes(data)
+
                     if os.path.exists(dest_path):
-                        try:
-                            with open(dest_path, "rb") as existing:
-                                if existing.read() == data:
-                                    skipped += 1
-                                    continue
-                        except Exception:
-                            pass
                         # Backup then overwrite
                         backup_path = os.path.join(backup_root, *rel_parts)
                         try:
@@ -1646,7 +1931,9 @@ def check_requirements(
                 pass
         log("")
         log("Validating files against LaunchMedia/FStruct.json ...")
-        total_expected, miss_req, miss_opt, miss_req_list, miss_opt_list = _validate_files_against_fstruct()
+        total_expected, miss_req, miss_opt, miss_req_list, miss_opt_list = _validate_files_against_fstruct(
+            root_dir=get_install_dir()
+        )
         if total_expected == -1:
             log("Files: FStruct.json not found. Skipped file validation.")
         else:
@@ -1766,44 +2053,58 @@ def threaded_action(
     progress_done: Optional[Callable[[], None]] = None,
     on_done: Optional[Callable[[], None]] = None,
 ) -> None:
-    def log_callback(line: str) -> None:
-        if silent and not allow_silent_logs:
-            return
-        text_widget.config(state="normal")
-        text_widget.insert(tk.END, line)
-        text_widget.see(tk.END)
-        text_widget.update()
-        text_widget.config(state="disabled")
-
-    def run():
+    def _ui_call(func: Callable[..., None], *args: Any) -> None:
         try:
+            text_widget.after(0, lambda: func(*args))
+        except Exception:
+            try:
+                func(*args)
+            except Exception:
+                pass
+
+    def _append_text(line: str) -> None:
+        def _do_append() -> None:
             text_widget.config(state="normal")
-            if not silent:
-                text_widget.insert(tk.END, f"{action.__name__.replace('_', ' ').title()}...\n")
+            text_widget.insert(tk.END, line)
             text_widget.see(tk.END)
             text_widget.update()
             text_widget.config(state="disabled")
+
+        _ui_call(_do_append)
+
+    def log_callback(line: str) -> None:
+        if silent and not allow_silent_logs:
+            return
+        _append_text(line)
+
+    def run():
+        try:
+            if not silent:
+                _append_text(f"{action.__name__.replace('_', ' ').title()}...\n")
+
+            def _safe_progress_init(total: int) -> None:
+                if progress_init:
+                    _ui_call(progress_init, total)
+
+            def _safe_progress_tick(step: int = 1) -> None:
+                if progress_tick:
+                    _ui_call(progress_tick, step)
+
+            def _safe_progress_done() -> None:
+                if progress_done:
+                    _ui_call(progress_done)
+
             if action.__name__ == "check_requirements":
-                result = action(log_callback, progress_init, progress_tick, progress_done)
+                result = action(log_callback, _safe_progress_init, _safe_progress_tick, _safe_progress_done)
                 # Show only the summary when silent
                 if silent and result:
-                    text_widget.config(state="normal")
-                    text_widget.insert(tk.END, result + "\n")
-                    text_widget.see(tk.END)
-                    text_widget.config(state="disabled")
+                    _append_text(result + "\n")
             else:
                 result = action()
-                text_widget.config(state="normal")
-                text_widget.insert(tk.END, result + "\n")
-                text_widget.see(tk.END)
-                text_widget.config(state="disabled")
+                _append_text(result + "\n")
         finally:
-            text_widget.config(state="disabled")
             if on_done:
-                try:
-                    on_done()
-                except Exception:
-                    pass
+                _ui_call(on_done)
 
     t = threading.Thread(target=run, daemon=True)
     t.start()
@@ -2018,7 +2319,9 @@ class InstallerGUI(tk.Tk):
             except Exception:
                 pass
 
-            settings_path = app_path("settings.py")
+            settings_path = app_path("core", "settings.py")
+            if not os.path.exists(settings_path):
+                settings_path = app_path("settings.py")
             if not os.path.exists(settings_path):
                 messagebox.showerror("Settings Not Found", 'Please "Update to Latest" before opening Settings.')
                 return
@@ -2616,17 +2919,54 @@ class InstallerGUI(tk.Tk):
             # Perform removal with safety checks
             protected = os.path.abspath(str(APP_DIR))
             target = os.path.abspath(install_dir)
+            norm_target = os.path.normpath(target)
+            user_home = os.path.normpath(os.path.abspath(os.path.expanduser("~")))
+
+            # Hard safety blocks for dangerous uninstall targets
+            if not norm_target or norm_target in {os.path.sep, "\\", "/"}:
+                messagebox.showerror("Uninstall Blocked", "Refusing to uninstall from a filesystem root path.")
+                self._set_task_state("idle", "Uninstall blocked")
+                return
+            if os.name == "nt":
+                drive, tail = os.path.splitdrive(norm_target)
+                if drive and tail in {"", "\\", "/"}:
+                    messagebox.showerror("Uninstall Blocked", "Refusing to uninstall from a drive root.")
+                    self._set_task_state("idle", "Uninstall blocked")
+                    return
+            if norm_target == user_home:
+                messagebox.showerror(
+                    "Uninstall Blocked",
+                    "Refusing to uninstall from your user profile root directory.",
+                )
+                self._set_task_state("idle", "Uninstall blocked")
+                return
+
             # Refuse to remove APP_DIR itself unless it's different from install dir
-            if target == protected and not messagebox.askyesno(
+            if norm_target == os.path.normpath(protected) and not messagebox.askyesno(
                 "Warning",
                 "The configured install directory is the same as the launcher directory.\nDo you really want to remove the launcher folder as well?",
             ):
                 self._set_task_state("idle", "Uninstall cancelled")
                 return
 
+            confirm_token = os.path.basename(norm_target.rstrip("\\/")) or norm_target
+            typed = simpledialog.askstring(
+                "Final Confirmation",
+                (
+                    "This action will permanently delete the install directory.\n\n"
+                    f"Path: {norm_target}\n\n"
+                    f"Type exactly: DELETE {confirm_token}"
+                ),
+                parent=self,
+            )
+            if typed != f"DELETE {confirm_token}":
+                messagebox.showinfo("Uninstall Cancelled", "Typed confirmation did not match. No files were removed.")
+                self._set_task_state("idle", "Uninstall cancelled")
+                return
+
             try:
                 # Remove contents of the install dir
-                for root, dirs, files in os.walk(target, topdown=False):
+                for root, dirs, files in os.walk(norm_target, topdown=False):
                     for name in files:
                         try:
                             os.remove(os.path.join(root, name))
@@ -2639,7 +2979,7 @@ class InstallerGUI(tk.Tk):
                             pass
                 # Finally remove the install dir itself if empty
                 try:
-                    os.rmdir(target)
+                    os.rmdir(norm_target)
                 except Exception:
                     # ignore if not empty or permission issues
                     pass
