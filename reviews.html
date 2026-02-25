@@ -83,10 +83,11 @@
 
                         <label for="message">Review</label>
                         <textarea id="message" name="message" rows="4" maxlength="500" required placeholder="Share your experience..." style="padding:.6rem; border-radius:8px; border:1px solid rgba(255,255,255,0.15); background: var(--surface); color: var(--text);"></textarea>
-                        <small id="review-help" class="muted">Submitting opens a GitHub Issue in our repo. Maintainers label it as Approved, Denied, or Awaiting Approval. Approved reviews appear below.</small>
+                        <small id="review-help" class="muted">Submitting opens a GitHub Issue in our repo. If your network blocks GitHub, use the direct Issues page: <a href="https://github.com/HDMLM/MLHD2/issues/new" target="_blank" rel="noopener noreferrer">github.com/HDMLM/MLHD2/issues/new</a>.</small>
                     </div>
                     <div class="cta" style="margin-top: 1rem;">
                         <button type="submit" class="btn">Submit review (GitHub)</button>
+                        <button type="button" id="copy-review" class="btn btn--ghost">Copy review text</button>
                     </div>
                 </form>
             </div>
@@ -144,6 +145,7 @@
                 const $list = document.getElementById('reviews-list');
                 const $empty = document.getElementById('empty-state');
                 const $form = document.getElementById('review-form');
+                const $copyBtn = document.getElementById('copy-review');
                 const $summary = document.getElementById('rating-summary');
                 const $updated = document.getElementById('reviews-updated');
 
@@ -288,13 +290,58 @@
                         return;
                     }
                     const url = new URL(`https://github.com/${GH_OWNER}/${GH_REPO}/issues/new`);
-                    url.searchParams.set('template', 'review.yml');
                     url.searchParams.set('title', `[Review]: ${title || 'Review'}`);
                     // Labels: review, Awaiting Approval, and numeric rating label (1..5)
                     url.searchParams.set('labels', `review,Awaiting Approval,${rating}`);
                     const body = `### Display name\n${name}\n\n### Rating (1–5)\n${rating}\n\n### Review\n${message}`;
                     url.searchParams.set('body', body);
-                    window.open(url.toString(), '_blank', 'noopener');
+                    const opened = window.open(url.toString(), '_blank', 'noopener,noreferrer');
+                    if (!opened) {
+                        window.location.href = url.toString();
+                    }
+                });
+
+                $copyBtn?.addEventListener('click', async () => {
+                    const fd = new FormData($form);
+                    const name = (fd.get('name') || '').toString().trim().slice(0, 40);
+                    const title = (fd.get('title') || '').toString().trim().slice(0, 80);
+                    const message = (fd.get('message') || '').toString().trim().slice(0, 1000);
+                    const rating = Number(fd.get('rating') || 0);
+                    if (!name || !message || !(rating >= 1 && rating <= 5)) {
+                        alert('Please provide a name, rating, and review before copying.');
+                        return;
+                    }
+
+                    const copyText = [
+                        `Title: [Review]: ${title || 'Review'}`,
+                        `Labels: review, Awaiting Approval, ${rating}`,
+                        '',
+                        'Body:',
+                        '### Display name',
+                        name,
+                        '',
+                        '### Rating (1–5)',
+                        String(rating),
+                        '',
+                        '### Review',
+                        message
+                    ].join('\n');
+
+                    try {
+                        await navigator.clipboard.writeText(copyText);
+                        alert('Review text copied. Paste it into a new GitHub issue if submit is blocked.');
+                    } catch {
+                        const ta = document.createElement('textarea');
+                        ta.value = copyText;
+                        ta.setAttribute('readonly', '');
+                        ta.style.position = 'absolute';
+                        ta.style.left = '-9999px';
+                        document.body.appendChild(ta);
+                        ta.select();
+                        document.execCommand('copy');
+                        document.body.removeChild(ta);
+                        alert('Review text copied. Paste it into a new GitHub issue if submit is blocked.');
+                    }
                 });
 
                 render();
