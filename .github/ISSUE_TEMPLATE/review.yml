@@ -1,0 +1,37 @@
+name: Review
+description: Submit a public review for MLHD2
+title: "[Review]: "
+labels:
+  - review
+  - Awaiting Approval
+body:
+  - type: input
+    id: display-name
+    attributes:
+      label: Display name
+      description: Name shown publicly on the reviews page
+      placeholder: NovaStrider
+    validations:
+      required: true
+
+  - type: dropdown
+    id: rating
+    attributes:
+      label: Rating (1–5)
+      options:
+        - "5"
+        - "4"
+        - "3"
+        - "2"
+        - "1"
+    validations:
+      required: true
+
+  - type: textarea
+    id: review
+    attributes:
+      label: Review
+      description: This is the text that appears on the website when approved.
+      placeholder: Share your experience...
+    validations:
+      required: true
