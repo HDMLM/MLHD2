@@ -46,9 +46,9 @@ a.datas += [
     # Use 3-tuples (dest_name, src_name, typecode) because PyInstaller internal
     # normalization expects (dest, src, type). Put the files at the bundle root.
     ('mission_export_template.html', 'mission_export_template.html', 'DATA'),
-    ('config.config', 'config.config', 'DATA'),
+    ('config.config', os.path.join('orphan', 'config.config'), 'DATA'),
     ('requirements.txt', 'requirements.txt', 'DATA'),
-    ('file_version_info.txt', 'file_version_info.txt', 'DATA'),
+    ('file_version_info.txt', os.path.join('orphan', 'file_version_info.txt'), 'DATA'),
 ]
 
 # Bundle individual files used at runtime (uncomment as needed)
@@ -79,7 +79,7 @@ if icon_file:
     exe_kwargs['icon'] = icon_file
 if _supports_splash and splash_file:
     exe_kwargs['splash'] = splash_file
-version_file_path = 'file_version_info.txt'
+version_file_path = os.path.join('orphan', 'file_version_info.txt')
 if os.path.exists(version_file_path):
     exe_kwargs['version'] = version_file_path
 

@@ -19,11 +19,34 @@ import time
 import webbrowser
 import zipfile
 from ast import literal_eval
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
-# Manual Constants
-GameUpdateTitle = "INTO THE UNJUST"
+from core.installer_utils import (
+    canon_name as util_canon_name,
+    compare_versions as util_compare_versions,
+    format_update_summary as util_format_update_summary,
+    parse_version as util_parse_version,
+)
+
+
+@dataclass(frozen=True)
+class LauncherConfig:
+    game_update_title: str = "MACHINERY OF OPPRESSION"
+    python_installer_url: str = "https://www.python.org/ftp/python/3.10.6/python-3.10.6-amd64.exe"
+    github_api_repo: str = "HDMLM/MLHD2"
+    github_repo_url: str = "https://github.com/HDMLM/MLHD2"
+    request_timeout_releases: int = 10
+    request_timeout_zip: int = 30
+    font_family_name: str = "Insignia"
+    font_file_name: str = "Insignia.ttf"
+
+
+CONFIG = LauncherConfig()
+
+# Manual Constants (compat aliases)
+GameUpdateTitle = CONFIG.game_update_title
 
 # NEW: imports for font detection/installation
 import ctypes
@@ -42,6 +65,18 @@ except Exception:
 
 # Python 3.10.6 enforcement and bootstrap
 REQUIRED_PYTHON_VERSION = (3, 10, 6)
+PYTHON_3106_INSTALLER_URL = CONFIG.python_installer_url
+
+
+def _hidden_subprocess_kwargs(hide_console: bool = True) -> Dict[str, Any]:
+    if os.name != "nt" or not hide_console:
+        return {}
+    try:
+        startupinfo = subprocess.STARTUPINFO()
+        startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        return {"startupinfo": startupinfo, "creationflags": subprocess.CREATE_NO_WINDOW}
+    except Exception:
+        return {}
 
 
 def _is_frozen() -> bool:
@@ -68,6 +103,49 @@ def resource_path(*parts: str) -> str:
 _CONFIG_DIR_NAME = "MLHD2"
 _CONFIG_FILENAME = "launcher_config.ini"
 _INSTALL_DIR_CACHE: Optional[str] = None
+_REG_INSTALL_DIR_KEY = r"Software\MLHD2\Launcher"
+_REG_INSTALL_DIR_VALUE = "install_dir"
+
+
+def get_user_state_dir() -> str:
+    if os.name == "nt":
+        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA") or os.path.expanduser("~")
+    else:
+        base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    state_dir = os.path.join(base, _CONFIG_DIR_NAME)
+    try:
+        os.makedirs(state_dir, exist_ok=True)
+        return state_dir
+    except Exception:
+        # Fall back to launcher directory when per-user path is unavailable
+        return str(APP_DIR)
+
+
+def user_state_file(*parts: str) -> str:
+    return os.path.join(get_user_state_dir(), *parts)
+
+
+def _read_install_dir_from_registry() -> Optional[str]:
+    if os.name != "nt" or not winreg:
+        return None
+    try:
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, _REG_INSTALL_DIR_KEY, 0, winreg.KEY_READ) as key:
+            value, _ = winreg.QueryValueEx(key, _REG_INSTALL_DIR_VALUE)
+            value = str(value).strip()
+            return value or None
+    except Exception:
+        return None
+
+
+def _write_install_dir_to_registry(path: str) -> bool:
+    if os.name != "nt" or not winreg:
+        return False
+    try:
+        with winreg.CreateKey(winreg.HKEY_CURRENT_USER, _REG_INSTALL_DIR_KEY) as key:
+            winreg.SetValueEx(key, _REG_INSTALL_DIR_VALUE, 0, winreg.REG_SZ, path)
+        return True
+    except Exception:
+        return False
 
 
 def get_user_config_file() -> str:
@@ -97,7 +175,8 @@ def read_saved_install_dir() -> Optional[str]:
     """Return saved install dir from per-user config or MLHD2_INSTALL_DIR env var, or None."""
     global _INSTALL_DIR_CACHE
     if _INSTALL_DIR_CACHE is not None:
-        return _INSTALL_DIR_CACHE
+        cached = str(_INSTALL_DIR_CACHE).strip()
+        return cached or None
     cfg = configparser.ConfigParser()
     try:
         cfg.read(get_user_config_file())
@@ -119,6 +198,11 @@ def read_saved_install_dir() -> Optional[str]:
                 return v
     except Exception:
         pass
+    # Registry fallback on Windows (more reliable when file writes are restricted)
+    reg = _read_install_dir_from_registry()
+    if reg:
+        _INSTALL_DIR_CACHE = reg
+        return reg
     # Fall back to environment variable if provided (useful for portable/exe scenarios)
     env = os.environ.get("MLHD2_INSTALL_DIR")
     if env:
@@ -151,6 +235,10 @@ def save_install_dir(path: str) -> None:
                 cfg.write(f)
             _INSTALL_DIR_CACHE = path
             try:
+                _write_install_dir_to_registry(path)
+            except Exception:
+                pass
+            try:
                 update_paths_from_install_dir()
             except Exception:
                 pass
@@ -171,6 +259,17 @@ def save_install_dir(path: str) -> None:
                 pass
             return
         except Exception as local_err:
+            # Final fallback on Windows: store in per-user registry
+            try:
+                if _write_install_dir_to_registry(path):
+                    _INSTALL_DIR_CACHE = path
+                    try:
+                        update_paths_from_install_dir()
+                    except Exception:
+                        pass
+                    return
+            except Exception:
+                pass
             # Last resort: keep the path in-memory for this session and show an error
             try:
                 _INSTALL_DIR_CACHE = path
@@ -213,11 +312,10 @@ def update_paths_from_install_dir() -> None:
     Call this after the user selects or changes the install dir so file locations
     like MAIN_PROGRAM and REQUIREMENTS_FILE point to the chosen location.
     """
-    global REQUIREMENTS_FILE, MAIN_PROGRAM, BACKUP_DIR_ROOT, FIRST_LAUNCH_MARKER
+    global REQUIREMENTS_FILE, MAIN_PROGRAM, BACKUP_DIR_ROOT
     REQUIREMENTS_FILE = app_path("requirements.txt")
     MAIN_PROGRAM = app_path("main.py")
     BACKUP_DIR_ROOT = app_path("backup")
-    FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
 
 
 def maybe_prompt_install_dir(parent: Optional[tk.Tk] = None) -> Optional[str]:
@@ -257,56 +355,134 @@ def maybe_prompt_install_dir(parent: Optional[tk.Tk] = None) -> Optional[str]:
             except Exception:
                 pass
             return choice
-            # Ensure derived path globals use the newly saved install dir immediately.
-            try:
-                update_paths_from_install_dir()
-            except Exception:
-                pass
     except Exception:
         # Ignore GUI failures and continue with defaults
         pass
 
 
 # Guided helper to offer the Python 3.10.6 installer / instructions
-def offer_python_installer_gui(parent: Optional[tk.Tk] = None, reason: Optional[str] = None) -> None:
-    """Show a short dialog offering to open the Python 3.10.6 download page or show PATH instructions.
+def _run_python3106_silent_installer(status_callback: Optional[Callable[[str], None]] = None) -> Tuple[bool, str]:
+    if os.name != "nt":
+        return False, "Silent bootstrap is currently implemented for Windows only."
 
-    If no Tk root exists, open the download page directly (useful in non-GUI scenarios).
-    """
-    download_url = "https://www.python.org/ftp/python/3.10.6/python-3.10.6-amd64.exe"
-    path_instructions_url = "https://docs.python.org/3/using/windows.html#installation-steps"
+    def status(msg: str) -> None:
+        if status_callback:
+            try:
+                status_callback(msg)
+            except Exception:
+                pass
 
-    # If no Tk root is present, just open the download page and return
     try:
-        if not getattr(tk, "_default_root", None):
-            webbrowser.open(download_url)
-            return
-    except Exception:
-        webbrowser.open(download_url)
-        return
+        import tempfile
+        import urllib.request
+
+        installer_path = os.path.join(tempfile.gettempdir(), "mlhd2-python-3.10.6-amd64.exe")
+        status("Python 3.10.6 not found. Downloading official installer...")
+        urllib.request.urlretrieve(PYTHON_3106_INSTALLER_URL, installer_path)
+
+        args = [
+            installer_path,
+            "/quiet",
+            "InstallAllUsers=0",
+            "PrependPath=1",
+            "Include_pip=1",
+            "Include_test=0",
+            "Include_launcher=1",
+            "SimpleInstall=1",
+            "Shortcuts=0",
+        ]
+        run_kwargs = _hidden_subprocess_kwargs(hide_console=True)
+        if os.name == "nt":
+            status("Running Python 3.10.6 silent installer. This may take 1-3 minutes...")
+        proc = subprocess.run(
+            args,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            check=False,
+            timeout=15 * 60,
+            **run_kwargs,
+        )
+        if proc.returncode != 0:
+            return False, f"Python installer exit code: {proc.returncode}"
+
+        status("Python installer completed. Verifying installation...")
+        if refresh_python3106_cmd():
+            try:
+                _ensure_pip_for_python(PYTHON3106_CMD or [sys.executable])
+            except Exception:
+                pass
+            status("Python 3.10.6 is now available.")
+            return True, "Installed Python 3.10.6 successfully."
+        return False, "Installer finished, but Python 3.10.6 was not detected afterward."
+    except Exception as e:
+        logging.exception("Silent Python installer failed")
+        return False, str(e)
+
+
+def offer_python_installer_gui(
+    parent: Optional[tk.Tk] = None,
+    reason: Optional[str] = None,
+    status_callback: Optional[Callable[[str], None]] = None,
+) -> bool:
+    """Prompt user to install Python 3.10.6 silently and return True when available."""
+    if refresh_python3106_cmd():
+        return True
 
     title = "Python 3.10.6 Required"
     msg = reason or (
         "Python 3.10.6 is required to run the main application.\n\n"
-        "Would you like to open the official Python 3.10.6 download page?"
+        "Install Python 3.10.6 now?\n\n"
+        "This uses the official installer in silent mode and may take a minute."
     )
+
     try:
-        # Yes -> open download page. No -> offer PATH instructions.
-        open_dl = messagebox.askyesno(title, msg, parent=parent)
-        if open_dl:
-            webbrowser.open(download_url)
-            return
-        else:
-            if messagebox.askyesno(
-                title, "Show instructions for installing Python and adding it to PATH?", parent=parent
-            ):
-                webbrowser.open(path_instructions_url)
+        install_now = messagebox.askyesno(title, msg, parent=parent)
     except Exception:
-        # As fallback, open download page
         try:
-            webbrowser.open(download_url)
+            webbrowser.open(PYTHON_3106_INSTALLER_URL)
         except Exception:
             pass
+        return False
+
+    if not install_now:
+        try:
+            if messagebox.askyesno(
+                title,
+                "Open the official Python 3.10.6 installer download page instead?",
+                parent=parent,
+            ):
+                webbrowser.open(PYTHON_3106_INSTALLER_URL)
+        except Exception:
+            pass
+        return False
+
+    try:
+        ok, details = _run_python3106_silent_installer(status_callback=status_callback)
+        if ok:
+            try:
+                messagebox.showinfo("Python Installed", "Python 3.10.6 was installed successfully.", parent=parent)
+            except Exception:
+                pass
+            return True
+
+        try:
+            open_download = messagebox.askyesno(
+                "Python Install Failed",
+                (
+                    "Automatic Python installation failed.\n\n"
+                    f"Reason: {details}\n\n"
+                    "Open the official download page now?"
+                ),
+                parent=parent,
+            )
+            if open_download:
+                webbrowser.open(PYTHON_3106_INSTALLER_URL)
+        except Exception:
+            pass
+        return False
+    except Exception:
+        logging.exception("offer_python_installer_gui encountered an unexpected error")
+        return False
 
 
 # Load launcher config for Discord RPC Client ID
@@ -323,6 +499,10 @@ def find_python3106_executable() -> Optional[List[str]]:
     candidates: List[List[str]] = []
     if not _is_frozen():
         candidates.append([sys.executable])
+    local_app = os.environ.get("LOCALAPPDATA", "")
+    program_files = os.environ.get("ProgramFiles", r"C:\\Program Files")
+    program_files_x86 = os.environ.get("ProgramFiles(x86)", r"C:\\Program Files (x86)")
+
     candidates.extend(
         [
             ["python3.10"],
@@ -330,6 +510,9 @@ def find_python3106_executable() -> Optional[List[str]]:
             ["py", "-3.10"],  # Windows Python launcher
             [r"C:\\Python310\\python.exe"],
             [r"C:\\Python3.10.6\\python.exe"],
+            [os.path.join(local_app, "Programs", "Python", "Python310", "python.exe")],
+            [os.path.join(program_files, "Python310", "python.exe")],
+            [os.path.join(program_files_x86, "Python310", "python.exe")],
         ]
     )
     for exe_argv in candidates:
@@ -349,7 +532,15 @@ def find_python3106_executable() -> Optional[List[str]]:
 PYTHON3106_CMD = find_python3106_executable()
 
 
+def refresh_python3106_cmd() -> bool:
+    global PYTHON3106_CMD
+    PYTHON3106_CMD = find_python3106_executable()
+    return PYTHON3106_CMD is not None
+
+
 def _py_cmd() -> List[str]:
+    if not PYTHON3106_CMD:
+        refresh_python3106_cmd()
     return PYTHON3106_CMD or [sys.executable]
 
 
@@ -406,6 +597,7 @@ def ensure_python_version():
         return
     # Thanks to Jesse's testing we know that the version needs to be exactly 3.10.6
     if sys.version_info[:3] != REQUIRED_PYTHON_VERSION:
+        refresh_python3106_cmd()
         msg = (
             f"ERROR: This program requires Python {REQUIRED_PYTHON_VERSION[0]}.{REQUIRED_PYTHON_VERSION[1]}.{REQUIRED_PYTHON_VERSION[2]}.\n"
             f"Current version: {sys.version_info[0]}.{sys.version_info[1]}.{sys.version_info[2]}\n"
@@ -429,20 +621,79 @@ from tkinter import filedialog, messagebox, scrolledtext, ttk
 
 import requests
 
-GITHUB_API_REPO = "HDMLM/MLHD2"
-GITHUB_REPO = "https://github.com/HDMLM/MLHD2"
+GITHUB_API_REPO = CONFIG.github_api_repo
+GITHUB_REPO = CONFIG.github_repo_url
 GITHUB_API_BASE = f"https://api.github.com/repos/{GITHUB_API_REPO}"
 REQUIREMENTS_FILE = app_path("requirements.txt")
 MAIN_PROGRAM = app_path("main.py")
 BACKUP_DIR_ROOT = app_path("backup")
 
-REQUEST_TIMEOUT_RELEASES = 10
-REQUEST_TIMEOUT_ZIP = 30
+REQUEST_TIMEOUT_RELEASES = CONFIG.request_timeout_releases
+REQUEST_TIMEOUT_ZIP = CONFIG.request_timeout_zip
 
 # NEW: font install settings
-FONT_FAMILY_NAME = "Insignia"
-FONT_FILE_NAME = "Insignia.ttf"
-FIRST_LAUNCH_MARKER = app_path(".first_launch_done")
+FONT_FAMILY_NAME = CONFIG.font_family_name
+FONT_FILE_NAME = CONFIG.font_file_name
+FIRST_LAUNCH_MARKER = user_state_file(".first_launch_done")
+
+
+def _merge_or_move_legacy_file(src_path: str, dst_path: str, append: bool = False) -> None:
+    if not os.path.isfile(src_path):
+        return
+    os.makedirs(os.path.dirname(dst_path), exist_ok=True)
+    if append:
+        with open(src_path, "r", encoding="utf-8", errors="ignore") as src_f:
+            data = src_f.read()
+        if data:
+            with open(dst_path, "a", encoding="utf-8") as dst_f:
+                dst_f.write(data)
+        try:
+            os.remove(src_path)
+        except Exception:
+            pass
+        return
+
+    if os.path.exists(dst_path):
+        try:
+            os.remove(src_path)
+        except Exception:
+            pass
+        return
+    try:
+        shutil.move(src_path, dst_path)
+    except Exception:
+        try:
+            shutil.copy2(src_path, dst_path)
+            os.remove(src_path)
+        except Exception:
+            pass
+
+
+def migrate_legacy_state_files() -> None:
+    """Move legacy state files from launcher/install directories to per-user state directory."""
+    try:
+        state_dir = get_user_state_dir()
+        marker_target = os.path.join(state_dir, ".first_launch_done")
+        debug_target = os.path.join(state_dir, "last_update_debug.txt")
+
+        candidate_roots: List[str] = [str(APP_DIR)]
+        try:
+            install_root = os.path.normpath(get_install_dir())
+            if install_root not in candidate_roots:
+                candidate_roots.append(install_root)
+        except Exception:
+            pass
+
+        for root in candidate_roots:
+            try:
+                marker_src = os.path.join(root, ".first_launch_done")
+                debug_src = os.path.join(root, "last_update_debug.txt")
+                _merge_or_move_legacy_file(marker_src, marker_target, append=False)
+                _merge_or_move_legacy_file(debug_src, debug_target, append=True)
+            except Exception:
+                pass
+    except Exception:
+        pass
 
 
 # --- Discord Rich Presence helper for the launcher ---
@@ -536,7 +787,7 @@ def _append_debug_line(line: str) -> None:
     This helper swallows all exceptions to avoid breaking update flow.
     """
     try:
-        debug_path = os.path.join(str(APP_DIR), "last_update_debug.txt")
+        debug_path = user_state_file("last_update_debug.txt")
         os.makedirs(os.path.dirname(debug_path), exist_ok=True)
         with open(debug_path, "a", encoding="utf-8") as dbg:
             dbg.write(line)
@@ -622,15 +873,85 @@ def _validate_files_against_fstruct() -> Tuple[int, int, int, List[str], List[st
 _VERSION_REGEX = re.compile(r'^\s*VERSION\s*=\s*["\']([^"\']+)["\']')
 
 
-def get_local_version() -> Optional[str]:
-    # Extract version string from Main.py (VERSION = "...")
+def find_installed_main_program() -> Optional[str]:
+    """Find installed main.py using saved install dir and safe fallbacks."""
+    candidates: List[str] = []
     try:
-        main_prog = app_path("main.py")
-        with open(main_prog, "r", encoding="utf-8") as f:
-            for line in f:
-                m = _VERSION_REGEX.match(line)
-                if m:
-                    return m.group(1).strip()
+        saved = read_saved_install_dir()
+        if saved:
+            candidates.append(saved)
+    except Exception:
+        pass
+
+    # Legacy/default fallback: launcher directory
+    try:
+        candidates.append(str(APP_DIR))
+    except Exception:
+        pass
+
+    # Optional environment override for portable scenarios
+    try:
+        env_dir = os.environ.get("MLHD2_INSTALL_DIR")
+        if env_dir:
+            candidates.append(env_dir)
+    except Exception:
+        pass
+
+    seen: set[str] = set()
+    for root in candidates:
+        if not root:
+            continue
+        norm_root = os.path.normpath(root)
+        if norm_root in seen:
+            continue
+        seen.add(norm_root)
+        candidate = os.path.join(norm_root, "main.py")
+        if os.path.isfile(candidate):
+            return candidate
+    return None
+
+
+def get_local_version() -> Optional[str]:
+    # Extract version string from installed files (main.py or core/app_core.py)
+    try:
+        main_prog = find_installed_main_program()
+        roots: List[str] = []
+        if main_prog:
+            roots.append(os.path.dirname(main_prog))
+        # fallback root in case launcher exists but install-dir state is stale
+        roots.append(str(APP_DIR))
+
+        candidates: List[str] = []
+        seen: set[str] = set()
+        for root in roots:
+            if not root:
+                continue
+            norm_root = os.path.normpath(root)
+            if norm_root in seen:
+                continue
+            seen.add(norm_root)
+            candidates.extend(
+                [
+                    os.path.join(norm_root, "main.py"),
+                    os.path.join(norm_root, "core", "app_core.py"),
+                ]
+            )
+
+        found_any_install_files = False
+        for candidate in candidates:
+            if not os.path.isfile(candidate):
+                continue
+            found_any_install_files = True
+            with open(candidate, "r", encoding="utf-8") as f:
+                for line in f:
+                    m = _VERSION_REGEX.match(line)
+                    if m:
+                        return m.group(1).strip()
+
+        if found_any_install_files:
+            # Installed files exist, but no parseable VERSION assignment found
+            return "__UNKNOWN__"
+        return None
     except FileNotFoundError:
         # Fresh install scenario: main program not present yet
         return None
@@ -966,11 +1287,16 @@ def safe_zip_update(include_prerelease: bool = False, target_root_override: Opti
             pass
         return "\n".join(summary)
     except Exception as e:
+        logging.exception("safe_zip_update extraction failed")
         _append_debug_line(f"Safe update exception during extraction: {e}\n{traceback.format_exc()}")
         return (
             f"Safe update failed during extraction: {e}\n"
             "Ensure disk space and that existing files are not locked by another process."
         )
+
+
+def _format_update_summary(raw_result: str) -> str:
+    return util_format_update_summary(raw_result)
 
 
 def get_latest_github_version(full: bool = False, include_prerelease: bool = False) -> Any:
@@ -989,49 +1315,15 @@ def get_latest_github_version(full: bool = False, include_prerelease: bool = Fal
 
 
 def _parse_version(v: str) -> List[int]:
-    # Parse dotted version string into list of ints; strip leading v and non-digit tails
-    if not v:
-        return []
-    v = v.strip()
-    if v.startswith(("v", "V")):
-        v = v[1:]
-    parts = []
-    for seg in v.split("."):
-        seg = seg.strip()
-        if not seg:
-            parts.append(0)
-            continue
-        num = ""
-        for ch in seg:
-            if ch.isdigit():
-                num += ch
-            else:
-                break
-        parts.append(int(num) if num else 0)
-    # Trim trailing zeros
-    while parts and parts[-1] == 0:
-        parts.pop()
-    return parts
+    return util_parse_version(v)
 
 
 def _compare_versions(a: str, b: str) -> int:
-    # Compare two version strings a vs b; return 1, -1, or 0
-    pa = _parse_version(a)
-    pb = _parse_version(b)
-    max_len = max(len(pa), len(pb))
-    for i in range(max_len):
-        ai = pa[i] if i < len(pa) else 0
-        bi = pb[i] if i < len(pb) else 0
-        if ai > bi:
-            return 1
-        if ai < bi:
-            return -1
-    return 0
+    return util_compare_versions(a, b)
 
 
 def _canon_name(name: str) -> str:
-    # PEP 503 canonicalization: collapse -, _, . to - and lowercase
-    return re.sub(r"[-_.]+", "-", name).lower()
+    return util_canon_name(name)
 
 
 def check_version(include_prerelease: bool = False) -> str:
@@ -1054,6 +1346,9 @@ def check_version(include_prerelease: bool = False) -> str:
     if raw_local is None:
         status_line = "Not installed yet. Click 'Update to Latest' to install."
         local_display = "Not installed"
+    elif raw_local == "__UNKNOWN__":
+        status_line = "Installed, but local version could not be detected."
+        local_display = "Installed (unknown version)"
     elif raw_local.startswith("__ERROR__:"):
         status_line = "Local version unreadable (see log). You can still attempt an update."
         local_display = f"Error: {raw_local[10:]}"
@@ -1117,23 +1412,12 @@ def check_requirements(
     def get_installed_packages() -> Dict[str, str]:
         # Return mapping of installed package -> version using single pip list call
         python_exe = _py_cmd()
+        hidden_kwargs = _hidden_subprocess_kwargs(hide_console=True)
         try:
-            # Hide console windows on Windows while invoking pip
-            startupinfo = None
-            creationflags = 0
-            if os.name == "nt":
-                try:
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    creationflags = subprocess.CREATE_NO_WINDOW
-                except Exception:
-                    startupinfo = None
-                    creationflags = 0
             data = subprocess.check_output(
                 [*python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
                 stderr=subprocess.DEVNULL,
-                startupinfo=startupinfo,
-                creationflags=creationflags,
+                **hidden_kwargs,
             )
             import json
 
@@ -1146,8 +1430,7 @@ def check_requirements(
                     data = subprocess.check_output(
                         [*python_exe, "-m", "pip", "list", "--format", "json", "--disable-pip-version-check"],
                         stderr=subprocess.DEVNULL,
-                        startupinfo=startupinfo,
-                        creationflags=creationflags,
+                        **hidden_kwargs,
                     )
                     import json
 
@@ -1160,6 +1443,22 @@ def check_requirements(
             except Exception:
                 pass
             return {}
+
+    def get_installed_version(pkg_name: str) -> str:
+        python_exe = _py_cmd()
+        hidden_kwargs = _hidden_subprocess_kwargs(hide_console=True)
+        try:
+            out = subprocess.check_output(
+                [*python_exe, "-m", "pip", "show", pkg_name],
+                stderr=subprocess.DEVNULL,
+                **hidden_kwargs,
+            ).decode("utf-8", errors="replace")
+            for line in out.splitlines():
+                if line.lower().startswith("version:"):
+                    return line.split(":", 1)[1].strip()
+        except Exception:
+            return ""
+        return ""
 
     def install_or_update(pkg: str, target: Optional[str]) -> Tuple[bool, str]:
         # Install or update a package; target is exact version string or None
@@ -1183,17 +1482,7 @@ def check_requirements(
         DEBUG_MODE = bool(sys.gettrace()) or os.environ.get("MLHD2_DEBUG_PIP")
         try:
             cmd = [*python_exe, "-m", "pip", "install", spec, "--disable-pip-version-check", "--no-input"]
-            # Hide console windows on Windows when not in debug mode
-            startupinfo = None
-            creationflags = 0
-            if os.name == "nt" and not DEBUG_MODE:
-                try:
-                    startupinfo = subprocess.STARTUPINFO()
-                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
-                    creationflags = subprocess.CREATE_NO_WINDOW
-                except Exception:
-                    startupinfo = None
-                    creationflags = 0
+            install_kwargs = _hidden_subprocess_kwargs(hide_console=not DEBUG_MODE)
 
             def _call(cmd_args):
                 if DEBUG_MODE:
@@ -1202,8 +1491,7 @@ def check_requirements(
                     cmd_args,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.STDOUT,
-                    startupinfo=startupinfo,
-                    creationflags=creationflags,
+                    **install_kwargs,
                 )
 
             try:
@@ -1230,17 +1518,24 @@ def check_requirements(
     installed_count = 0
 
     try:
-        if _is_frozen() and not PYTHON3106_CMD:
+        if _is_frozen() and not refresh_python3106_cmd():
             log("Python 3.10.6 not found. Cannot verify or install requirements from the bundled launcher.")
-            log(
-                "Please install Python 3.10.6 and run 'Check Requirements' again, or run 'pip install -r requirements.txt' manually."
-            )
             try:
-                # Try to present the guided installer to the user
-                offer_python_installer_gui()
+                installed = offer_python_installer_gui(
+                    reason=(
+                        "Python 3.10.6 is required to install dependencies.\n\n"
+                        "Install Python 3.10.6 now?"
+                    ),
+                    status_callback=lambda line: log(line),
+                )
+                if not installed:
+                    log(
+                        "Please install Python 3.10.6 and run 'Check Requirements' again, or run 'pip install -r requirements.txt' manually."
+                    )
+                    return "Summary: Skipped (Python 3.10.6 missing)"
             except Exception:
-                pass
-            return "Summary: Skipped (Python 3.10.6 missing)"
+                log("Automatic Python installation failed or was cancelled by the user.")
+                return "Summary: Skipped (Python 3.10.6 missing)"
         # In frozen mode, REQUIREMENTS_FILE might not exist next to the EXE; look in app dir specifically
         if not os.path.exists(REQUIREMENTS_FILE):
             alt_req = app_path("requirements.txt")
@@ -1286,15 +1581,17 @@ def check_requirements(
                 continue
 
             log(f"[{idx}/{total}] Checking {pkg} ...")
-            installed = get_installed_packages()  # refresh snapshot
             if key in installed:
                 current_v = installed[key]
                 if pinned and _compare_versions(current_v, pinned) != 0:
                     log(f"  - Found {pkg} {current_v}; requires {pinned}. Updating...")
                     ok, err = install_or_update(pkg, pinned)
                     if ok:
-                        installed = get_installed_packages()
-                        final_v = installed.get(key, "")
+                        final_v = get_installed_version(pkg)
+                        if final_v:
+                            installed[key] = final_v
+                        else:
+                            installed.pop(key, None)
                         if final_v and _compare_versions(final_v, pinned) == 0:
                             updated_count += 1
                             log(f"  - UPDATED to {pinned}")
@@ -1313,8 +1610,11 @@ def check_requirements(
                 log(f"  - Not installed. Installing ({target_desc})...")
                 ok, err = install_or_update(pkg, pinned)
                 if ok:
-                    installed = get_installed_packages()
-                    final_v = installed.get(key, "")
+                    final_v = get_installed_version(pkg)
+                    if final_v:
+                        installed[key] = final_v
+                    else:
+                        installed.pop(key, None)
                     if final_v and (not pinned or _compare_versions(final_v, pinned) == 0):
                         installed_count += 1
                         log(f"  - INSTALLED ({final_v})")
@@ -1332,6 +1632,7 @@ def check_requirements(
                 except Exception:
                     pass
     except Exception as e:
+        logging.exception("check_requirements failed")
         log(f"Error reading requirements: {e}")
 
     # NEW: Validate files/dirs using FStruct.json
@@ -1390,6 +1691,10 @@ def check_requirements(
     if updated_count or installed_count:
         log(f"Actions: {installed_count} installed, {updated_count} updated.")
 
+    status_line = "Requirements Status: Success"
+    if failures:
+        status_line = "Requirements Status: Partial/Failed"
+
     # Only return the summary for the version box, not the full log
     summary_lines = []
     for line in output:
@@ -1397,29 +1702,37 @@ def check_requirements(
             line.startswith("Summary:")
             or line.startswith("Actions:")
             or line.startswith("Error reading requirements:")
+            or line.startswith("Requirements Status:")
             or line.startswith("Files:")  # NEW: include file validation in silent summary
         ):
             summary_lines.append(line)
         elif line.strip().startswith("- MISSING:") or line.strip().startswith("- missing optional:"):
             # Include detailed missing entries in silent summary
             summary_lines.append(line)
-    return "\n".join(summary_lines) if summary_lines else "\n".join(output[-10:])
+    if summary_lines:
+        if not any(line.startswith("Requirements Status:") for line in summary_lines):
+            summary_lines.insert(0, status_line)
+        return "\n".join(summary_lines)
+    return "\n".join([status_line, *output[-10:]])
 
 
 def launch_program_detached() -> Optional[subprocess.Popen]:
     # Start the main program process and return the Popen or None on failure
     python_exe = _py_cmd()
-    main_prog = app_path("main.py")
-    if not os.path.exists(main_prog):
+    main_prog = find_installed_main_program()
+    if not main_prog or not os.path.exists(main_prog):
         messagebox.showerror(
             "Not Installed",
             "The main program is not installed yet.\n"
             "Click 'Update to Latest' to download the latest release, then try launching again.",
         )
         return None
-    if not PYTHON3106_CMD and _is_frozen():
+    if _is_frozen() and not refresh_python3106_cmd():
         try:
-            offer_python_installer_gui(parent=None, reason="Python 3.10.6 is required to run the logger.")
+            installed = offer_python_installer_gui(parent=None, reason="Python 3.10.6 is required to run the logger.")
+            if not installed:
+                return None
+            python_exe = _py_cmd()
         except Exception:
             # Fallback to original messagebox
             try:
@@ -1429,12 +1742,13 @@ def launch_program_detached() -> Optional[subprocess.Popen]:
                 )
             except Exception:
                 pass
-        return None
+            return None
     try:
         # Launch the main program with its install directory as the working directory
         launch_cwd = os.path.dirname(main_prog) or get_install_dir()
         return subprocess.Popen([*python_exe, main_prog], cwd=launch_cwd)
     except Exception as e:
+        logging.exception("Failed to launch main program")
         try:
             messagebox.showerror("Launch Error", f"Failed to start main program: {e}")
         except Exception:
@@ -1446,12 +1760,14 @@ def threaded_action(
     text_widget: scrolledtext.ScrolledText,
     *,
     silent: bool = False,
+    allow_silent_logs: bool = False,
     progress_init: Optional[Callable[[int], None]] = None,
     progress_tick: Optional[Callable[[int], None]] = None,
     progress_done: Optional[Callable[[], None]] = None,
+    on_done: Optional[Callable[[], None]] = None,
 ) -> None:
     def log_callback(line: str) -> None:
-        if silent:
+        if silent and not allow_silent_logs:
             return
         text_widget.config(state="normal")
         text_widget.insert(tk.END, line)
@@ -1468,7 +1784,7 @@ def threaded_action(
             text_widget.update()
             text_widget.config(state="disabled")
             if action.__name__ == "check_requirements":
-                result = action(log_callback if not silent else None, progress_init, progress_tick, progress_done)
+                result = action(log_callback, progress_init, progress_tick, progress_done)
                 # Show only the summary when silent
                 if silent and result:
                     text_widget.config(state="normal")
@@ -1483,6 +1799,11 @@ def threaded_action(
                 text_widget.config(state="disabled")
         finally:
             text_widget.config(state="disabled")
+            if on_done:
+                try:
+                    on_done()
+                except Exception:
+                    pass
 
     t = threading.Thread(target=run, daemon=True)
     t.start()
@@ -1710,7 +2031,7 @@ class InstallerGUI(tk.Tk):
             lambda: open_url("https://github.com/HDMLM/MLHD2"),  # GitHub
             lambda: open_url("https://discord.gg/U6ydgwFKZG"),  # Discord (same link as requested)
             open_settings,  # Settings
-            lambda: open_url("https://github.com/HDMLM/MLHD2/blob/main/README.md"),  # Help
+            lambda: open_url("https://hdmlm.github.io/MLHD2/"),  # Help
         ]
 
         for i, (img, hover_img, fallback_icon) in enumerate(sidebar_btn_info):
@@ -1777,6 +2098,32 @@ class InstallerGUI(tk.Tk):
             font=insignia_font,
         )
         self.version_label.place(x=30, y=60)
+
+        self.task_status_label = tk.Label(
+            self.banner_frame,
+            text="Status: Idle",
+            bg="#252526",
+            fg="#D0D0D0",
+            font=("Arial", 10),
+            anchor="w",
+            justify="left",
+            width=34,
+        )
+        self.task_status_label.place(x=560, y=20)
+
+        self.install_path_label = tk.Label(
+            self.banner_frame,
+            text="Install Path: (not set)",
+            bg="#252526",
+            fg="#B0B0B0",
+            font=("Arial", 9),
+            anchor="w",
+            justify="left",
+            width=42,
+        )
+        self.install_path_label.place(x=560, y=46)
+        self._task_state = "idle"
+        self._refresh_install_path_label()
 
         # Install dir prompt is triggered on Update (first-run) but not shown in UI
 
@@ -2066,97 +2413,155 @@ class InstallerGUI(tk.Tk):
         self.after(200, self.maybe_prompt_font_install)
 
     # Button actions with RPC status updates
-    def _action_check_requirements(self) -> None:
+    def _refresh_install_path_label(self) -> None:
         try:
-            self._rpc.set_status("Checking Requirements", "pip dependencies")
+            path = read_saved_install_dir() or str(APP_DIR)
+            self.install_path_label.config(text=f"Install Path: {path}")
         except Exception:
             pass
 
-        def run():
-            threaded_action(
-                check_requirements,
-                self.text,
-                silent=True,
-                progress_init=self._progress_init,
-                progress_tick=self._progress_tick,
-                progress_done=self._progress_done,
-            )
+    def _set_task_state(self, state: str, details: Optional[str] = None) -> None:
+        self._task_state = state
+        text = f"Status: {state.title()}"
+        if details:
+            text += f" - {details}"
+        try:
+            self.task_status_label.config(text=text)
+        except Exception:
+            pass
+
+        busy = state != "idle"
+        control_state = "disabled" if busy else "normal"
+        for btn_name in ("check_btn", "update_btn", "uninstall_btn"):
             try:
-                self._rpc.set_status("Idle", "Ready")
+                btn = getattr(self, btn_name, None)
+                if btn:
+                    btn.config(state=control_state)
             except Exception:
                 pass
 
-        threading.Thread(target=run, daemon=True).start()
-        threading.Thread(target=run, daemon=True).start()
+    def _is_busy(self) -> bool:
+        return self._task_state != "idle"
 
-    def _action_update_latest(self) -> None:
+    def _set_rpc_idle(self) -> None:
+        self._set_task_state("idle", "Ready")
         try:
-            self._rpc.set_status("Updating", "Fetching latest release")
+            self._rpc.set_status("Idle", "Ready")
         except Exception:
             pass
-        # If no install dir saved yet, force the user to choose one before proceeding.
-        chosen: Optional[str] = None
-        try:
-            saved = read_saved_install_dir()
-            if not saved:
-                # Keep prompting until the user selects a directory or explicitly cancels the update.
-                while True:
-                    try:
-                        choice = maybe_prompt_install_dir(self)
-                    except Exception:
-                        choice = None
-                    if choice:
-                        chosen = choice
-                        break
-                    # User cancelled the dialog; ask if they want to try again
-                    try:
-                        retry = messagebox.askyesno(
-                            "Install Directory Required",
-                            "An install directory is required to continue.\n\nWould you like to choose one now?\n\nYes = choose directory, No = cancel update",
-                            parent=self,
-                        )
-                    except Exception:
-                        retry = False
-                    if not retry:
-                        try:
-                            messagebox.showinfo(
-                                "Update Cancelled",
-                                "Update cancelled because no install directory was selected.",
-                                parent=self,
-                            )
-                        except Exception:
-                            pass
-                        return
-                # Ensure derived path globals are updated immediately. If saving to disk
-                # failed for permission or user-context reasons, set the in-memory
-                # cache so the running launcher still uses the chosen directory.
+
+    def _resolve_install_dir_for_update(self) -> Optional[str]:
+        saved = read_saved_install_dir()
+        if saved:
+            try:
+                use_saved = messagebox.askyesno(
+                    "Install Directory",
+                    (
+                        "Current install directory:\n"
+                        f"{saved}\n\n"
+                        "Use this location for the update?\n\n"
+                        "Choose 'No' to select a different folder."
+                    ),
+                    parent=self,
+                )
+            except Exception:
+                use_saved = True
+            if use_saved:
+                return saved
+
+        initial = saved or str(APP_DIR)
+        while True:
+            try:
+                choice = filedialog.askdirectory(
+                    parent=self,
+                    title="Choose MLHD2 install directory",
+                    initialdir=initial,
+                )
+            except Exception:
+                choice = ""
+
+            if choice:
+                try:
+                    save_install_dir(choice)
+                except Exception:
+                    pass
                 try:
                     global _INSTALL_DIR_CACHE
-                    _INSTALL_DIR_CACHE = chosen or choice
+                    _INSTALL_DIR_CACHE = choice
                 except Exception:
                     pass
                 try:
                     update_paths_from_install_dir()
                 except Exception:
                     pass
-            else:
-                chosen = saved
-        except Exception:
-            chosen = get_install_dir()
+                self._refresh_install_path_label()
+                return choice
 
-        def _update():
-            # Background worker performs the actual update using the chosen path captured above
-            threaded_action(
-                lambda: safe_zip_update(self.include_prerelease.get(), target_root_override=chosen), self.text
-            )
             try:
-                self._rpc.set_status("Idle", "Ready")
+                retry = messagebox.askyesno(
+                    "Install Directory Required",
+                    (
+                        "An install directory is required to continue.\n\n"
+                        "Yes = choose a folder now\n"
+                        "No = cancel update"
+                    ),
+                    parent=self,
+                )
+            except Exception:
+                retry = False
+            if not retry:
+                return None
+
+    def _action_check_requirements(self) -> None:
+        if self._is_busy():
+            return
+        self._set_task_state("checking", "Requirements")
+        try:
+            self._rpc.set_status("Checking Requirements", "pip dependencies")
+        except Exception:
+            pass
+        threaded_action(
+            check_requirements,
+            self.text,
+            silent=True,
+            allow_silent_logs=True,
+            progress_init=self._progress_init,
+            progress_tick=self._progress_tick,
+            progress_done=self._progress_done,
+            on_done=self._set_rpc_idle,
+        )
+
+    def _action_update_latest(self) -> None:
+        if self._is_busy():
+            return
+        self._set_task_state("updating", "Preparing update")
+        try:
+            self._rpc.set_status("Updating", "Fetching latest release")
+        except Exception:
+            pass
+        chosen = self._resolve_install_dir_for_update()
+        if not chosen:
+            self._set_task_state("idle", "Update cancelled")
+            try:
+                messagebox.showinfo(
+                    "Update Cancelled",
+                    "Update cancelled because no install directory was selected.",
+                    parent=self,
+                )
             except Exception:
                 pass
+            return
 
-        threading.Thread(target=_update, daemon=True).start()
+        threaded_action(
+            lambda: _format_update_summary(safe_zip_update(self.include_prerelease.get(), target_root_override=chosen)),
+            self.text,
+            on_done=self._set_rpc_idle,
+        )
 
     def _action_launch(self) -> None:
+        if self._is_busy():
+            return
+        self._set_task_state("launching", "Starting logger")
         try:
             self._rpc.set_status("Launching Logger", "Starting main app")
         except Exception:
@@ -2173,10 +2578,14 @@ class InstallerGUI(tk.Tk):
         - Clear the saved install_dir from launcher config
         - Update path globals
         """
+        if self._is_busy():
+            return
+        self._set_task_state("uninstall", "Removing files")
         try:
             install_dir = read_saved_install_dir()
             if not install_dir:
                 messagebox.showinfo("Uninstall", "No install directory is configured.")
+                self._set_task_state("idle", "Ready")
                 return
 
             # Double-confirm with the user
@@ -2184,6 +2593,7 @@ class InstallerGUI(tk.Tk):
                 "Confirm Uninstall",
                 f"Are you sure you want to uninstall MLHD2 from:\n{install_dir}\n\nThis will permanently delete files in that directory.",
             ):
+                self._set_task_state("idle", "Uninstall cancelled")
                 return
 
             # Offer to create a backup
@@ -2200,6 +2610,7 @@ class InstallerGUI(tk.Tk):
                     if not messagebox.askyesno(
                         "Backup Failed", f"Backup failed: {e}\n\nProceed with uninstall anyway?"
                     ):
+                        self._set_task_state("idle", "Uninstall cancelled")
                         return
 
             # Perform removal with safety checks
@@ -2210,6 +2621,7 @@ class InstallerGUI(tk.Tk):
                 "Warning",
                 "The configured install directory is the same as the launcher directory.\nDo you really want to remove the launcher folder as well?",
             ):
+                self._set_task_state("idle", "Uninstall cancelled")
                 return
 
             try:
@@ -2233,6 +2645,7 @@ class InstallerGUI(tk.Tk):
                     pass
             except Exception as e:
                 messagebox.showerror("Uninstall Error", f"Failed to remove install directory: {e}")
+                self._set_task_state("idle", "Uninstall failed")
                 return
 
             # Clear saved install dir
@@ -2249,12 +2662,15 @@ class InstallerGUI(tk.Tk):
                 update_paths_from_install_dir()
             except Exception:
                 pass
+            self._refresh_install_path_label()
             messagebox.showinfo(
                 "Uninstall Complete",
                 "MLHD2 has been uninstalled from the selected directory.\nThe launcher will continue to run.",
             )
+            self._set_task_state("idle", "Uninstall complete")
         except Exception as e:
             messagebox.showerror("Uninstall Failed", f"An unexpected error occurred: {e}")
+            self._set_task_state("idle", "Uninstall failed")
 
     # NEW: first-launch font prompt
     def maybe_prompt_font_install(self) -> None:
@@ -2344,11 +2760,13 @@ class InstallerGUI(tk.Tk):
         # Hide launcher while main program runs; restore on exit
         if getattr(self, "_proc", None) and self._proc.poll() is None:
             messagebox.showinfo("Already Running", "Main program is already running.")
+            self._set_task_state("idle", "Ready")
             return
         self.launch_btn.config(state="disabled")
         proc = launch_program_detached()
         if not proc:
             self.launch_btn.config(state="normal")
+            self._set_task_state("idle", "Launch failed")
             return
         self._proc = proc
         self.withdraw()
@@ -2366,29 +2784,9 @@ class InstallerGUI(tk.Tk):
                 self.launch_btn.config(state="normal")
                 self.text.config(state="normal")
                 self.text.config(state="disabled")
+                self._set_task_state("idle", "Ready")
                 try:
                     self._rpc.start()  # Restart RPC when re-shown
-                    self._rpc.set_status("Idle", "Ready")
-                except Exception:
-                    pass
-
-            try:
-                self.after(0, restore)
-            except Exception:
-                pass
-
-        threading.Thread(target=monitor, daemon=True).start()
-
-        def monitor():
-            proc.wait()
-
-            # Return to main thread for UI restore
-            def restore():
-                self.deiconify()
-                self.launch_btn.config(state="normal")
-                self.text.config(state="normal")
-                self.text.config(state="disabled")
-                try:
                     self._rpc.set_status("Idle", "Ready")
                 except Exception:
                     pass
@@ -2417,6 +2815,8 @@ class InstallerGUI(tk.Tk):
         try:
             current = self.progress["value"] + (step or 1)
             total = getattr(self, "_progress_total", self.progress["maximum"])
+            if current > total:
+                current = total
             self.progress.config(value=current)
             self.progress_label.config(text=f"Verifying {int(current)}/{int(total)} Python packages…")
             self.progress.update()
@@ -2432,5 +2832,6 @@ class InstallerGUI(tk.Tk):
 
 
 if __name__ == "__main__":
+    migrate_legacy_state_files()
     app = InstallerGUI()
     app.mainloop()
