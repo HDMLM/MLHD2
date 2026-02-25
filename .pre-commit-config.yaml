@@ -1,0 +1,23 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+      - id: check-yaml
+      - id: check-added-large-files
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.9.7
+    hooks:
+      - id: ruff
+        args: [--fix]
+        files: ^(tests/|core/(data_manager|dynamic_icons|embed_utils|webhook_client|logging_config|diagnostics)\.py$)
+      - id: ruff-format
+        files: ^(tests/|core/(data_manager|dynamic_icons|embed_utils|webhook_client|logging_config|diagnostics)\.py$)
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        entry: pytest -q tests
+        language: system
+        pass_filenames: false

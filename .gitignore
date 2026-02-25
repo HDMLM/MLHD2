@@ -1,2 +1,7 @@
 /venv
 mission_log_test.xlsx
+mission_log.xlsx
+app.log
+__pycache__
+.vscode
+.first_launch_done

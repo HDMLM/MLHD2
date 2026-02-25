@@ -1,0 +1,35 @@
+# UTF-8
+# PyInstaller version file for Windows exe metadata
+# Update the values below as needed.
+
+VSVersionInfo(
+  ffi=FixedFileInfo(
+    filevers=(1, 0, 0, 0),
+    prodvers=(1, 0, 0, 0),
+    mask=0x3f,
+    flags=0x0,
+    OS=0x40004,      # VOS_NT_WINDOWS32
+    fileType=0x1,    # VFT_APP
+    subtype=0x0,
+    date=(0, 0)
+  ),
+  kids=[
+    StringFileInfo([
+      StringTable('040904B0', [  # US English + Unicode
+        StringStruct('CompanyName', 'MLHD2 Team'),
+        StringStruct('FileDescription', 'MLHD2 Launcher / Installer'),
+        StringStruct('FileVersion', '1.7.013'),
+        StringStruct('InternalName', 'MLHD2-Launcher'),
+        StringStruct('LegalCopyright', '© 2025 MLHD2 Team. All rights reserved.'),
+        StringStruct('OriginalFilename', 'MLHD2-Launcher.exe'),
+        StringStruct('ProductName', 'MLHD2 Launcher'),
+        StringStruct('ProductVersion', '1.7.013'),
+        StringStruct('Comments', 'HELLDIVERS 2 Mission Logger'),
+        StringStruct('Website', 'https://github.com/HDMLM/MLHD2'),
+      ])
+    ]),
+    VarFileInfo([
+      VarStruct('Translation', [0x0409, 0x04B0])
+    ])
+  ]
+)

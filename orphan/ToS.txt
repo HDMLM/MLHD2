@@ -1,0 +1,37 @@
+1. Introduction
+This application is a fan-made, third-party, open-source project. It is not affiliated with, endorsed by, or supported by the original creators or copyright holders of the related content.
+By using this application, you acknowledge that it is an independent project created by fans for educational and entertainment purposes.
+
+2. Use of Application
+You may use this application for personal, non-commercial purposes only.
+You agree not to use the application for any unlawful activities, including but not limited to infringement of intellectual property rights, unauthorized access to systems, or distribution of malicious software.
+Commercial use, resale, or redistribution is strictly prohibited unless explicitly permitted by the open-source license.
+
+3. Open Source License
+This application is distributed under an open-source license.
+Please review the included license file for details regarding usage, modification, and distribution.
+Contributions to the project are welcome, provided they comply with the license terms and community guidelines.
+
+4. Disclaimer
+The application is provided "as is" without warranty of any kind, either express or implied.
+The developers make no guarantees regarding the accuracy, reliability, or security of the application.
+The developers are not responsible for any damages, data loss, or other losses resulting from the use or inability to use this application.
+
+5. Intellectual Property
+All trademarks, logos, and copyrighted material referenced by this application remain the property of their respective owners.
+This application does not claim ownership of any third-party intellectual property and is intended solely for non-commercial, educational, and entertainment use.
+
+6. Changes to Terms
+These terms may be updated at any time without prior notice. Continued use of the application constitutes acceptance of any changes.
+It is your responsibility to review the terms periodically for updates.
+
+7. Project Status and Abandonment
+As a fan-made, open-source project, this application may be abandoned and receive no further updates at any time.
+If the project is officially abandoned, this will be clearly communicated through the project's repository and related Discord channels.
+Users are encouraged to continue updating and maintaining the application under the open-source license; however, the original developers will no longer be responsible for any changes made to the program after abandonment.
+
+8. Contact
+If you have any questions or concerns, please contact the developers via the project's repository or Discord server.
+We are open to any and all feedback, and we will do our best to respond in a timely manner.
+
+By using this application, you acknowledge that you have read, understood, and agreed to these terms of service.

@@ -1,0 +1,44 @@
+Privacy Policy
+
+Effective Date: 16/09/2025
+
+Your privacy is important to us. This program is designed with your privacy in mind and does not collect, store, or transmit any personal information.
+We are committed to transparency and ensuring you understand how your data is handled.
+This program is open-source and available for review on GitHub as such we encourage you to examine the source code to verify our privacy practices.
+
+Data Collection and Usage
+
+- No personal data, device information, or usage statistics are collected, stored, or transmitted by this program.
+- The program operates entirely on your local device and does not communicate with external servers or services for data collection purposes.
+
+Third-Party Services
+
+- This program integrates with Microsoft Excel and Discord to provide core functionality.
+- While the program itself does not collect data, Microsoft Excel and Discord may process data according to their own privacy policies.
+- We recommend reviewing the privacy policies of Microsoft Excel and Discord to understand how your information may be handled when using these services.
+
+Data Sharing
+
+- Since no data is collected by this program, there is no data to share, sell, or disclose to third parties.
+- We do not engage in any form of data monetization or sharing.
+
+Cookies and Tracking Technologies
+
+- This program does not use cookies, web beacons, or any tracking technologies.
+- No tracking of user activity or device information occurs.
+
+Security
+
+- The program is designed to run locally and does not transmit data over the internet, reducing exposure to external threats.
+- We recommend keeping your device and software up to date to maintain security.
+
+Changes to This Policy
+
+- Any changes to this privacy policy will be clearly communicated and included with future versions of the program.
+- We encourage users to review the policy periodically for updates.
+
+Contact
+
+If you have any questions, concerns, or feedback regarding this privacy policy or the program’s data practices, please contact the developer directly.
+
+By using this program, you acknowledge and agree to the terms outlined in this privacy policy.

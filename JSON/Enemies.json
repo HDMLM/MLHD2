@@ -1,0 +1,29 @@
+{
+    "Automatons": {
+        "Automaton Legion": "No HVTs",
+        "Jet Brigade": "No HVTs",
+        "Incineration Corps": "No HVTs",
+        "Jet Brigade & Incineration Corps": "No HVTs",
+        "Cyborgs": "No HVTs",
+        "Cyborgs & Jet Brigade": "No HVTs",
+        "Cyborgs & Incineration Corps": "No HVTs",
+        "Cyborgs, Jet Brigade & Incineration Corps": "No HVTs"
+    },
+    "Terminids": {
+        "Terminid Horde": ["No HVTs", "Hive Lords"],
+        "Predator Strain": ["No HVTs", "Hive Lords"],
+        "Spore Burst Strain": ["No HVTs", "Hive Lords"],
+        "Rupture Strain": ["No HVTs", "Hive Lords"],
+        "Dragonroach": ["No HVTs", "Hive Lords"],
+        "Predator Strain & Dragonroach": ["No HVTs", "Hive Lords"],
+        "Spore Burst Strain & Dragonroach": ["No HVTs", "Hive Lords"],
+        "Rupture Strain & Dragonroach": ["No HVTs", "Hive Lords"]
+    },
+    "Illuminate": {
+        "Illuminate Cult": "No HVTs",
+        "The Great Host": "No HVTs"
+    },
+    "Observing": {
+        
+    }
+}
