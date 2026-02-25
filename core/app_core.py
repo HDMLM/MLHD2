@@ -807,7 +807,7 @@ class MissionLogGUI:
             self._show_error("ADVISORY: You cannot deploy on a fractured planet")
             self.update_submit_button_image("Fail")
             return
-        if self.planet.get() in ["Widow's Harbor", "New Haven", "Pilen V", "Mars", "Merak"]:
+        if self.planet.get() in ["Widow's Harbor", "New Haven", "Pilen V", "Mars", "Merak", "Chort Bay", "Lesath"]:
             self._show_error("ADVISORY: You cannot deploy on a scorched planet")
             self.update_submit_button_image("Fail")
             return

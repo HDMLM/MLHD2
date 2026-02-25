@@ -995,9 +995,11 @@ def build_ui(app):
     # Shows or hides DSS modifier controls based on DSS state; affects DSS frame
     def toggle_dss_mod(*args):
         if app.DSS.get():
+            if app.DSSMod.get() == "Unavailable":
+                app.DSSMod.set("Inactive")
             app.dss_frame.grid()
         else:
-            app.DSSMod.set("Inactive")
+            app.DSSMod.set("Unavailable")
             app.dss_frame.grid_remove()
 
     try:
