@@ -128,6 +128,9 @@
   "Sol System": {
     "planets": ["Super Earth", "Mars"]
   },
+  "Sten Sector": {
+    "planets": ["Azur Secundus", "Overgoe Prime", "Partion", "Peacock", "Trandor"]
+  },
   "Talus Sector": {
     "planets": ["Shallus", "Shelt", "Gaellivare", "Imber"]
   },

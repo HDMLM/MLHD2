@@ -880,7 +880,11 @@ class _LauncherRPC:
                     "GitHub Repo",
                     "https://github.com/HDMLM/MLHD2",
                     "Join Discord",
+<<<<<<< Updated upstream
                     "https://discord.gg/U6ydgwFKZG",
+=======
+                    "https://discord.gg/3Kuxa8uaaN",
+>>>>>>> Stashed changes
                 )
             except Exception:
                 buttons = None
@@ -2332,7 +2336,11 @@ class InstallerGUI(tk.Tk):
 
         sidebar_btn_actions = [
             lambda: open_url("https://github.com/HDMLM/MLHD2"),  # GitHub
+<<<<<<< Updated upstream
             lambda: open_url("https://discord.gg/U6ydgwFKZG"),  # Discord (same link as requested)
+=======
+            lambda: open_url("https://discord.gg/3Kuxa8uaaN"),  # Discord (same link as requested)
+>>>>>>> Stashed changes
             open_settings,  # Settings
             lambda: open_url("https://hdmlm.github.io/MLHD2/"),  # Help
         ]

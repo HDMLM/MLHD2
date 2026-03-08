@@ -98,9 +98,15 @@ from core.utils import (
 )
 
 # Manual Configuration
+<<<<<<< Updated upstream
 GWDay = "Day: 748"
 GWDate = "Date: 25/02/2026"
 VERSION = "1.7.022"
+=======
+GWDay = "Day: 759"
+GWDate = "Date: 08/03/2026"
+VERSION = "1.7.023"
+>>>>>>> Stashed changes
 DEV_RELEASE = "-dev"
 RPC_UPDATE_INTERVAL = 10  # seconds, this is in seconds
 DATE_FORMAT = "%d-%m-%Y %H:%M:%S"
