@@ -1,5 +1,8 @@
 # MLHD2
 
+# Join our Discord if you need help.
+https://discord.gg/U6ydgwFKZG
+
 Helldivers 2 Mission Log Manager for recording deployments, building summaries, and sharing mission data to Discord.
 
 ## Quick Start (Launcher)
@@ -211,3 +214,4 @@ When opening issues/PRs, include:
 ---
 
 Not affiliated with Arrowhead Game Studios or Sony. Use at your own risk and respect game/community terms.
+
