@@ -906,18 +906,9 @@ def build_ui(app):
     except Exception as e:
         logging.error(f"Failed to load invite button image: {e}")
         invite_fallback = tk.Label(button_icon_frame, text="Invite Button", cursor="hand2")
-<<<<<<< Updated upstream
-<<<<<<<< Updated upstream:core/ui/gui_components.py
-        invite_fallback.pack(side=tk.TOP, pady=(0, 8), padx=0)
-        invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/U6ydgwFKZG"))
-========
+
         invite_fallback.pack(side=tk.TOP, pady=(0,8), padx=0)
         invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/3Kuxa8uaaN"))
->>>>>>>> Stashed changes:core/gui_components.py
-=======
-        invite_fallback.pack(side=tk.TOP, pady=(0, 8), padx=0)
-        invite_fallback.bind("<Button-1>", lambda e: webbrowser.open("https://discord.gg/3Kuxa8uaaN"))
->>>>>>> Stashed changes
 
     # Enemy selection
     ttk.Label(details_frame, text="Enemy Type:", foreground=flair_fg).grid(row=0, column=0, sticky=tk.W, pady=5)
